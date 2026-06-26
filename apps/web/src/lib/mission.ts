@@ -10,12 +10,15 @@
 import {
   activity,
   agents,
+  artifacts,
   decisions,
   initiatives,
   objectives,
   nextAction,
+  syncStatus,
   type ActivityEvent,
   type Agent,
+  type Artifact,
   type Decision,
   type Initiative,
   type Objective,
@@ -79,19 +82,35 @@ export function getObjectivesForInitiative(id: string): Objective[] {
   return objectives.filter((o) => o.initiativeId === id);
 }
 
+export function getArtifactsForInitiative(id: string): Artifact[] {
+  return artifacts
+    .filter((a) => a.initiativeId === id)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function getAgentsForInitiative(id: string): Agent[] {
+  const ini = getInitiativeById(id);
+  if (!ini) return [];
+  return ini.agentIds
+    .map((aid) => getAgent(aid))
+    .filter((a): a is Agent => Boolean(a));
+}
+
 export function getNextAction() {
   return nextAction;
 }
 
-/** Derived counts for the "Hoje" band. */
+/** Derived figures for the daily summary ("Hoje"). */
 export function getTodaySummary() {
   return {
     decisions: getPendingDecisions().length,
-    agentsRunning: agents.filter((a) => a.state === "em execução").length,
-    readyToPublish: decisions.filter(
+    agentsActive: agents.filter((a) => a.state !== "inativo").length,
+    initiatives: initiatives.length,
+    publications: decisions.filter(
       (d) => d.kind === "publicação" && d.status === "pendente"
     ).length,
     objectivesAtRisk: getObjectivesAtRisk().length,
+    sync: syncStatus,
   };
 }
 
@@ -130,6 +149,14 @@ export function getSearchCorpus(): SearchResult[] {
       label: a.role,
       detail: a.currentTask,
       href: `/agents/${a.id}`,
+    });
+  }
+  for (const art of artifacts) {
+    out.push({
+      group: "Artefactos",
+      label: art.title,
+      detail: `${art.kind} · ${art.state}`,
+      href: `/initiatives/${getInitiativeById(art.initiativeId)?.slug ?? ""}`,
     });
   }
   for (const o of objectives) {

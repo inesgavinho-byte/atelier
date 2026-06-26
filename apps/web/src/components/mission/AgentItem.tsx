@@ -9,8 +9,14 @@ import { Meter, StateTag } from "@/components/mission/bits";
  * An agent's operational state, with inline supervision (EPIC-001 §3):
  * interrupt, delegate, change priority. Mocked via local state.
  */
+const PRIORITIES = ["Normal", "Alta", "Baixa"] as const;
+
 export default function AgentItem({ agent }: { agent: Agent }) {
   const [interrupted, setInterrupted] = useState(false);
+  const [delegated, setDelegated] = useState(false);
+  const [priority, setPriority] = useState<(typeof PRIORITIES)[number]>(
+    "Normal"
+  );
   const working = agent.state === "em execução" && !interrupted;
 
   return (
@@ -58,11 +64,24 @@ export default function AgentItem({ agent }: { agent: Agent }) {
             Retomar
           </button>
         ) : null}
-        <button type="button" className="action-quiet">
-          Delegar
+        <button
+          type="button"
+          className="action-quiet"
+          onClick={() => setDelegated((v) => !v)}
+        >
+          {delegated ? "Delegado ✓" : "Delegar"}
         </button>
-        <button type="button" className="action-quiet">
-          Alterar prioridade
+        <button
+          type="button"
+          className="action-quiet"
+          onClick={() =>
+            setPriority(
+              (p) =>
+                PRIORITIES[(PRIORITIES.indexOf(p) + 1) % PRIORITIES.length]
+            )
+          }
+        >
+          Prioridade: {priority}
         </button>
       </div>
     </article>

@@ -53,6 +53,14 @@ export type CaptureKind =
 
 // ── Entities ──────────────────────────────────────────────────────────────
 
+export type ArtifactKind =
+  | "documento"
+  | "paper"
+  | "código"
+  | "imagem"
+  | "página"
+  | "nota";
+
 export interface Initiative {
   id: string;
   slug: string;
@@ -61,6 +69,17 @@ export interface Initiative {
   /** 0–100 */
   progress: number;
   focus: string;
+  /** ids referencing Agent.id */
+  agentIds: string[];
+}
+
+export interface Artifact {
+  id: string;
+  title: string;
+  kind: ArtifactKind;
+  initiativeId: string;
+  state: string;
+  updatedAt: string;
 }
 
 export interface Decision {
@@ -82,6 +101,8 @@ export interface Agent {
   office: string;
   provider: string;
   state: AgentState;
+  /** the agent's permanent mission (distinct from the current task) */
+  mission: string;
   currentTask: string;
   /** 0–5 */
   autonomy: number;
@@ -120,6 +141,14 @@ export const initiatives: Initiative[] = [
     intent: "Instituição editorial sobre arquitetura como condição.",
     progress: 72,
     focus: "Issue 005 — em revisão final",
+    agentIds: [
+      "agt-editorial",
+      "agt-research",
+      "agt-production",
+      "agt-design",
+      "agt-comms",
+      "agt-knowledge",
+    ],
   },
   {
     id: "ini-decima",
@@ -128,6 +157,7 @@ export const initiatives: Initiative[] = [
     intent: "Ontologia evolutiva para estruturar conhecimento.",
     progress: 38,
     focus: "Primitivas de relação",
+    agentIds: ["agt-editorial", "agt-knowledge"],
   },
   {
     id: "ini-gavinho",
@@ -136,6 +166,7 @@ export const initiatives: Initiative[] = [
     intent: "Memória estratégica e identidade transversal.",
     progress: 54,
     focus: "Consolidação de cânone",
+    agentIds: ["agt-editorial", "agt-design"],
   },
   {
     id: "ini-nudo",
@@ -144,6 +175,16 @@ export const initiatives: Initiative[] = [
     intent: "Plataforma de hospitalidade do humanismo espacial.",
     progress: 21,
     focus: "Arquitetura conceptual",
+    agentIds: ["agt-editorial"],
+  },
+  {
+    id: "ini-personal",
+    slug: "personal",
+    name: "Personal",
+    intent: "Projetos futuros, notas privadas e pensamento de longo prazo.",
+    progress: 8,
+    focus: "Espaço em aberto",
+    agentIds: [],
   },
 ];
 
@@ -156,6 +197,7 @@ export const agents: Agent[] = [
     office: "Editorial",
     provider: "GPT",
     state: "em execução",
+    mission: "Desenvolver pensamento, estruturar conhecimento e garantir coerência editorial.",
     currentTask: "Afinar a distinção central do Issue 005.",
     autonomy: 3,
     progress: 68,
@@ -168,6 +210,7 @@ export const agents: Agent[] = [
     office: "Research",
     provider: "Perplexity",
     state: "em execução",
+    mission: "Produzir evidência, expandir contexto e questionar pressupostos.",
     currentTask: "Reunir genealogia e visões opostas para o Issue 005.",
     autonomy: 2,
     progress: 41,
@@ -180,6 +223,7 @@ export const agents: Agent[] = [
     office: "Production",
     provider: "Claude Code",
     state: "em execução",
+    mission: "Transformar decisões em implementação: código, repositório e deployment.",
     currentTask: "Preparar o build do site PAPERS para deployment.",
     autonomy: 3,
     progress: 87,
@@ -192,6 +236,7 @@ export const agents: Agent[] = [
     office: "Design",
     provider: "GPT · crítica visual",
     state: "em revisão",
+    mission: "Garantir a qualidade da experiência, da interface e do design editorial.",
     currentTask: "Rever direção da homepage editorial.",
     autonomy: 2,
     progress: 50,
@@ -204,6 +249,7 @@ export const agents: Agent[] = [
     office: "Communications",
     provider: "Manus · futuro",
     state: "a aguardar",
+    mission: "Distribuir conhecimento: publicação, newsletter e comunicação institucional.",
     currentTask: "Anúncio do Issue 005, retido até publicação.",
     autonomy: 1,
     progress: 0,
@@ -216,6 +262,7 @@ export const agents: Agent[] = [
     office: "Knowledge",
     provider: "Futuro",
     state: "em execução",
+    mission: "Preservar memória, relacionar conhecimento e garantir continuidade.",
     currentTask: "Relacionar recorrências entre os Issues 001–005.",
     autonomy: 2,
     progress: 33,
@@ -383,6 +430,71 @@ export const activity: ActivityEvent[] = [
     at: "2026-06-24T11:00:00Z",
   },
 ];
+
+// ── Artifacts ─────────────────────────────────────────────────────────────
+
+export const artifacts: Artifact[] = [
+  {
+    id: "art-issue-005",
+    title: "Issue 005 — A Aparência e a Função",
+    kind: "paper",
+    initiativeId: "ini-papers",
+    state: "Em revisão",
+    updatedAt: "2026-06-26T09:48:00Z",
+  },
+  {
+    id: "art-papers-site",
+    title: "Site PAPERS — build de produção",
+    kind: "código",
+    initiativeId: "ini-papers",
+    state: "Pronto para deployment",
+    updatedAt: "2026-06-26T09:05:00Z",
+  },
+  {
+    id: "art-homepage",
+    title: "Direção da homepage editorial",
+    kind: "página",
+    initiativeId: "ini-papers",
+    state: "Em revisão",
+    updatedAt: "2026-06-26T07:10:00Z",
+  },
+  {
+    id: "art-issue-005-announce",
+    title: "Anúncio do Issue 005",
+    kind: "documento",
+    initiativeId: "ini-papers",
+    state: "Rascunho",
+    updatedAt: "2026-06-25T16:25:00Z",
+  },
+  {
+    id: "art-decima-ontology",
+    title: "Esboço de primitivas de relação",
+    kind: "documento",
+    initiativeId: "ini-decima",
+    state: "Em desenvolvimento",
+    updatedAt: "2026-06-24T11:00:00Z",
+  },
+  {
+    id: "art-gavinho-canon",
+    title: "Cânone estratégico GAVINHO",
+    kind: "documento",
+    initiativeId: "ini-gavinho",
+    state: "A decorrer",
+    updatedAt: "2026-06-22T14:00:00Z",
+  },
+  {
+    id: "art-nudo-concept",
+    title: "Arquitetura conceptual NUDO",
+    kind: "nota",
+    initiativeId: "ini-nudo",
+    state: "Esboço",
+    updatedAt: "2026-06-20T10:00:00Z",
+  },
+];
+
+// ── Sync (mocked — no backend this sprint) ───────────────────────────────
+
+export const syncStatus = "Local";
 
 // ── Next action (highest impact) ─────────────────────────────────────────
 

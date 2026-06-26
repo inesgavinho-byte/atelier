@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Meter, StateTag, ago } from "@/components/mission/bits";
+import AgentControls from "@/components/mission/AgentControls";
 import { agents } from "@/data/mission";
 import { getAgent, getActivity } from "@/lib/mission";
 
@@ -38,6 +39,11 @@ export default function AgentDetailPage({
       </p>
 
       <div className="mt-8 border-l-2 border-line-strong pl-4">
+        <div className="eyebrow mb-1">Missão</div>
+        <p className="text-[15px] leading-relaxed">{agent.mission}</p>
+      </div>
+
+      <div className="mt-6 border-l-2 border-line pl-4">
         <div className="eyebrow mb-1">Tarefa atual</div>
         <p className="text-[15px] leading-relaxed">{agent.currentTask}</p>
       </div>
@@ -60,10 +66,8 @@ export default function AgentDetailPage({
         </div>
       </dl>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button type="button" className="action">Delegar trabalho</button>
-        <button type="button" className="action-quiet">Interromper</button>
-        <button type="button" className="action-quiet">Alterar prioridade</button>
+      <div className="mt-6">
+        <AgentControls state={agent.state} />
       </div>
 
       <div className="mt-12">

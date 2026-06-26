@@ -27,15 +27,16 @@ export default function MissionControlPage() {
   const initiatives = getInitiatives();
   const activity = getActivity().slice(0, 6);
 
-  const stats = [
-    { n: summary.decisions, label: "decisões pendentes", href: "/decisions" },
-    { n: summary.agentsRunning, label: "agentes em execução", href: "/agents" },
+  const stats: { v: string | number; label: string; href?: string }[] = [
+    { v: summary.decisions, label: "decisões pendentes", href: "/decisions" },
+    { v: summary.agentsActive, label: "agentes ativos", href: "/agents" },
+    { v: summary.initiatives, label: "iniciativas", href: "/initiatives" },
     {
-      n: summary.readyToPublish,
+      v: summary.publications,
       label: "publicação pronta",
       href: `/decisions/${next.decisionId}`,
     },
-    { n: summary.objectivesAtRisk, label: "objetivos em risco", href: "#risco" },
+    { v: summary.sync, label: "sincronização" },
   ];
 
   return (
@@ -44,17 +45,29 @@ export default function MissionControlPage() {
       <section className="mb-12">
         <div className="eyebrow mb-3">{todayLabel}</div>
         <h1 className="font-serif text-4xl md:text-5xl">Bom dia, {owner}.</h1>
-        <dl className="mt-8 grid grid-cols-2 gap-px border-l border-t border-line sm:grid-cols-4">
-          {stats.map((s) => (
-            <Link
-              key={s.label}
-              href={s.href}
-              className="group border-b border-r border-line bg-cream px-5 py-5 transition-colors hover:bg-surface"
-            >
-              <dd className="font-serif text-4xl text-charcoal">{s.n}</dd>
-              <dt className="meta mt-1 group-hover:text-charcoal">{s.label}</dt>
-            </Link>
-          ))}
+        <dl className="mt-8 grid grid-cols-2 border-l border-t border-line sm:grid-cols-3 lg:grid-cols-5">
+          {stats.map((s) =>
+            s.href ? (
+              <Link
+                key={s.label}
+                href={s.href}
+                className="group border-b border-r border-line bg-cream px-5 py-5 transition-colors hover:bg-surface"
+              >
+                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
+                <dt className="meta mt-1 group-hover:text-charcoal">
+                  {s.label}
+                </dt>
+              </Link>
+            ) : (
+              <div
+                key={s.label}
+                className="border-b border-r border-line bg-cream px-5 py-5"
+              >
+                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
+                <dt className="meta mt-1">{s.label}</dt>
+              </div>
+            )
+          )}
         </dl>
       </section>
 
