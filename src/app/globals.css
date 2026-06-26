@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ATELIER — editorial design system
+ * Quiet, precise, high-trust. A private editorial control room.
+ */
+
+/* Font variables (--font-serif, --font-sans) are provided by next/font on
+   the <html> element. Tailwind's fontFamily config carries the fallback
+   chain, so no defaults are needed here. */
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-cream text-charcoal font-sans;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif text-charcoal;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+
+  ::selection {
+    background: #1f1f1c;
+    color: #f2f0e7;
+  }
+}
+
+@layer components {
+  /* Section eyebrow — small, spaced, uppercase label */
+  .eyebrow {
+    @apply font-sans uppercase text-muted;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+  }
+
+  /* Thin editorial rule */
+  .rule {
+    @apply border-0 border-t border-line;
+  }
+
+  /* Restrained, quiet card */
+  .panel {
+    @apply bg-surface border border-line;
+  }
+
+  /* Quiet status dot */
+  .dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full;
+  }
+
+  /* Minimal action — never a loud SaaS button */
+  .action {
+    @apply inline-flex items-center justify-center border border-line-strong
+      bg-transparent px-4 py-2 text-charcoal transition-colors;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .action:hover {
+    @apply bg-charcoal text-cream border-charcoal;
+  }
+
+  .action-quiet {
+    @apply inline-flex items-center text-muted transition-colors;
+    font-size: 13px;
+  }
+  .action-quiet:hover {
+    @apply text-charcoal;
+  }
+
+  /* Small meta label */
+  .meta {
+    @apply text-muted;
+    font-size: 12.5px;
+  }
+}
