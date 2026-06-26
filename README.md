@@ -1,124 +1,124 @@
 # ATELIER
 
-**Where thought becomes work.**
+**Onde o pensamento se torna trabalho.**
 
-ATELIER is the operating layer for Inês Gavinho's intellectual, editorial and
-strategic projects. It is not a task manager, not a dashboard, not a CRM, not a
-chat app — it is a digital workspace where ideas become work.
+O ATELIER é a camada operativa para os projectos intelectuais, editoriais e estratégicos de Inês Gavinho. Não é um gestor de tarefas, nem um *dashboard*, nem um CRM, nem uma aplicação de conversação — é um espaço de trabalho digital onde as ideias se tornam trabalho.
 
-The principle is simple:
-
-> Agents work. Inês judges. The interface surfaces only what requires
-> attention, decision or direction.
-
-PAPERS is the first pilot workspace; ATELIER itself is a general operating
-layer designed to eventually orchestrate multiple projects (PAPERS, DECIMA,
-GAVINHO, NUDO, Personal) and AI agents.
+Este repositório é o **Repositório Fundacional do ATELIER**: a fonte de verdade tanto para o **código do produto** como para a **filosofia do produto**.
 
 ---
 
-## Stack
+## O que é o ATELIER
 
-- **Next.js 14** (App Router) · **React 18** · **TypeScript**
-- **Tailwind CSS** with a GAVINHO-aligned editorial design system
-- Structured, typed **mock data** (no LLM or database calls in Sprint 001)
-- **Supabase-ready** architecture — a single data-access seam to swap later
-- Deployable to **Vercel** or **Netlify** with zero configuration
+O princípio é simples:
 
-## Getting started
+> Os agentes trabalham. A Inês julga. A interface mostra apenas o que exige atenção, decisão ou direcção.
+
+PAPERS é o primeiro espaço de trabalho-piloto; o ATELIER é uma camada operativa geral, concebida para coordenar vários projectos (PAPERS, DECIMA, GAVINHO, NUDO, Pessoal) e, eventualmente, vários agentes de IA.
+
+---
+
+## Estrutura do repositório
+
+```
+ATELIER/
+├── README.md              Este documento
+├── package.json           Raiz do monorepo (workspaces + scripts delegados)
+├── apps/
+│   └── web/               Aplicação Next.js (o produto)
+├── packages/              Pacotes partilhados (vazio por agora)
+├── atelier/               Fundação intelectual (filosofia, decisões, ontologia)
+│   ├── 000-canon/
+│   ├── 010-philosophy/
+│   ├── 020-operating-system/
+│   ├── 030-organisation/
+│   ├── 040-product/
+│   ├── 050-agent-architecture/
+│   ├── 060-decisions/
+│   ├── 070-research/
+│   ├── 080-roadmap/
+│   ├── 090-goals/
+│   └── 100-ontology/
+├── assets/                Recursos partilhados (vazio por agora)
+└── scripts/               Scripts de automação (vazio por agora)
+```
+
+### Diferença entre `/apps/web` e `/atelier`
+
+- **`/apps/web`** — o **código** do produto. A aplicação Next.js que se constrói, testa e implementa.
+- **`/atelier`** — o **pensamento** do produto. A fundação intelectual: filosofia, organização, decisões arquitecturais, roteiro, objectivos e ontologia.
+
+Esta separação é intencional: o ATELIER não deve evoluir como uma colecção de ecrãs desconexos. O código e a filosofia evoluem lado a lado, com a mesma durabilidade.
+
+---
+
+## Como executar a aplicação web
+
+O repositório está organizado como um monorepo com *workspaces* npm. Os scripts da raiz delegam no *workspace* `@atelier/web`, pelo que **todos os comandos podem ser executados a partir da raiz**:
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
+npm install      # instala dependências de todos os workspaces
+npm run dev      # arranca o servidor de desenvolvimento (http://localhost:3000)
+npm run build    # build de produção
+npm run start    # serve o build de produção
+npm run typecheck
+npm run lint
 ```
 
-Other scripts:
+Em alternativa, é possível executar directamente dentro de `apps/web` (ver `apps/web/README.md`).
 
-```bash
-npm run build      # production build
-npm run start      # serve the production build
-npm run typecheck  # tsc --noEmit
-npm run lint       # next lint
-```
+---
 
-## Routes
+## Como os documentos são identificados
 
-| Route                | Purpose                                              |
-| -------------------- | ---------------------------------------------------- |
-| `/`                  | Home — *what requires Inês's judgement now*          |
-| `/projects`          | All workspaces                                       |
-| `/projects/[slug]`   | Project detail (PAPERS is the most developed)        |
-| `/team`              | Agents — roles first, models second, autonomy ladder |
-| `/memory`            | Structured knowledge base                            |
-| `/approvals`         | Decisions requiring judgement                        |
-| `/activity`          | Quiet chronological operational record               |
+Toda a documentação vive em `atelier/`, organizada por gabinetes numerados. Cada documento começa com um bloco de metadados e usa um identificador estável:
 
-## Project structure
+- **AT-000X** — documentos da fundação (ex.: `AT-0001` Manifesto, `AT-0009` Ontologia).
+- **ADR-000X** — Registos de Decisões Arquitecturais.
+- **GOAL-000X** — Objectivos.
+
+Bloco de metadados padrão no topo de cada documento:
 
 ```
-src/
-├── app/                    # App Router routes
-│   ├── layout.tsx          # Shell: sidebar (desktop) + top nav (mobile), fonts
-│   ├── globals.css         # Editorial design system
-│   ├── page.tsx            # Home
-│   ├── projects/           # Projects list + [slug] detail
-│   ├── team/ memory/ approvals/ activity/
-│   └── not-found.tsx
-├── components/             # Nav, ui primitives, ApprovalCard, PaperPipeline
-├── data/
-│   ├── types.ts            # Domain types (close to a future Supabase schema)
-│   └── mock.ts             # Structured seed data
-└── lib/
-    ├── data.ts             # Data-access layer — THE Supabase swap point
-    └── format.ts           # Label maps and formatters
+---
+id: AT-000X
+title: Título do Documento
+version: v0.1
+status: Draft
+owner: Inês Gavinho
+created: 2026-06-26
+updated: 2026-06-26
+depends_on: []
+impacts: []
+---
 ```
 
-## Design direction
+Seguido das secções: **Propósito**, **Âmbito**, **Estado** e **Registo de alterações**.
 
-Quiet, editorial, precise, high-trust, operational. Not SaaS-looking.
+### Como funcionam os ADR
 
-- Palette: Soft Cream `#F2F0E7`, Warm Beige `#ADAA96`, Olive Gray `#8B8670`,
-  Charcoal `#1F1F1C`, Muted Gray `#6F6C60`
-- Type: Cormorant Garamond (serif titles) · Quattrocento Sans (interface)
-- Thin rules, generous whitespace, no loud buttons, no gradients, no shadows
+Um ADR (*Architecture Decision Record*) documenta uma decisão arquitectural significativa. Para criar um:
 
-Think: a private editorial control room. A studio operating table.
+1. Copiar `atelier/060-decisions/ADR-0001-template.md`.
+2. Atribuir um `id` sequencial (`ADR-0002`, `ADR-0003`, …) e um título.
+3. Preencher: **Status**, **Context**, **Decision**, **Consequences**, **Alternatives Considered**, **Related Documents**, **Changelog**.
+4. Actualizar o `status`: Proposed → Accepted / Rejected / Superseded.
 
-## Agent autonomy model
+### Como funcionam os objectivos
 
-Every agent operates within an autonomy level. **All public-facing actions
-require approval today.**
+Um objectivo (*goal*) define uma intenção com critérios de sucesso. Vivem em `atelier/090-goals/`, com `id` sequencial (`GOAL-0001`, …) e um campo `impacts` que lista os documentos afectados. O `status` indica o estado: Active, Done, Paused ou Dropped.
 
-| Level | Meaning                       |
-| ----- | ----------------------------- |
-| 0     | Disabled                      |
-| 1     | Draft only                    |
-| 2     | Prepare & request approval    |
-| 3     | Execute internal tasks        |
-| 4     | Publish with approval         |
-| 5     | Autonomous publishing         |
+---
 
-## Supabase readiness
+## Estado de desenvolvimento actual
 
-The UI never touches mock data directly — it reads through `src/lib/data.ts`.
-Each reader maps 1:1 to a future table:
+- **Sprint 001** — MVP da camada operativa (rotas, interface editorial, dados *mock* tipados, arquitectura pronta para Supabase). Concluído.
+- **Sprint A001** — Reestruturação fundacional do repositório (este trabalho): aplicação movida para `apps/web`, fundação intelectual criada em `atelier/`. Em curso.
 
-```
-projects · agents · workstreams · approvals · papers
-ideas · principles · decisions · activity · (memory) entries
-```
+O objectivo activo é o `GOAL-0001 — Construir a Fundação ATELIER`.
 
-To migrate: create tables matching `src/data/types.ts`, then replace each
-reader body in `src/lib/data.ts` with a Supabase query (and make them async).
-No UI changes required.
+---
 
-## Sprint 002 (planned)
+## Língua
 
-- Connect Supabase; persist approvals
-- Authentication
-- Editable project records
-- Real PAPERS ingestion workflow
-- GitHub integration
-- OpenAI orchestration for the Editorial Director
-- Publisher drafting workflow
-- Analytics placeholders
+Toda a documentação está em **Português Europeu**. A interface da aplicação será eventualmente traduzida para português, mas essa tradução não faz parte deste sprint.
