@@ -24,6 +24,8 @@ import {
   type Objective,
   type Priority,
 } from "@/data/mission";
+import { getDocs } from "@/lib/atelier-docs";
+import { getProductDocs } from "@/lib/product-docs";
 
 const PRIORITY_RANK: Record<Priority, number> = { alta: 0, média: 1, baixa: 2 };
 
@@ -167,21 +169,22 @@ export function getSearchCorpus(): SearchResult[] {
       href: `/initiatives/${getInitiativeById(o.initiativeId)?.slug ?? ""}`,
     });
   }
-  // Constitutional documents are part of the searchable corpus per EPIC-001.
-  for (const doc of [
-    { id: "AT-0001", label: "Manifesto" },
-    { id: "AT-0002", label: "Operating System" },
-    { id: "AT-0003", label: "Organisation" },
-    { id: "AT-0004", label: "Product Specification" },
-    { id: "AT-0005", label: "Agent Architecture" },
-    { id: "AT-0006", label: "Canon" },
-    { id: "AT-0009", label: "Ontologia" },
-  ]) {
+  // Documents come from their real registries (markdown files are the source
+  // of truth), not a hardcoded list — see EPIC-001 §Pesquisa.
+  for (const doc of getDocs()) {
     out.push({
       group: "Constituição",
       label: doc.label,
       detail: doc.id,
       href: `/atelier/${doc.id}`,
+    });
+  }
+  for (const doc of getProductDocs()) {
+    out.push({
+      group: "Produto",
+      label: doc.label,
+      detail: doc.id,
+      href: `/product/${doc.id}`,
     });
   }
   return out;
