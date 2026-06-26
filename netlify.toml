@@ -6,11 +6,11 @@
 #
 # Required environment variables (set in the Netlify UI → Site settings →
 # Environment variables — NOT committed):
-#   SUPABASE_URL        = https://gfrfzsiqhiqggwxjptxh.supabase.co
-#   SUPABASE_ANON_KEY   = <publishable/anon key for the "Atelier" project>
+#   NEXT_PUBLIC_SUPABASE_URL       = https://gfrfzsiqhiqggwxjptxh.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY  = <publishable/anon key for "Atelier">
 #
-# These names match what the code reads (server-only, see src/lib/supabase.ts).
-# NEXT_PUBLIC_* names would NOT be read by the current code.
+# The client reads these (and falls back to SUPABASE_URL / SUPABASE_ANON_KEY).
+# See src/lib/supabase.ts.
 
 [build]
   base = "apps/web"
