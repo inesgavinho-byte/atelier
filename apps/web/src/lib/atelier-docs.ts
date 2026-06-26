@@ -50,6 +50,12 @@ export const DOCS: DocEntry[] = [
     label: "Manifesto",
     relativePath: "atelier/010-philosophy/AT-0001-manifesto.md",
   },
+  {
+    id: "AT-0009",
+    section: "Constituição",
+    label: "Ontologia",
+    relativePath: "atelier/100-ontology/AT-0009-ontology.md",
+  },
 ];
 
 /** Resolve the repository root from the web app's working directory. */
