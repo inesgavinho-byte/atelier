@@ -23,9 +23,9 @@ const TESTS: { key: string; label: string; run: () => Promise<TestResult> }[] = 
 ];
 
 const STATUS_DOT: Record<TestResult["status"], string> = {
-  success: "bg-olive",
-  warning: "bg-beige",
-  failure: "bg-charcoal",
+  success: "success",
+  warning: "warning",
+  failure: "danger",
 };
 
 export default function SystemTests() {
@@ -49,44 +49,43 @@ export default function SystemTests() {
   return (
     <div>
       <div className="mb-5">
-        <button type="button" className="action" onClick={runAll}>
+        <button type="button" className="button primary" onClick={runAll}>
           Correr todos
         </button>
       </div>
-      <ul className="divide-y divide-line border-y border-line">
+      <div>
         {TESTS.map((t) => {
           const r = results[t.key];
           return (
-            <li
-              key={t.key}
-              className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="action"
-                  onClick={() => run(t)}
-                  disabled={running === t.key}
-                >
-                  {running === t.key ? "A correr…" : t.label}
-                </button>
-              </div>
+            <div key={t.key} className="test-row">
+              <button
+                type="button"
+                className="button"
+                onClick={() => run(t)}
+                disabled={running === t.key}
+              >
+                {running === t.key ? "A correr…" : t.label}
+              </button>
               {r ? (
-                <div className="flex items-center gap-3 text-[13px]">
+                <div className="flex items-center gap-3 text-[12.5px]">
                   <span className="inline-flex items-center gap-2">
                     <span className={`dot ${STATUS_DOT[r.status]}`} />
-                    <span className="text-charcoal">{r.status}</span>
+                    <span>{r.status}</span>
                   </span>
-                  <span className="meta">{r.ms} ms</span>
-                  <span className="meta font-mono break-all">{r.detail}</span>
+                  <span className="text-muted">{r.ms} ms</span>
+                  <span className="text-muted font-mono break-all">
+                    {r.detail}
+                  </span>
                 </div>
               ) : (
-                <span className="meta italic">por correr</span>
+                <span className="text-muted text-[12.5px] italic">
+                  por correr
+                </span>
               )}
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 }

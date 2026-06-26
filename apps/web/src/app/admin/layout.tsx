@@ -16,6 +16,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-atelier px-6 py-12 md:px-10">{children}</div>
+    <div className="control-room">
+      <div className="mx-auto max-w-atelier px-6 py-12 md:px-10">{children}</div>
+    </div>
   );
 }

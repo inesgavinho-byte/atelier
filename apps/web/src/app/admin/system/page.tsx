@@ -13,10 +13,16 @@ import {
 export const dynamic = "force-dynamic";
 
 const DOT: Record<Health, string> = {
-  online: "bg-olive",
-  warning: "bg-beige",
-  offline: "bg-charcoal",
-  na: "bg-line-strong",
+  online: "success",
+  warning: "warning",
+  offline: "danger",
+  na: "na",
+};
+const TXT: Record<Health, string> = {
+  online: "status-success",
+  warning: "status-warning",
+  offline: "status-danger",
+  na: "",
 };
 const LABEL: Record<Health, string> = {
   online: "Online",
@@ -27,9 +33,9 @@ const LABEL: Record<Health, string> = {
 
 function Status({ health }: { health: Health }) {
   return (
-    <span className="inline-flex items-center gap-2 text-[12.5px] text-muted">
+    <span className="inline-flex items-center gap-2">
       <span className={`dot ${DOT[health]}`} />
-      {LABEL[health]}
+      <span className={`text-[12.5px] ${TXT[health]}`}>{LABEL[health]}</span>
     </span>
   );
 }
@@ -46,42 +52,38 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-14">
-      <div className="mb-5 flex items-baseline justify-between gap-4 border-b border-line pb-2">
-        <h2 className="eyebrow">
+    <section className="mb-12">
+      <div className="mb-4 flex items-baseline justify-between gap-4">
+        <h2 className="card-section-title">
           {n} · {title}
         </h2>
-        {aside ? <span className="meta">{aside}</span> : null}
+        {aside ? <span className="page-subtitle">{aside}</span> : null}
       </div>
       {children}
     </section>
   );
 }
 
-function ProbeRows({ probes }: { probes: Probe[] }) {
+function StatusCards({ probes }: { probes: Probe[] }) {
   return (
-    <ul className="divide-y divide-line border-y border-line">
+    <div className="system-grid">
       {probes.map((p) => (
-        <li
-          key={p.label}
-          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-2.5"
-        >
-          <span className="text-[14px] text-charcoal">{p.label}</span>
-          <div className="flex items-center gap-5">
-            {p.latencyMs != null ? (
-              <span className="meta">{p.latencyMs} ms</span>
-            ) : null}
-            {p.detail ? <span className="meta">{p.detail}</span> : null}
+        <div key={p.label} className="card status-card">
+          <div className="label">{p.label}</div>
+          <div className="row">
             <Status health={p.health} />
+            <span className="truncate text-right">
+              {p.latencyMs != null ? `${p.latencyMs} ms` : p.detail ?? ""}
+            </span>
           </div>
-        </li>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
 export default async function SystemPage() {
-  // Each section computed independently; checkDatabase is shared (one probe).
+  // Each section computed independently; checkDatabase is the shared probe.
   const db = await checkDatabase();
   const [platform, integrations] = await Promise.all([
     getPlatform(db),
@@ -94,115 +96,118 @@ export default async function SystemPage() {
   return (
     <div>
       <div className="eyebrow mb-3">Administração · Sala de controlo</div>
-      <h1 className="font-serif text-4xl md:text-5xl">Sistema</h1>
-      <p className="meta mt-3 max-w-2xl">
+      <h1 className="page-title">Sistema</h1>
+      <p className="page-subtitle mt-3 max-w-2xl">
         Estado de saúde da plataforma ATELIER e das suas integrações. Cada secção
         falha de forma independente; nenhuma chave ou segredo é exposta.
       </p>
 
       <div className="mt-12">
-        <Section n="1" title="Plataforma">
-          <ProbeRows probes={platform} />
+        <Section n="01" title="Plataforma">
+          <StatusCards probes={platform} />
         </Section>
 
         <Section
-          n="2"
+          n="02"
           title="Integrações"
           aside="apenas Supabase é verificada ativamente"
         >
-          <ProbeRows probes={integrations} />
+          <StatusCards probes={integrations} />
         </Section>
 
-        <Section n="3" title="Ambiente">
-          <dl className="grid grid-cols-1 gap-px border-l border-t border-line sm:grid-cols-2">
+        <Section n="03" title="Ambiente">
+          <div className="card system-card">
             {env.map((e) => (
-              <div key={e.label} className="border-b border-r border-line bg-cream px-5 py-3">
-                <dt className="eyebrow mb-1">{e.label}</dt>
-                <dd className="text-[13.5px] font-mono break-all">{e.value}</dd>
+              <div key={e.label} className="metric-row">
+                <span className="text-[13px] text-muted">{e.label}</span>
+                <span className="font-mono text-[13px] break-all text-charcoal">
+                  {e.value}
+                </span>
               </div>
             ))}
-          </dl>
+          </div>
         </Section>
 
         <Section
-          n="4"
+          n="04"
           title="Base de dados"
           aside={db.latencyMs != null ? `${db.latencyMs} ms` : undefined}
         >
-          <div className="mb-4">
-            <Status health={db.health} />
-            {db.error ? (
-              <p className="mt-2 font-mono text-[12.5px] break-all text-charcoal">
-                {db.error}
-              </p>
-            ) : null}
-          </div>
-          <ul className="divide-y divide-line border-y border-line">
-            {db.counts.map((c) => (
-              <li
-                key={c.table}
-                className="flex items-center justify-between gap-6 py-2.5"
-              >
-                <span className="text-[14px] text-charcoal">{c.table}</span>
-                <span className="meta font-mono">
-                  {c.error ? `erro: ${c.error}` : c.count}
+          <div className="card system-card">
+            <div className="mb-3 flex items-center justify-between">
+              <Status health={db.health} />
+              {db.error ? (
+                <span className="font-mono text-[12px] break-all status-danger">
+                  {db.error}
                 </span>
-              </li>
-            ))}
+              ) : null}
+            </div>
             {db.counts.length === 0 ? (
-              <li className="py-2.5 meta italic">Sem ligação à base de dados.</li>
-            ) : null}
-          </ul>
+              <p className="page-subtitle italic">
+                Sem ligação à base de dados.
+              </p>
+            ) : (
+              db.counts.map((c) => (
+                <div key={c.table} className="metric-row">
+                  <span className="text-[14px] text-charcoal">{c.table}</span>
+                  <span className="font-mono text-[13px] text-muted">
+                    {c.error ? `erro: ${c.error}` : c.count}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </Section>
 
-        <Section n="5" title="Variáveis de ambiente" aside="presença apenas">
-          <ul className="divide-y divide-line border-y border-line">
+        <Section n="05" title="Variáveis de ambiente" aside="presença apenas">
+          <div className="card system-card">
             {envVars.map((v) => (
-              <li
-                key={v.label}
-                className="flex items-center justify-between gap-6 py-2.5"
-              >
-                <span className="text-[14px] font-mono text-charcoal">
+              <div key={v.label} className="env-row">
+                <span className="font-mono text-[13px] text-charcoal">
                   {v.label}
                 </span>
-                <span className="inline-flex items-center gap-2 text-[12.5px] text-muted">
-                  <span className={`dot ${v.present ? "bg-olive" : "bg-charcoal"}`} />
-                  {v.present ? "Presente" : "Em falta"}
+                <span className="inline-flex items-center gap-2 text-[12.5px]">
+                  <span className={`dot ${v.present ? "success" : "danger"}`} />
+                  <span className={v.present ? "status-success" : "status-danger"}>
+                    {v.present ? "Presente" : "Em falta"}
+                  </span>
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </Section>
 
-        <Section n="6" title="Testes de sistema">
-          <SystemTests />
+        <Section n="06" title="Testes de sistema">
+          <div className="card system-card">
+            <SystemTests />
+          </div>
         </Section>
 
-        <Section n="7" title="Logs">
-          <p className="meta">
-            Sem fonte de logs integrada. Os erros de runtime aparecem nos logs de
-            funções do Netlify e os erros de base de dados são mostrados na secção
-            4. Uma integração de logs (ex.: Sentry) tornará esta secção ativa.
-          </p>
+        <Section n="07" title="Logs">
+          <div className="card system-card">
+            <p className="page-subtitle">
+              Sem fonte de logs integrada. Os erros de runtime aparecem nos logs
+              de funções do Netlify e os erros de base de dados são mostrados na
+              secção 04. Uma integração de logs (ex.: Sentry) tornará esta secção
+              ativa.
+            </p>
+          </div>
         </Section>
 
-        <Section n="8" title="Desempenho">
-          <ul className="divide-y divide-line border-y border-line">
+        <Section n="08" title="Desempenho">
+          <div className="card system-card">
             {perf.map((p) => (
-              <li
-                key={p.label}
-                className="flex items-center justify-between gap-6 py-2.5"
-              >
+              <div key={p.label} className="metric-row">
                 <span className="text-[14px] text-charcoal">{p.label}</span>
-                <span className="meta font-mono">{p.value}</span>
-              </li>
+                <span className="font-mono text-[13px] text-muted">{p.value}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </Section>
 
-        <Section n="9" title="AI Runtime" aside="inativo">
-          <div className="border border-dashed border-line px-6 py-10 text-center">
-            <p className="meta italic">
+        <Section n="09" title="AI Runtime" aside="inativo">
+          <div className="card system-card">
+            <p className="page-subtitle italic">
               Reservado. Mostrará agentes em execução, tarefas em fila, uso e
               custos de LLM, limites, fornecedor atual e de recurso, e tempo médio
               de execução.
