@@ -62,6 +62,12 @@ export const DOCS: DocEntry[] = [
     label: "Canon",
     relativePath: "atelier/000-canon/AT-0006-canon.md",
   },
+  {
+    id: "AT-0003",
+    section: "Constituição",
+    label: "Organisation",
+    relativePath: "atelier/030-organisation/AT-0003-organisation.md",
+  },
 ];
 
 /** Resolve the repository root from the web app's working directory. */
