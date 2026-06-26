@@ -8,18 +8,13 @@
  * automatically.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import {
+  type DocMeta,
+  loadMarkdown,
+  neighboursOf,
+} from "@/lib/docs-core";
 
-export interface DocMeta {
-  id?: string;
-  title?: string;
-  version?: string;
-  status?: string;
-  owner?: string;
-  created?: string;
-  updated?: string;
-}
+export type { DocMeta };
 
 export interface DocEntry {
   /** Stable id used in the URL, e.g. "AT-0001". */
@@ -94,61 +89,6 @@ export const DOCS: DocEntry[] = [
   },
 ];
 
-/** Resolve the repository root from the web app's working directory. */
-function repoRoot(): string {
-  // `next build` runs with cwd = apps/web; the foundation lives two levels up.
-  // Walk up until we find the `atelier/` folder so this is resilient to cwd.
-  let dir = process.cwd();
-  for (let i = 0; i < 6; i++) {
-    if (fs.existsSync(path.join(dir, "atelier"))) return dir;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  // Fallback to the conventional layout.
-  return path.resolve(process.cwd(), "..", "..");
-}
-
-/** Minimal frontmatter parser — avoids an extra dependency. */
-function parseFrontmatter(raw: string): { meta: DocMeta; body: string } {
-  if (!raw.startsWith("---")) return { meta: {}, body: raw };
-
-  const lines = raw.split(/\r?\n/);
-  // First line is the opening "---"; find the closing "---".
-  let end = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === "---") {
-      end = i;
-      break;
-    }
-  }
-  if (end === -1) return { meta: {}, body: raw };
-
-  const meta: DocMeta = {};
-  const scalarKeys: (keyof DocMeta)[] = [
-    "id",
-    "title",
-    "version",
-    "status",
-    "owner",
-    "created",
-    "updated",
-  ];
-  for (let i = 1; i < end; i++) {
-    const line = lines[i];
-    const m = line.match(/^([A-Za-z_]+):\s*(.*)$/);
-    if (!m) continue;
-    const key = m[1] as keyof DocMeta;
-    const value = m[2].trim();
-    if (scalarKeys.includes(key) && value) {
-      meta[key] = value;
-    }
-  }
-
-  const body = lines.slice(end + 1).join("\n").replace(/^\s+/, "");
-  return { meta, body };
-}
-
 export function getDocs(): DocEntry[] {
   return DOCS;
 }
@@ -160,9 +100,7 @@ export function getDocEntry(id: string): DocEntry | undefined {
 export function loadDoc(id: string): LoadedDoc | undefined {
   const entry = getDocEntry(id);
   if (!entry) return undefined;
-  const filePath = path.join(repoRoot(), entry.relativePath);
-  const raw = fs.readFileSync(filePath, "utf8");
-  const { meta, body } = parseFrontmatter(raw);
+  const { meta, body } = loadMarkdown(entry.relativePath);
   return { entry, meta, body };
 }
 
@@ -171,10 +109,8 @@ export function getNeighbours(id: string): {
   prev?: DocEntry;
   next?: DocEntry;
 } {
-  const i = DOCS.findIndex((d) => d.id === id);
-  if (i === -1) return {};
-  return {
-    prev: i > 0 ? DOCS[i - 1] : undefined,
-    next: i < DOCS.length - 1 ? DOCS[i + 1] : undefined,
-  };
+  return neighboursOf(
+    DOCS,
+    DOCS.findIndex((d) => d.id === id)
+  );
 }
