@@ -14,7 +14,9 @@ export async function setDecisionStatus(
   id: string,
   status: DecisionStatus
 ): Promise<void> {
-  await getSupabase().from("decisions").update({ status }).eq("id", id);
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("decisions").update({ status }).eq("id", id);
   revalidatePath("/");
   revalidatePath("/decisions");
   revalidatePath(`/decisions/${id}`);
@@ -25,7 +27,9 @@ export async function createCapture(
   kind: string,
   value: string
 ): Promise<Capture[]> {
-  await getSupabase().from("captures").insert({ kind, value });
+  const sb = getSupabase();
+  if (!sb) return [];
+  await sb.from("captures").insert({ kind, value });
   return getRecentCaptures();
 }
 

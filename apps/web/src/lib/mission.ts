@@ -96,7 +96,9 @@ const toArtifact = (r: any): Artifact => ({
 /* ── Initiatives ─────────────────────────────────────────────────────────── */
 
 export async function getInitiatives(): Promise<Initiative[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("initiatives")
     .select("*")
     .order("sort");
@@ -106,7 +108,9 @@ export async function getInitiatives(): Promise<Initiative[]> {
 export async function getInitiative(
   slug: string
 ): Promise<Initiative | undefined> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return undefined;
+  const { data } = await sb
     .from("initiatives")
     .select("*")
     .eq("slug", slug)
@@ -117,7 +121,9 @@ export async function getInitiative(
 /* ── Agents ──────────────────────────────────────────────────────────────── */
 
 export async function getAgents(): Promise<Agent[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("agents")
     .select("*")
     .order("sort");
@@ -125,7 +131,9 @@ export async function getAgents(): Promise<Agent[]> {
 }
 
 export async function getAgent(id: string): Promise<Agent | undefined> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return undefined;
+  const { data } = await sb
     .from("agents")
     .select("*")
     .eq("id", id)
@@ -146,7 +154,9 @@ export async function getAgentsForInitiative(id: string): Promise<Agent[]> {
 export async function getInitiativeById(
   id: string
 ): Promise<Initiative | undefined> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return undefined;
+  const { data } = await sb
     .from("initiatives")
     .select("*")
     .eq("id", id)
@@ -157,7 +167,9 @@ export async function getInitiativeById(
 /* ── Decisions ───────────────────────────────────────────────────────────── */
 
 export async function getDecisions(): Promise<Decision[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("decisions")
     .select("*")
     .order("sort");
@@ -172,7 +184,9 @@ export async function getPendingDecisions(): Promise<Decision[]> {
 }
 
 export async function getDecision(id: string): Promise<Decision | undefined> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return undefined;
+  const { data } = await sb
     .from("decisions")
     .select("*")
     .eq("id", id)
@@ -189,7 +203,9 @@ export async function getDecisionsForInitiative(
 /* ── Objectives ──────────────────────────────────────────────────────────── */
 
 export async function getObjectives(): Promise<Objective[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("objectives")
     .select("*")
     .order("sort");
@@ -209,7 +225,9 @@ export async function getObjectivesForInitiative(
 /* ── Activity ────────────────────────────────────────────────────────────── */
 
 export async function getActivity(): Promise<ActivityEvent[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("activity")
     .select("*")
     .order("at", { ascending: false });
@@ -225,7 +243,9 @@ export async function getActivityForInitiative(
 /* ── Artifacts ───────────────────────────────────────────────────────────── */
 
 export async function getArtifacts(): Promise<Artifact[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("artifacts")
     .select("*")
     .order("updated_at", { ascending: false });
@@ -347,7 +367,9 @@ export interface Capture {
 }
 
 export async function getRecentCaptures(limit = 5): Promise<Capture[]> {
-  const { data } = await getSupabase()
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
     .from("captures")
     .select("*")
     .order("created_at", { ascending: false })
