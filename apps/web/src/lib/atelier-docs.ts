@@ -86,6 +86,12 @@ export const DOCS: DocEntry[] = [
     label: "Product Specification",
     relativePath: "atelier/040-product/AT-0004-product-specification.md",
   },
+  {
+    id: "AT-0008",
+    section: "Constituição",
+    label: "Roadmap",
+    relativePath: "atelier/080-roadmap/AT-0008-roadmap.md",
+  },
 ];
 
 /** Resolve the repository root from the web app's working directory. */
