@@ -2,28 +2,31 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import DecisionItem from "@/components/mission/DecisionItem";
 import { SectionHead } from "@/components/mission/bits";
-import { decisions, agents as allAgents } from "@/data/mission";
-import { getDecision, getInitiativeById } from "@/lib/mission";
+import { getAgent, getDecision, getInitiativeById } from "@/lib/mission";
 
-export function generateStaticParams() {
-  return decisions.map((d) => ({ id: d.id }));
-}
+export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }) {
-  const d = getDecision(params.id);
-  return { title: d ? `${d.title} — ATELIER` : "Decisão — ATELIER" };
-}
-
-export default function DecisionDetailPage({
+export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }) {
-  const decision = getDecision(params.id);
+  const d = await getDecision(params.id);
+  return { title: d ? `${d.title} — ATELIER` : "Decisão — ATELIER" };
+}
+
+export default async function DecisionDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const decision = await getDecision(params.id);
   if (!decision) notFound();
 
-  const ini = getInitiativeById(decision.initiativeId);
-  const agent = allAgents.find((a) => a.id === decision.agentId);
+  const [ini, agent] = await Promise.all([
+    getInitiativeById(decision.initiativeId),
+    getAgent(decision.agentId),
+  ]);
 
   return (
     <div className="max-w-2xl">
@@ -32,7 +35,6 @@ export default function DecisionDetailPage({
       </Link>
 
       <SectionHead>Decisão</SectionHead>
-      {/* Reuse the same interactive card; here it is the focus of the page */}
       <DecisionItem
         decision={decision}
         initiativeName={ini?.name ?? "—"}
@@ -45,7 +47,10 @@ export default function DecisionDetailPage({
           { k: "Contexto", v: decision.context },
           { k: "Impacto", v: decision.impact },
         ].map((cell) => (
-          <div key={cell.k} className="border-b border-r border-line bg-cream p-5">
+          <div
+            key={cell.k}
+            className="border-b border-r border-line bg-cream p-5"
+          >
             <div className="eyebrow mb-2">{cell.k}</div>
             <p className="text-[14.5px] leading-relaxed">{cell.v}</p>
           </div>

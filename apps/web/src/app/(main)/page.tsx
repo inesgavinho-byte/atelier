@@ -9,23 +9,31 @@ import {
 import {
   getActivity,
   getAgents,
-  getInitiativeById,
   getInitiatives,
   getNextAction,
   getObjectivesAtRisk,
   getPendingDecisions,
   getTodaySummary,
 } from "@/lib/mission";
-import { agents as allAgents, owner, todayLabel } from "@/data/mission";
+import { owner, todayLabel } from "@/data/mission";
 
-export default function MissionControlPage() {
-  const summary = getTodaySummary();
+export const dynamic = "force-dynamic";
+
+export default async function MissionControlPage() {
+  const [summary, decisions, agents, atRisk, initiatives, activityAll] =
+    await Promise.all([
+      getTodaySummary(),
+      getPendingDecisions(),
+      getAgents(),
+      getObjectivesAtRisk(),
+      getInitiatives(),
+      getActivity(),
+    ]);
   const next = getNextAction();
-  const decisions = getPendingDecisions();
-  const running = getAgents().filter((a) => a.state === "em execução");
-  const atRisk = getObjectivesAtRisk();
-  const initiatives = getInitiatives();
-  const activity = getActivity().slice(0, 6);
+  const running = agents.filter((a) => a.state === "em execução");
+  const activity = activityAll.slice(0, 6);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const agentById = new Map(agents.map((a) => [a.id, a]));
 
   const stats: { v: string | number; label: string; href?: string }[] = [
     { v: summary.decisions, label: "decisões pendentes", href: "/decisions" },
@@ -100,8 +108,8 @@ export default function MissionControlPage() {
           ) : (
             <div>
               {decisions.map((d) => {
-                const ini = getInitiativeById(d.initiativeId);
-                const agent = allAgents.find((a) => a.id === d.agentId);
+                const ini = iniById.get(d.initiativeId);
+                const agent = agentById.get(d.agentId);
                 return (
                   <DecisionItem
                     key={d.id}
@@ -122,7 +130,7 @@ export default function MissionControlPage() {
             <SectionHead>Objetivos em risco</SectionHead>
             <ul className="space-y-5">
               {atRisk.map((o) => {
-                const ini = getInitiativeById(o.initiativeId);
+                const ini = iniById.get(o.initiativeId);
                 return (
                   <li key={o.id}>
                     <div className="flex items-baseline justify-between gap-3">

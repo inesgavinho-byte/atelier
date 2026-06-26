@@ -1,15 +1,19 @@
 import DecisionItem from "@/components/mission/DecisionItem";
 import { SectionHead } from "@/components/mission/bits";
-import {
-  getInitiativeById,
-  getPendingDecisions,
-} from "@/lib/mission";
-import { agents as allAgents } from "@/data/mission";
+import { getAgents, getInitiatives, getPendingDecisions } from "@/lib/mission";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Decisões — ATELIER" };
 
-export default function DecisionsPage() {
-  const decisions = getPendingDecisions();
+export default async function DecisionsPage() {
+  const [decisions, initiatives, agents] = await Promise.all([
+    getPendingDecisions(),
+    getInitiatives(),
+    getAgents(),
+  ]);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const agentById = new Map(agents.map((a) => [a.id, a]));
+
   return (
     <div>
       <div className="eyebrow mb-3">Julgamento</div>
@@ -23,8 +27,8 @@ export default function DecisionsPage() {
       ) : (
         <div>
           {decisions.map((d) => {
-            const ini = getInitiativeById(d.initiativeId);
-            const agent = allAgents.find((a) => a.id === d.agentId);
+            const ini = iniById.get(d.initiativeId);
+            const agent = agentById.get(d.agentId);
             return (
               <DecisionItem
                 key={d.id}

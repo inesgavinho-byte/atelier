@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import type { Decision, DecisionStatus } from "@/data/mission";
 import { PriorityTag } from "@/components/mission/bits";
+import { setDecisionStatus } from "@/app/(main)/actions";
 
 const RESOLVED: Record<Exclude<DecisionStatus, "pendente">, string> = {
   aprovada: "Aprovada",
@@ -30,7 +31,16 @@ export default function DecisionItem({
 }) {
   const [status, setStatus] = useState<DecisionStatus>(decision.status);
   const [open, setOpen] = useState(false);
+  const [, startTransition] = useTransition();
   const resolved = status !== "pendente";
+
+  // Optimistic local update + persist to the database.
+  const resolve = (next: DecisionStatus) => {
+    setStatus(next);
+    startTransition(() => {
+      void setDecisionStatus(decision.id, next);
+    });
+  };
 
   return (
     <article
@@ -96,7 +106,7 @@ export default function DecisionItem({
             <button
               type="button"
               className="action-quiet"
-              onClick={() => setStatus("pendente")}
+              onClick={() => resolve("pendente")}
             >
               Anular
             </button>
@@ -106,28 +116,28 @@ export default function DecisionItem({
             <button
               type="button"
               className="action"
-              onClick={() => setStatus("aprovada")}
+              onClick={() => resolve("aprovada")}
             >
               Aprovar
             </button>
             <button
               type="button"
               className="action"
-              onClick={() => setStatus("revisão")}
+              onClick={() => resolve("revisão")}
             >
               Pedir revisão
             </button>
             <button
               type="button"
               className="action-quiet"
-              onClick={() => setStatus("adiada")}
+              onClick={() => resolve("adiada")}
             >
               Adiar
             </button>
             <button
               type="button"
               className="action-quiet"
-              onClick={() => setStatus("rejeitada")}
+              onClick={() => resolve("rejeitada")}
             >
               Rejeitar
             </button>

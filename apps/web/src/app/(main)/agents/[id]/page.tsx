@@ -2,27 +2,28 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Meter, StateTag, ago } from "@/components/mission/bits";
 import AgentControls from "@/components/mission/AgentControls";
-import { agents } from "@/data/mission";
 import { getAgent, getActivity } from "@/lib/mission";
 
-export function generateStaticParams() {
-  return agents.map((a) => ({ id: a.id }));
-}
+export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }) {
-  const a = getAgent(params.id);
-  return { title: a ? `${a.role} — ATELIER` : "Agente — ATELIER" };
-}
-
-export default function AgentDetailPage({
+export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }) {
-  const agent = getAgent(params.id);
+  const a = await getAgent(params.id);
+  return { title: a ? `${a.role} — ATELIER` : "Agente — ATELIER" };
+}
+
+export default async function AgentDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const agent = await getAgent(params.id);
   if (!agent) notFound();
 
-  const events = getActivity().filter((e) => e.agentId === agent.id);
+  const events = (await getActivity()).filter((e) => e.agentId === agent.id);
 
   return (
     <div className="max-w-2xl">

@@ -1,6 +1,7 @@
 import Timeline, { type TimelineItem } from "@/components/mission/Timeline";
-import { getActivity, getInitiativeById } from "@/lib/mission";
+import { getActivity, getInitiatives } from "@/lib/mission";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Atividade — ATELIER" };
 
 const KIND_LABEL: Record<string, string> = {
@@ -12,9 +13,14 @@ const KIND_LABEL: Record<string, string> = {
   agente: "Agente",
 };
 
-export default function ActivityPage() {
-  const items: TimelineItem[] = getActivity().map((e) => {
-    const ini = e.initiativeId ? getInitiativeById(e.initiativeId) : undefined;
+export default async function ActivityPage() {
+  const [events, initiatives] = await Promise.all([
+    getActivity(),
+    getInitiatives(),
+  ]);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const items: TimelineItem[] = events.map((e) => {
+    const ini = e.initiativeId ? iniById.get(e.initiativeId) : undefined;
     return {
       id: e.id,
       kindLabel: KIND_LABEL[e.kind] ?? "Evento",

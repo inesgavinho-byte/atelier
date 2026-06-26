@@ -1,19 +1,17 @@
 /**
  * ATELIER — Mission Control data access
  *
- * The single seam between the Mission Control UI and its data source. Today it
- * returns mock data synchronously; later each reader can become a Supabase
- * query without touching the UI. Counts are derived here so the surface stays
- * internally consistent.
+ * The single seam between the Mission Control UI and its data source. Data now
+ * lives in the "Atelier" Supabase project (real source) — readers query it and
+ * map rows to the domain types. Documents stay as markdown files (the Canon),
+ * so the search corpus pulls them from their registries, not the database.
+ *
+ * All readers are async. The pages that use them are dynamic.
  */
 
+import "server-only";
+import { getSupabase } from "@/lib/supabase";
 import {
-  activity,
-  agents,
-  artifacts,
-  decisions,
-  initiatives,
-  objectives,
   nextAction,
   syncStatus,
   type ActivityEvent,
@@ -29,94 +27,243 @@ import { getProductDocs } from "@/lib/product-docs";
 
 const PRIORITY_RANK: Record<Priority, number> = { alta: 0, média: 1, baixa: 2 };
 
-export function getInitiatives(): Initiative[] {
-  return initiatives;
+/* ── Row mappers (snake_case → domain types) ─────────────────────────────── */
+
+const toInitiative = (r: any): Initiative => ({
+  id: r.id,
+  slug: r.slug,
+  name: r.name,
+  intent: r.intent,
+  progress: r.progress,
+  focus: r.focus,
+  agentIds: r.agent_ids ?? [],
+});
+
+const toAgent = (r: any): Agent => ({
+  id: r.id,
+  role: r.role,
+  office: r.office,
+  provider: r.provider,
+  state: r.state,
+  mission: r.mission,
+  currentTask: r.current_task,
+  autonomy: r.autonomy,
+  progress: r.progress,
+  lastEvent: r.last_event,
+  lastEventAt: r.last_event_at,
+});
+
+const toDecision = (r: any): Decision => ({
+  id: r.id,
+  title: r.title,
+  kind: r.kind,
+  priority: r.priority,
+  initiativeId: r.initiative_id,
+  agentId: r.agent_id,
+  context: r.context,
+  impact: r.impact,
+  recommendation: r.recommendation,
+  status: r.status,
+});
+
+const toObjective = (r: any): Objective => ({
+  id: r.id,
+  title: r.title,
+  initiativeId: r.initiative_id,
+  status: r.status,
+  progress: r.progress,
+  risk: r.risk ?? undefined,
+});
+
+const toActivity = (r: any): ActivityEvent => ({
+  id: r.id,
+  kind: r.kind,
+  title: r.title,
+  initiativeId: r.initiative_id ?? undefined,
+  agentId: r.agent_id ?? undefined,
+  at: r.at,
+});
+
+const toArtifact = (r: any): Artifact => ({
+  id: r.id,
+  title: r.title,
+  kind: r.kind,
+  initiativeId: r.initiative_id,
+  state: r.state,
+  updatedAt: r.updated_at,
+});
+
+/* ── Initiatives ─────────────────────────────────────────────────────────── */
+
+export async function getInitiatives(): Promise<Initiative[]> {
+  const { data } = await getSupabase()
+    .from("initiatives")
+    .select("*")
+    .order("sort");
+  return (data ?? []).map(toInitiative);
 }
 
-export function getInitiative(slug: string): Initiative | undefined {
-  return initiatives.find((i) => i.slug === slug);
+export async function getInitiative(
+  slug: string
+): Promise<Initiative | undefined> {
+  const { data } = await getSupabase()
+    .from("initiatives")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  return data ? toInitiative(data) : undefined;
 }
 
-export function getInitiativeById(id: string): Initiative | undefined {
-  return initiatives.find((i) => i.id === id);
+/* ── Agents ──────────────────────────────────────────────────────────────── */
+
+export async function getAgents(): Promise<Agent[]> {
+  const { data } = await getSupabase()
+    .from("agents")
+    .select("*")
+    .order("sort");
+  return (data ?? []).map(toAgent);
 }
 
-export function getAgents(): Agent[] {
-  return agents;
+export async function getAgent(id: string): Promise<Agent | undefined> {
+  const { data } = await getSupabase()
+    .from("agents")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? toAgent(data) : undefined;
 }
 
-export function getAgent(id: string): Agent | undefined {
-  return agents.find((a) => a.id === id);
+export async function getAgentsForInitiative(id: string): Promise<Agent[]> {
+  const ini = await getInitiativeById(id);
+  if (!ini || ini.agentIds.length === 0) return [];
+  const all = await getAgents();
+  const byId = new Map(all.map((a) => [a.id, a]));
+  return ini.agentIds
+    .map((aid) => byId.get(aid))
+    .filter((a): a is Agent => Boolean(a));
 }
 
-/** Pending decisions, highest priority first. */
-export function getPendingDecisions(): Decision[] {
-  return decisions
+export async function getInitiativeById(
+  id: string
+): Promise<Initiative | undefined> {
+  const { data } = await getSupabase()
+    .from("initiatives")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? toInitiative(data) : undefined;
+}
+
+/* ── Decisions ───────────────────────────────────────────────────────────── */
+
+export async function getDecisions(): Promise<Decision[]> {
+  const { data } = await getSupabase()
+    .from("decisions")
+    .select("*")
+    .order("sort");
+  return (data ?? []).map(toDecision);
+}
+
+export async function getPendingDecisions(): Promise<Decision[]> {
+  const all = await getDecisions();
+  return all
     .filter((d) => d.status === "pendente")
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
 }
 
-export function getDecision(id: string): Decision | undefined {
-  return decisions.find((d) => d.id === id);
+export async function getDecision(id: string): Promise<Decision | undefined> {
+  const { data } = await getSupabase()
+    .from("decisions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? toDecision(data) : undefined;
 }
 
-export function getObjectives(): Objective[] {
-  return objectives;
+export async function getDecisionsForInitiative(
+  id: string
+): Promise<Decision[]> {
+  return (await getPendingDecisions()).filter((d) => d.initiativeId === id);
 }
 
-export function getObjectivesAtRisk(): Objective[] {
-  return objectives.filter((o) => o.status === "em risco");
+/* ── Objectives ──────────────────────────────────────────────────────────── */
+
+export async function getObjectives(): Promise<Objective[]> {
+  const { data } = await getSupabase()
+    .from("objectives")
+    .select("*")
+    .order("sort");
+  return (data ?? []).map(toObjective);
 }
 
-export function getActivity(): ActivityEvent[] {
-  return [...activity].sort((a, b) => b.at.localeCompare(a.at));
+export async function getObjectivesAtRisk(): Promise<Objective[]> {
+  return (await getObjectives()).filter((o) => o.status === "em risco");
 }
 
-export function getActivityForInitiative(id: string): ActivityEvent[] {
-  return getActivity().filter((e) => e.initiativeId === id);
+export async function getObjectivesForInitiative(
+  id: string
+): Promise<Objective[]> {
+  return (await getObjectives()).filter((o) => o.initiativeId === id);
 }
 
-export function getDecisionsForInitiative(id: string): Decision[] {
-  return getPendingDecisions().filter((d) => d.initiativeId === id);
+/* ── Activity ────────────────────────────────────────────────────────────── */
+
+export async function getActivity(): Promise<ActivityEvent[]> {
+  const { data } = await getSupabase()
+    .from("activity")
+    .select("*")
+    .order("at", { ascending: false });
+  return (data ?? []).map(toActivity);
 }
 
-export function getObjectivesForInitiative(id: string): Objective[] {
-  return objectives.filter((o) => o.initiativeId === id);
+export async function getActivityForInitiative(
+  id: string
+): Promise<ActivityEvent[]> {
+  return (await getActivity()).filter((e) => e.initiativeId === id);
 }
 
-export function getArtifactsForInitiative(id: string): Artifact[] {
-  return artifacts
-    .filter((a) => a.initiativeId === id)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+/* ── Artifacts ───────────────────────────────────────────────────────────── */
+
+export async function getArtifacts(): Promise<Artifact[]> {
+  const { data } = await getSupabase()
+    .from("artifacts")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  return (data ?? []).map(toArtifact);
 }
 
-export function getAgentsForInitiative(id: string): Agent[] {
-  const ini = getInitiativeById(id);
-  if (!ini) return [];
-  return ini.agentIds
-    .map((aid) => getAgent(aid))
-    .filter((a): a is Agent => Boolean(a));
+export async function getArtifactsForInitiative(
+  id: string
+): Promise<Artifact[]> {
+  return (await getArtifacts()).filter((a) => a.initiativeId === id);
 }
+
+/* ── Derived figures + config ────────────────────────────────────────────── */
 
 export function getNextAction() {
   return nextAction;
 }
 
-/** Derived figures for the daily summary ("Hoje"). */
-export function getTodaySummary() {
+export async function getTodaySummary() {
+  const [decisions, agents, objectives, initiatives] = await Promise.all([
+    getDecisions(),
+    getAgents(),
+    getObjectives(),
+    getInitiatives(),
+  ]);
   return {
-    decisions: getPendingDecisions().length,
+    decisions: decisions.filter((d) => d.status === "pendente").length,
     agentsActive: agents.filter((a) => a.state !== "inativo").length,
     initiatives: initiatives.length,
     publications: decisions.filter(
       (d) => d.kind === "publicação" && d.status === "pendente"
     ).length,
-    objectivesAtRisk: getObjectivesAtRisk().length,
+    objectivesAtRisk: objectives.filter((o) => o.status === "em risco").length,
     sync: syncStatus,
   };
 }
 
-// ── Global search corpus ─────────────────────────────────────────────────
+/* ── Global search corpus ────────────────────────────────────────────────── */
 
 export interface SearchResult {
   group: string;
@@ -125,67 +272,90 @@ export interface SearchResult {
   href: string;
 }
 
-/** Flatten everything searchable into one corpus. */
-export function getSearchCorpus(): SearchResult[] {
+export async function getSearchCorpus(): Promise<SearchResult[]> {
+  const [initiatives, decisions, agents, artifacts, objectives] =
+    await Promise.all([
+      getInitiatives(),
+      getDecisions(),
+      getAgents(),
+      getArtifacts(),
+      getObjectives(),
+    ]);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
   const out: SearchResult[] = [];
 
-  for (const i of initiatives) {
+  for (const i of initiatives)
     out.push({
       group: "Iniciativas",
       label: i.name,
       detail: i.focus,
       href: `/initiatives/${i.slug}`,
     });
-  }
-  for (const d of decisions) {
+  for (const d of decisions)
     out.push({
       group: "Decisões",
       label: d.title,
       detail: d.recommendation,
       href: `/decisions/${d.id}`,
     });
-  }
-  for (const a of agents) {
+  for (const a of agents)
     out.push({
       group: "Agentes",
       label: a.role,
       detail: a.currentTask,
       href: `/agents/${a.id}`,
     });
-  }
-  for (const art of artifacts) {
+  for (const art of artifacts)
     out.push({
       group: "Artefactos",
       label: art.title,
       detail: `${art.kind} · ${art.state}`,
-      href: `/initiatives/${getInitiativeById(art.initiativeId)?.slug ?? ""}`,
+      href: `/initiatives/${iniById.get(art.initiativeId)?.slug ?? ""}`,
     });
-  }
-  for (const o of objectives) {
+  for (const o of objectives)
     out.push({
       group: "Objetivos",
       label: o.title,
       detail: o.risk ?? o.status,
-      href: `/initiatives/${getInitiativeById(o.initiativeId)?.slug ?? ""}`,
+      href: `/initiatives/${iniById.get(o.initiativeId)?.slug ?? ""}`,
     });
-  }
-  // Documents come from their real registries (markdown files are the source
-  // of truth), not a hardcoded list — see EPIC-001 §Pesquisa.
-  for (const doc of getDocs()) {
+  // Documents come from their real registries (markdown is the source of truth).
+  for (const doc of getDocs())
     out.push({
       group: "Constituição",
       label: doc.label,
       detail: doc.id,
       href: `/atelier/${doc.id}`,
     });
-  }
-  for (const doc of getProductDocs()) {
+  for (const doc of getProductDocs())
     out.push({
       group: "Produto",
       label: doc.label,
       detail: doc.id,
       href: `/product/${doc.id}`,
     });
-  }
   return out;
 }
+
+/* ── Captures (persisted) ────────────────────────────────────────────────── */
+
+export interface Capture {
+  id: string;
+  kind: string;
+  value: string;
+  createdAt: string;
+}
+
+export async function getRecentCaptures(limit = 5): Promise<Capture[]> {
+  const { data } = await getSupabase()
+    .from("captures")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+    return (data ?? []).map((r: any) => ({
+    id: r.id,
+    kind: r.kind,
+    value: r.value,
+    createdAt: r.created_at,
+  }));
+  }

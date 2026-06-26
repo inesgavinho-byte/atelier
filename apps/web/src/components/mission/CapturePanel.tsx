@@ -1,51 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { captureKinds, type CaptureKind } from "@/data/mission";
+import {
+  createCapture,
+  listRecentCaptures,
+} from "@/app/(main)/actions";
+import type { Capture } from "@/lib/mission";
 
 /**
  * Universal capture (EPIC-001 §Captura). Always reachable, accepts anything,
  * and never asks the user to choose a destination — the system organises it
- * afterwards. This sprint: captures are kept in local memory (localStorage);
- * no backend, no persistence beyond the browser.
+ * afterwards. Captures are now persisted to the real "Atelier" database.
  */
-
-interface Capture {
-  id: string;
-  kind: CaptureKind;
-  value: string;
-  at: string;
-}
-
-const STORE_KEY = "atelier.captures";
-
-function readStore(): Capture[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(window.localStorage.getItem(STORE_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function writeStore(items: Capture[]) {
-  try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(items));
-  } catch {
-    /* ignore quota / privacy-mode errors */
-  }
-}
-
 export default function CapturePanel({ onClose }: { onClose: () => void }) {
   const [kind, setKind] = useState<CaptureKind>("texto");
   const [value, setValue] = useState("");
   const [recent, setRecent] = useState<Capture[]>([]);
   const [justCaptured, setJustCaptured] = useState(false);
+  const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setRecent(readStore());
     inputRef.current?.focus();
+    listRecentCaptures().then(setRecent).catch(() => {});
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -55,20 +33,14 @@ export default function CapturePanel({ onClose }: { onClose: () => void }) {
 
   const capture = () => {
     const text = value.trim() || `(${kind} sem descrição)`;
-    // Deterministic id without Date.now/Math.random in render-critical paths.
-    const item: Capture = {
-      id: `cap-${recent.length + 1}-${kind}`,
-      kind,
-      value: text,
-      at: new Date().toISOString(),
-    };
-    const next = [item, ...recent];
-    setRecent(next);
-    writeStore(next);
-    setValue("");
-    setJustCaptured(true);
-    inputRef.current?.focus();
-    window.setTimeout(() => setJustCaptured(false), 1800);
+    startTransition(async () => {
+      const next = await createCapture(kind, text);
+      setRecent(next);
+      setValue("");
+      setJustCaptured(true);
+      inputRef.current?.focus();
+      window.setTimeout(() => setJustCaptured(false), 1800);
+    });
   };
 
   return (
@@ -121,14 +93,19 @@ export default function CapturePanel({ onClose }: { onClose: () => void }) {
             <span className="meta">
               {justCaptured ? (
                 <span className="inline-flex items-center gap-2 text-charcoal">
-                  <span className="dot bg-olive" /> Capturado em memória local.
+                  <span className="dot bg-olive" /> Capturado.
                 </span>
               ) : (
                 "Esc para fechar"
               )}
             </span>
-            <button type="button" className="action" onClick={capture}>
-              Capturar
+            <button
+              type="button"
+              className="action"
+              onClick={capture}
+              disabled={pending}
+            >
+              {pending ? "A guardar…" : "Capturar"}
             </button>
           </div>
 

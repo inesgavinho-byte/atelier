@@ -2,10 +2,11 @@ import AgentItem from "@/components/mission/AgentItem";
 import { SectionHead } from "@/components/mission/bits";
 import { getAgents } from "@/lib/mission";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Agentes — ATELIER" };
 
-export default function AgentsPage() {
-  const agents = getAgents();
+export default async function AgentsPage() {
+  const agents = await getAgents();
   const running = agents.filter((a) => a.state === "em execução");
   const other = agents.filter((a) => a.state !== "em execução");
 

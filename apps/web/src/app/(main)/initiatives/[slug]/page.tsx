@@ -8,9 +8,9 @@ import {
   StateTag,
   ago,
 } from "@/components/mission/bits";
-import { initiatives, agents as allAgents } from "@/data/mission";
 import {
   getActivityForInitiative,
+  getAgents,
   getAgentsForInitiative,
   getArtifactsForInitiative,
   getDecisionsForInitiative,
@@ -18,28 +18,35 @@ import {
   getObjectivesForInitiative,
 } from "@/lib/mission";
 
-export function generateStaticParams() {
-  return initiatives.map((i) => ({ slug: i.slug }));
-}
+export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
-  const i = getInitiative(params.slug);
-  return { title: i ? `${i.name} — ATELIER` : "Iniciativa — ATELIER" };
-}
-
-export default function InitiativeDetailPage({
+export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
 }) {
-  const initiative = getInitiative(params.slug);
+  const i = await getInitiative(params.slug);
+  return { title: i ? `${i.name} — ATELIER` : "Iniciativa — ATELIER" };
+}
+
+export default async function InitiativeDetailPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const initiative = await getInitiative(params.slug);
   if (!initiative) notFound();
 
-  const objectives = getObjectivesForInitiative(initiative.id);
-  const decisions = getDecisionsForInitiative(initiative.id);
-  const activity = getActivityForInitiative(initiative.id);
-  const artifacts = getArtifactsForInitiative(initiative.id);
-  const agents = getAgentsForInitiative(initiative.id);
+  const [objectives, decisions, activity, artifacts, agents, allAgents] =
+    await Promise.all([
+      getObjectivesForInitiative(initiative.id),
+      getDecisionsForInitiative(initiative.id),
+      getActivityForInitiative(initiative.id),
+      getArtifactsForInitiative(initiative.id),
+      getAgentsForInitiative(initiative.id),
+      getAgents(),
+    ]);
+  const agentById = new Map(allAgents.map((a) => [a.id, a]));
 
   return (
     <div>
@@ -64,7 +71,7 @@ export default function InitiativeDetailPage({
           ) : (
             <div>
               {decisions.map((d) => {
-                const agent = allAgents.find((a) => a.id === d.agentId);
+                const agent = agentById.get(d.agentId);
                 return (
                   <DecisionItem
                     key={d.id}

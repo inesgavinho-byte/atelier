@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { Meter } from "@/components/mission/bits";
-import {
-  getDecisionsForInitiative,
-  getInitiatives,
-  getObjectivesForInitiative,
-} from "@/lib/mission";
+import { getInitiatives, getObjectives, getPendingDecisions } from "@/lib/mission";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Iniciativas — ATELIER" };
 
-export default function InitiativesPage() {
-  const initiatives = getInitiatives();
+export default async function InitiativesPage() {
+  const [initiatives, objectives, pending] = await Promise.all([
+    getInitiatives(),
+    getObjectives(),
+    getPendingDecisions(),
+  ]);
+
   return (
     <div>
       <div className="eyebrow mb-3">Frentes de trabalho</div>
@@ -17,8 +19,12 @@ export default function InitiativesPage() {
 
       <div className="divide-y divide-line border-y border-line">
         {initiatives.map((i) => {
-          const objectives = getObjectivesForInitiative(i.id);
-          const decisions = getDecisionsForInitiative(i.id);
+          const objCount = objectives.filter(
+            (o) => o.initiativeId === i.id
+          ).length;
+          const decCount = pending.filter(
+            (d) => d.initiativeId === i.id
+          ).length;
           return (
             <Link
               key={i.id}
@@ -41,10 +47,10 @@ export default function InitiativesPage() {
                 <span>
                   <span className="text-charcoal">Foco:</span> {i.focus}
                 </span>
-                <span>{objectives.length} objetivos</span>
+                <span>{objCount} objetivos</span>
                 <span>
-                  {decisions.length > 0
-                    ? `${decisions.length} decisão(ões) pendente(s)`
+                  {decCount > 0
+                    ? `${decCount} decisão(ões) pendente(s)`
                     : "Sem decisões pendentes"}
                 </span>
               </div>
