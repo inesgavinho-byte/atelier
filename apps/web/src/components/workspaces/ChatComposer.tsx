@@ -2,30 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CHAT_PROVIDERS } from "@/lib/workspaces-constants";
-import {
-  runMessageWithOpenAI,
-  sendMessage,
-} from "@/app/(main)/workspaces/actions";
+import { runChatMessage, sendMessage } from "@/app/(main)/workspaces/actions";
 
 /**
- * Chat composer. Saves a manual message to the thread; when the OpenAI
- * connector is configured, optionally runs the message through OpenAI and
- * stores the reply in the same thread. The context belongs to ATELIER — the
- * provider is only metadata.
+ * Chat composer. Saves a manual message to the thread; when the chat's provider
+ * is an available gateway engine, runs the message through the gateway and
+ * stores the reply in the same thread. ATELIER calls only the gateway — the
+ * provider is the execution engine, the context stays in ATELIER.
  */
 export default function ChatComposer({
   chatId,
-  defaultProvider,
-  openaiConfigured,
+  provider,
+  runnable,
 }: {
   chatId: string;
-  defaultProvider: string;
-  openaiConfigured: boolean;
+  provider: string;
+  runnable: boolean;
 }) {
   const router = useRouter();
   const [content, setContent] = useState("");
-  const [provider, setProvider] = useState(defaultProvider || "ATELIER");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, start] = useTransition();
 
@@ -41,14 +36,12 @@ export default function ChatComposer({
     });
   };
 
-  const runOpenAI = () => {
+  const run = () => {
     setMsg(null);
     start(async () => {
-      const r = await runMessageWithOpenAI({ chatId, content });
+      const r = await runChatMessage({ chatId, content });
       setMsg(r.message);
-      if (r.ok) {
-        setContent("");
-      }
+      if (r.ok) setContent("");
       router.refresh();
     });
   };
@@ -63,17 +56,6 @@ export default function ChatComposer({
         className="w-full border border-line bg-surface px-3 py-2 text-[15px] text-charcoal focus:border-charcoal focus:outline-none"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <select
-          value={provider}
-          onChange={(e) => setProvider(e.target.value)}
-          className="border border-line bg-surface px-3 py-2 text-[14px] text-charcoal focus:border-charcoal focus:outline-none"
-        >
-          {CHAT_PROVIDERS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
         <button
           type="button"
           className="action"
@@ -82,22 +64,22 @@ export default function ChatComposer({
         >
           {busy ? "A guardar…" : "Guardar mensagem"}
         </button>
-        {openaiConfigured ? (
+        {runnable ? (
           <button
             type="button"
             className="action"
-            onClick={runOpenAI}
+            onClick={run}
             disabled={busy || !content.trim()}
           >
-            {busy ? "…" : "Correr com OpenAI"}
+            {busy ? "…" : `Correr com ${provider}`}
           </button>
         ) : null}
         {msg ? <span className="meta">{msg}</span> : null}
       </div>
-      {!openaiConfigured ? (
+      {!runnable ? (
         <p className="meta mt-3">
-          Define OPENAI_API_KEY no ambiente para correr mensagens com OpenAI. Por
-          agora, as mensagens são guardadas manualmente.
+          O provider “{provider}” não está disponível para execução (credenciais
+          em falta ou provider manual). As mensagens são guardadas como notas.
         </p>
       ) : null}
     </div>

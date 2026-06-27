@@ -50,7 +50,12 @@ const toChat = (r: any): WorkspaceChat => ({
   workspaceId: r.workspace_id,
   projectId: r.project_id ?? undefined,
   title: r.title,
+  mode: r.mode ?? undefined,
+  skillId: r.skill_id ?? undefined,
   provider: r.provider ?? undefined,
+  model: r.model ?? undefined,
+  temperature: r.temperature ?? undefined,
+  reasoning: r.reasoning ?? undefined,
   status: r.status,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -62,6 +67,10 @@ const toMessage = (r: any): WorkspaceMessage => ({
   role: r.role,
   content: r.content,
   provider: r.provider ?? undefined,
+  model: r.model ?? undefined,
+  skillId: r.skill_id ?? undefined,
+  tokens: r.tokens ?? undefined,
+  latencyMs: r.latency_ms ?? undefined,
   createdAt: r.created_at,
 });
 

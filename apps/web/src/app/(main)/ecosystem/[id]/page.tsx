@@ -3,6 +3,7 @@ import Link from "next/link";
 import OpenAITestForm from "@/components/ecosystem/OpenAITestForm";
 import { getConnectorView } from "@/lib/connector-status";
 import { getConnectorDef } from "@/lib/connectors";
+import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import { getInitiatives } from "@/lib/mission";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function ConnectorDetailPage({
 }: {
   params: { id: string };
 }) {
+  await hydrateCredentialOverrides();
   const view = getConnectorView(params.id);
   if (!view) notFound();
 
