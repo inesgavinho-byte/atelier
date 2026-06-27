@@ -20,7 +20,7 @@ export {
 
 const toReading = (r: any): Reading => ({
   id: r.id,
-  url: r.url,
+  url: r.url ?? undefined,
   title: r.title ?? undefined,
   note: r.note ?? undefined,
   initiativeId: r.initiative_id ?? undefined,

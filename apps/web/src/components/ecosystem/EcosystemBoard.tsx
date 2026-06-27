@@ -7,7 +7,11 @@ import {
   type ConnectorStatus,
   type ConnectorView,
 } from "@/lib/connectors";
-import { testConnector } from "@/app/(main)/ecosystem/actions";
+import {
+  disconnectConnector,
+  testConnector,
+} from "@/app/(main)/ecosystem/actions";
+import CredentialModal from "@/components/ecosystem/CredentialModal";
 
 /** Restrained dot colour per status — calm, not a SaaS traffic light. */
 const STATUS_COLOR: Record<ConnectorStatus, string> = {
@@ -39,8 +43,10 @@ interface Runtime {
 
 export default function EcosystemBoard({
   connectors,
+  manageable,
 }: {
   connectors: ConnectorView[];
+  manageable: boolean;
 }) {
   const [runtime, setRuntime] = useState<Record<string, Runtime>>(() =>
     Object.fromEntries(
@@ -55,7 +61,7 @@ export default function EcosystemBoard({
       ])
     )
   );
-  const [disconnectNote, setDisconnectNote] = useState<string | null>(null);
+  const [modalId, setModalId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const runTest = (id: string) => {
@@ -76,6 +82,28 @@ export default function EcosystemBoard({
       }));
     });
   };
+
+  const runDisconnect = (id: string) => {
+    setRuntime((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], testing: true, status: "Em teste" },
+    }));
+    startTransition(async () => {
+      const r = await disconnectConnector(id);
+      const after = await testConnector(id);
+      setRuntime((prev) => ({
+        ...prev,
+        [id]: {
+          status: after.status,
+          message: r.message,
+          lastChecked: after.lastChecked,
+          testing: false,
+        },
+      }));
+    });
+  };
+
+  const modalConnector = connectors.find((c) => c.id === modalId) ?? null;
 
   return (
     <div className="space-y-14">
@@ -126,33 +154,33 @@ export default function EcosystemBoard({
                       <button
                         type="button"
                         className="action"
+                        onClick={() => setModalId(c.id)}
+                      >
+                        Ligar
+                      </button>
+                      <button
+                        type="button"
+                        className="action"
                         onClick={() => runTest(c.id)}
                         disabled={rt.testing}
                       >
                         {rt.testing ? "A testar…" : "Testar ligação"}
                       </button>
-                      <Link href={`/ecosystem/${c.id}`} className="action">
-                        Ligar
-                      </Link>
                       <button
                         type="button"
                         className="action-quiet"
-                        onClick={() =>
-                          setDisconnectNote(
-                            disconnectNote === c.id ? null : c.id
-                          )
-                        }
+                        onClick={() => runDisconnect(c.id)}
+                        disabled={rt.testing}
                       >
                         Desligar
                       </button>
+                      <Link
+                        href={`/ecosystem/${c.id}`}
+                        className="action-quiet"
+                      >
+                        Detalhes →
+                      </Link>
                     </div>
-
-                    {disconnectNote === c.id ? (
-                      <p className="meta mt-3">
-                        As credenciais são geridas nas variáveis de ambiente do
-                        deploy. Remove-as aí para desligar este conector.
-                      </p>
-                    ) : null}
                   </div>
                 );
               })}
@@ -160,6 +188,19 @@ export default function EcosystemBoard({
           </section>
         );
       })}
+
+      {modalConnector ? (
+        <CredentialModal
+          connector={modalConnector}
+          manageable={manageable}
+          onClose={() => setModalId(null)}
+          onSaved={() => {
+            const id = modalConnector.id;
+            setModalId(null);
+            runTest(id);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

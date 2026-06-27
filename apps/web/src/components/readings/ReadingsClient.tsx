@@ -252,14 +252,20 @@ export default function ReadingsClient({
           {filtered.map((r) => (
             <li key={r.id} className="py-5">
               <div className="flex items-baseline justify-between gap-4">
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-serif text-xl text-charcoal underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-charcoal"
-                >
-                  {r.title || r.url}
-                </a>
+                {r.url ? (
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-serif text-xl text-charcoal underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-charcoal"
+                  >
+                    {r.title || r.url}
+                  </a>
+                ) : (
+                  <span className="font-serif text-xl text-charcoal">
+                    {r.title || "Sem título"}
+                  </span>
+                )}
                 <select
                   value={r.status}
                   onChange={(e) => changeStatus(r.id, e.target.value)}
@@ -272,7 +278,7 @@ export default function ReadingsClient({
                   ))}
                 </select>
               </div>
-              {r.title ? (
+              {r.title && r.url ? (
                 <p className="meta mt-1 break-all">{r.url}</p>
               ) : null}
               {r.note ? (
@@ -292,14 +298,16 @@ export default function ReadingsClient({
                     {t}
                   </span>
                 ))}
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="action-quiet ml-auto"
-                >
-                  Abrir →
-                </a>
+                {r.url ? (
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="action-quiet ml-auto"
+                  >
+                    Abrir →
+                  </a>
+                ) : null}
               </div>
             </li>
           ))}

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { NewChatForm } from "@/components/workspaces/WorkspaceForms";
+import { NewSessionForm } from "@/components/workspaces/WorkspaceForms";
 import { ago } from "@/components/mission/bits";
 import { getChats, getProject, getWorkspace } from "@/lib/workspaces";
 
@@ -59,8 +59,8 @@ export default async function ProjectDetailPage({
           </ul>
         )}
         <div className="panel p-5">
-          <p className="eyebrow mb-3">Novo chat</p>
-          <NewChatForm workspaceId={ws.id} projectId={project.id} />
+          <p className="eyebrow mb-3">Nova sessão de IA</p>
+          <NewSessionForm workspaceId={ws.id} projectId={project.id} />
         </div>
       </section>
     </div>

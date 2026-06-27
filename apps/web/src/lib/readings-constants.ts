@@ -28,7 +28,8 @@ export type ReadingStatus = (typeof READING_STATUSES)[number];
 
 export interface Reading {
   id: string;
-  url: string;
+  /** Optional — a reading saved from an AI response has no source URL. */
+  url?: string;
   title?: string;
   note?: string;
   initiativeId?: string;

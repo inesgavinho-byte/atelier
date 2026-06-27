@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CHAT_PROVIDERS } from "@/lib/workspaces-constants";
+import {
+  CHAT_PROVIDER_LABELS,
+  PROVIDER_META,
+  providerIdFromLabel,
+} from "@/lib/ai/types";
+import { WORK_MODES } from "@/lib/ai-runtime/types";
 import {
   archiveWorkspace,
   createChat,
@@ -62,8 +67,12 @@ export function NewProjectForm({ workspaceId }: { workspaceId: string }) {
   );
 }
 
-/** Create a chat in a workspace (optionally inside a project). */
-export function NewChatForm({
+/**
+ * Create an AI session (a chat) in a workspace, optionally inside a project.
+ * Flow: choose mode → provider → model → create. The mode binds the session to
+ * a Skill; the provider/model are the execution engine.
+ */
+export function NewSessionForm({
   workspaceId,
   projectId,
 }: {
@@ -72,14 +81,28 @@ export function NewChatForm({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [provider, setProvider] = useState<string>("ATELIER");
+  const [mode, setMode] = useState<string>("livre");
+  const [provider, setProvider] = useState<string>("OpenAI");
+  const [model, setModel] = useState<string>(
+    PROVIDER_META.find((m) => m.id === "openai")?.defaultModel ?? ""
+  );
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, start] = useTransition();
+
+  const meta = PROVIDER_META.find((m) => m.id === providerIdFromLabel(provider));
+  const models = meta?.models ?? [];
 
   const submit = () => {
     setMsg(null);
     start(async () => {
-      const r = await createChat({ workspaceId, projectId, title, provider });
+      const r = await createChat({
+        workspaceId,
+        projectId,
+        title,
+        provider,
+        mode,
+        model: models.length ? model : undefined,
+      });
       if (r.ok && r.id) {
         const base = projectId
           ? `/workspaces/${workspaceId}/projects/${projectId}`
@@ -95,28 +118,66 @@ export function NewChatForm({
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Título do chat"
+        placeholder="Título da sessão"
         className={field}
       />
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+          className="border border-line bg-surface px-3 py-2 text-[15px] text-charcoal focus:border-charcoal focus:outline-none"
+          aria-label="Modo de trabalho"
+        >
+          {WORK_MODES.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </select>
         <select
           value={provider}
-          onChange={(e) => setProvider(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setProvider(next);
+            const m = PROVIDER_META.find(
+              (x) => x.id === providerIdFromLabel(next)
+            );
+            setModel(m?.defaultModel ?? "");
+          }}
           className="border border-line bg-surface px-3 py-2 text-[15px] text-charcoal focus:border-charcoal focus:outline-none"
+          aria-label="Provider"
         >
-          {CHAT_PROVIDERS.map((p) => (
+          {CHAT_PROVIDER_LABELS.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
           ))}
         </select>
+        {models.length ? (
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="border border-line bg-surface px-3 py-2 text-[15px] text-charcoal focus:border-charcoal focus:outline-none"
+            aria-label="Modelo"
+          >
+            {models.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="meta self-center">Sem modelo (provider manual)</div>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
         <button
           type="button"
           className="action"
           onClick={submit}
           disabled={saving}
         >
-          {saving ? "A criar…" : "Criar chat"}
+          {saving ? "A criar…" : "Criar sessão"}
         </button>
         {msg ? <span className="meta">{msg}</span> : null}
       </div>
