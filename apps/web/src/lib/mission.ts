@@ -24,6 +24,12 @@ import {
 } from "@/data/mission";
 import { getDocs } from "@/lib/atelier-docs";
 import { getProductDocs } from "@/lib/product-docs";
+import { getReadings } from "@/lib/readings";
+import {
+  getAllChats,
+  getAllProjects,
+  getWorkspaces,
+} from "@/lib/workspaces";
 
 const PRIORITY_RANK: Record<Priority, number> = { alta: 0, média: 1, baixa: 2 };
 
@@ -354,6 +360,47 @@ export async function getSearchCorpus(): Promise<SearchResult[]> {
       detail: doc.id,
       href: `/product/${doc.id}`,
     });
+
+  // Readings & workspaces (each isolated — never break search if a table is
+  // empty or unavailable).
+  const [readings, workspaces, projects, chats] = await Promise.all([
+    getReadings().catch(() => []),
+    getWorkspaces().catch(() => []),
+    getAllProjects().catch(() => []),
+    getAllChats().catch(() => []),
+  ]);
+  const wsById = new Map(workspaces.map((w) => [w.id, w]));
+  for (const r of readings)
+    out.push({
+      group: "Leituras",
+      label: r.title || r.url,
+      detail: r.tags.join(", ") || r.status,
+      href: "/readings",
+    });
+  for (const w of workspaces)
+    out.push({
+      group: "Workspaces",
+      label: w.name,
+      detail: w.description ?? w.status,
+      href: `/workspaces/${w.id}`,
+    });
+  for (const p of projects)
+    out.push({
+      group: "Projetos (workspace)",
+      label: p.name,
+      detail: wsById.get(p.workspaceId)?.name ?? "",
+      href: `/workspaces/${p.workspaceId}/projects/${p.id}`,
+    });
+  for (const c of chats)
+    out.push({
+      group: "Chats",
+      label: c.title,
+      detail: c.provider ?? "ATELIER",
+      href: c.projectId
+        ? `/workspaces/${c.workspaceId}/projects/${c.projectId}/chats/${c.id}`
+        : `/workspaces/${c.workspaceId}/chats/${c.id}`,
+    });
+
   return out;
 }
 

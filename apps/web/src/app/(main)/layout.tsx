@@ -31,6 +31,8 @@ export default async function MainLayout({
   const primaryNav: NavLink[] = [
     { label: "Atelier", href: "/" },
     { label: "Capturar", action: "capture" },
+    { label: "Leituras", href: "/readings" },
+    { label: "Workspaces", href: "/workspaces" },
     { label: "PAPERS", href: projectHref("PAPERS") },
     { label: "DECIMA", href: projectHref("DECIMA") },
     { label: "GAVINHO", href: projectHref("GAVINHO") },

@@ -8,6 +8,7 @@ import {
   getRecentCaptures,
   getTodaySummary,
 } from "@/lib/mission";
+import { countUnreadReadings } from "@/lib/readings";
 import { owner, todayLabel } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +28,14 @@ const TIMING: Record<string, string> = {
  * calm empty state when its data source is not yet available.
  */
 export default async function AtelierDeskPage() {
-  const [initiatives, pending, activityAll, captures, summary] =
+  const [initiatives, pending, activityAll, captures, summary, unreadReadings] =
     await Promise.all([
       getInitiatives(),
       getPendingDecisions(),
       getActivity(),
       getRecentCaptures(50),
       getTodaySummary(),
+      countUnreadReadings(),
     ]);
   const next = getNextAction();
 
@@ -48,6 +50,7 @@ export default async function AtelierDeskPage() {
   const countKind = (...kinds: string[]) =>
     captures.filter((c) => kinds.includes(c.kind)).length;
   const inbox = [
+    { label: "Leituras", value: unreadReadings, href: "/readings" },
     { label: "Capturas", value: captures.length },
     { label: "Emails", value: countKind("email") },
     { label: "Ideias", value: countKind("nota", "texto") },
@@ -227,12 +230,19 @@ export default async function AtelierDeskPage() {
                 </p>
               </div>
               <div>
-                {inbox.map((row) => (
-                  <div key={row.label} className="inbox-row">
-                    <span>{row.label}</span>
-                    <span className="count">{row.value}</span>
-                  </div>
-                ))}
+                {inbox.map((row) =>
+                  row.href ? (
+                    <Link key={row.label} href={row.href} className="inbox-row">
+                      <span>{row.label}</span>
+                      <span className="count">{row.value}</span>
+                    </Link>
+                  ) : (
+                    <div key={row.label} className="inbox-row">
+                      <span>{row.label}</span>
+                      <span className="count">{row.value}</span>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </section>
