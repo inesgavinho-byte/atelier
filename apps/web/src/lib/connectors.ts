@@ -35,6 +35,8 @@ export interface ConnectorDef {
   id: string;
   name: string;
   category: ConnectorCategory;
+  /** One-line description shown on the card (Portuguese). */
+  description: string;
   /** Env var names this connector needs to be considered configured. */
   envRequired: string[];
   /** Optional env vars (presence shown, not required for status). */
@@ -42,6 +44,10 @@ export interface ConnectorDef {
   capabilities: string[];
   /** Whether a live "test connection" is implemented server-side. */
   testable: boolean;
+  /** Display-only: where the tool is used (curated). */
+  usedIn?: string[];
+  /** Display-only: a small contextual metric (mock). */
+  metric?: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "openai",
     name: "OpenAI / ChatGPT",
     category: "IA",
+    description: "Escrita, raciocínio, análise e geração de conteúdo.",
     envRequired: ["OPENAI_API_KEY"],
     capabilities: [
       "enviar prompt",
@@ -62,27 +69,35 @@ export const CONNECTORS: ConnectorDef[] = [
       "associar resposta a iniciativa",
     ],
     testable: true,
+    usedIn: ["PAPERS", "DECIMA"],
+    metric: "7 sessões esta semana",
   },
   {
     id: "claude",
     name: "Claude",
     category: "IA",
+    description: "Análise profunda e documentos extensos.",
     envRequired: ["ANTHROPIC_API_KEY"],
     capabilities: ["enviar prompt", "receber resposta"],
     testable: true,
+    usedIn: ["PAPERS"],
+    metric: "3 sessões esta semana",
   },
   {
     id: "perplexity",
     name: "Perplexity",
     category: "IA",
+    description: "Pesquisa com fontes verificáveis.",
     envRequired: ["PERPLEXITY_API_KEY"],
     capabilities: ["pesquisar", "receber resposta com fontes"],
     testable: true,
+    usedIn: ["Investigação"],
   },
   {
     id: "manus",
     name: "Manus",
     category: "IA",
+    description: "Agentes autónomos para tarefas.",
     envRequired: ["MANUS_API_KEY"],
     capabilities: ["executar agente", "receber resultado"],
     testable: false,
@@ -93,6 +108,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "gmail",
     name: "Gmail",
     category: "Comunicação",
+    description: "Email e pesquisa inteligente na caixa de entrada.",
     envRequired: ["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET"],
     capabilities: [
       "ler emails",
@@ -107,6 +123,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "outlook-email",
     name: "Outlook Email",
     category: "Comunicação",
+    description: "Email e pesquisa na caixa Outlook.",
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: [
       "ler emails",
@@ -121,6 +138,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "teams",
     name: "Microsoft Teams",
     category: "Comunicação",
+    description: "Mensagens e canais de equipa.",
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: ["ler mensagens", "pesquisar mensagens", "guardar como captura"],
     testable: false,
@@ -131,6 +149,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "google-calendar",
     name: "Google Calendar",
     category: "Calendário",
+    description: "Agenda, reuniões e disponibilidade.",
     envRequired: ["GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET"],
     capabilities: [
       "ler agenda",
@@ -144,6 +163,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "outlook-calendar",
     name: "Outlook Calendar",
     category: "Calendário",
+    description: "Agenda e reuniões Outlook.",
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: [
       "ler agenda",
@@ -159,6 +179,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "google-drive",
     name: "Google Drive",
     category: "Documentos",
+    description: "Documentos, referências e artefactos.",
     envRequired: ["GOOGLE_DRIVE_CLIENT_ID", "GOOGLE_DRIVE_CLIENT_SECRET"],
     capabilities: [
       "pesquisar documentos",
@@ -173,6 +194,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "sharepoint",
     name: "SharePoint",
     category: "Documentos",
+    description: "Documentos e bibliotecas SharePoint.",
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: [
       "pesquisar documentos",
@@ -187,6 +209,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "onedrive",
     name: "OneDrive",
     category: "Documentos",
+    description: "Ficheiros e documentos OneDrive.",
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: [
       "pesquisar documentos",
@@ -202,8 +225,10 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "github",
     name: "GitHub",
     category: "Desenvolvimento",
+    description: "Código, PRs, commits e issues.",
     envRequired: ["GITHUB_TOKEN"],
     envOptional: ["GITHUB_REPO"],
+    usedIn: ["ATELIER"],
     capabilities: [
       "ler PRs",
       "ler commits",
@@ -217,6 +242,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "netlify",
     name: "Netlify",
     category: "Desenvolvimento",
+    description: "Deploys, estado do site e logs.",
     envRequired: ["NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID"],
     capabilities: [
       "ver deploys",
@@ -230,8 +256,10 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "supabase",
     name: "Supabase",
     category: "Desenvolvimento",
+    description: "Base de dados e persistência.",
     envRequired: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
     envOptional: ["SUPABASE_SERVICE_ROLE_KEY"],
+    usedIn: ["ATELIER"],
     capabilities: [
       "estado da ligação",
       "base de dados acessível",
@@ -246,6 +274,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "linkedin",
     name: "LinkedIn",
     category: "Publicação",
+    description: "Publicação e presença profissional.",
     envRequired: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
     capabilities: ["publicar", "ler publicações", "associar a iniciativa"],
     testable: false,
@@ -254,6 +283,7 @@ export const CONNECTORS: ConnectorDef[] = [
     id: "instagram",
     name: "Instagram",
     category: "Publicação",
+    description: "Publicação visual e presença social.",
     envRequired: ["INSTAGRAM_CLIENT_ID", "INSTAGRAM_CLIENT_SECRET"],
     capabilities: ["publicar", "ler publicações", "associar a iniciativa"],
     testable: false,
