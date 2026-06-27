@@ -77,6 +77,16 @@ No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um 
 
 ---
 
+## Skills (`040-skills/`)
+
+**Skills são motores de raciocínio operacional.** Não são fontes de conhecimento nem resumos — orquestram Princípios e Modelos Mentais para produzir trabalho. Cada Skill declara, no seu frontmatter, os Princípios e Modelos Mentais de que depende.
+
+### Skills existentes
+
+- **SKILL-0001 — Estratégia**
+
+---
+
 ## Princípios (`020-principles/`)
 
 Cada princípio é atómico e deve conter:
