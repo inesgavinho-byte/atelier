@@ -73,6 +73,7 @@ No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um 
 - **MM-0003 — Pensamento de Segunda Ordem**
 - **MM-0004 — Alavancagem**
 - **MM-0005 — Trade-offs**
+- **MM-0006 — Sistemas**
 
 ---
 
