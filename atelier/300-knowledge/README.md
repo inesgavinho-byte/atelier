@@ -88,6 +88,7 @@ No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um 
 - **SKILL-0003 — Investigação**
 - **SKILL-0004 — Decisão**
 - **SKILL-0005 — Arquitetura de Conhecimento**
+- **SKILL-0006 — Design Critique**
 
 ---
 
