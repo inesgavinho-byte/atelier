@@ -66,6 +66,10 @@ Exemplos: Centro de Gravidade, Pensamento de Segunda Ordem, Inversão, Trade-off
 
 No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um Princípio é uma verdade operacional; um Modelo Mental é uma lente de raciocínio; uma Skill combina ambos para produzir trabalho.
 
+### Modelos Mentais existentes
+
+- **MM-0001 — Centro de Gravidade**
+
 ---
 
 ## Princípios (`020-principles/`)
@@ -113,6 +117,7 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 - **PRINCIPLE-0007 — O conhecimento só tem valor quando altera uma decisão.**
 - **PRINCIPLE-0008 — Toda a decisão deve produzir aprendizagem.**
 - **PRINCIPLE-0009 — O tempo é o recurso mais valioso.**
+- **PRINCIPLE-0010 — Compreender antes de agir.**
 
 ---
 
