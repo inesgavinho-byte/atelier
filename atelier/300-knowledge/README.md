@@ -93,6 +93,7 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 - **PRINCIPLE-0002 — Primeiro executar. Melhorar depois da utilização real.**
 - **PRINCIPLE-0003 — O conhecimento vive nas relações, não nos documentos.**
 - **PRINCIPLE-0004 — O contexto pertence ao ATELIER, não à ferramenta.**
+- **PRINCIPLE-0005 — O verdadeiro ativo é a biblioteca de pensamento.**
 
 ---
 
