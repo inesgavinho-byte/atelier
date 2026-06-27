@@ -86,6 +86,7 @@ No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um 
 - **SKILL-0001 — Estratégia**
 - **SKILL-0002 — Escrita Editorial**
 - **SKILL-0003 — Investigação**
+- **SKILL-0004 — Decisão**
 
 ---
 
