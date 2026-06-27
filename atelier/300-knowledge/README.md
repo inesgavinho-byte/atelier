@@ -69,6 +69,7 @@ No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um 
 ### Modelos Mentais existentes
 
 - **MM-0001 — Centro de Gravidade**
+- **MM-0002 — Inversão**
 - **MM-0003 — Pensamento de Segunda Ordem**
 - **MM-0004 — Alavancagem**
 - **MM-0005 — Trade-offs**
