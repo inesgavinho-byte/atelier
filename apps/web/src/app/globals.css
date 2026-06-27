@@ -377,6 +377,26 @@
   padding-top: 18px;
 }
 
+/* Thin separator between primary nav groups. */
+.atelier-nav-sep {
+  height: 1px;
+  background: var(--atelier-line);
+  margin: 12px 6px;
+}
+
+/* Collapsible sub-items (e.g. Sistema). */
+.atelier-nav-sub {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 2px 12px;
+  padding-left: 10px;
+  border-left: 1px solid var(--atelier-line);
+}
+.atelier-nav-sub .atelier-nav-item {
+  min-height: 36px;
+  font-size: 14px;
+}
+
 .atelier-user {
   display: flex;
   align-items: center;
@@ -897,5 +917,479 @@
 
   .today-item {
     border-right: 0;
+  }
+}
+
+/*
+ * Ecosystem v2 — clean tool-library treatment for /ecosystem.
+ * Scoped under .ecosystem-page (and connector-/drawer- specific classes used
+ * only on that page), so it never leaks into the rest of the app.
+ */
+.ecosystem-page {
+  --eco-bg: #f8f5ed;
+  --eco-surface: #fffdf7;
+  --eco-surface-soft: #f5f0e6;
+  --eco-ink: #1f1f1c;
+  --eco-muted: #746f63;
+  --eco-line: #d8d1c4;
+  --eco-line-strong: #bdb3a1;
+  --eco-dark: #2a251d;
+  --eco-green: #2f7a4f;
+  --eco-amber: #c98a18;
+  --eco-red: #9b3f32;
+  --eco-blue: #3f6f91;
+
+  background: var(--eco-bg);
+}
+
+.ecosystem-header {
+  margin-bottom: 32px;
+}
+
+.ecosystem-title {
+  font-family: var(--font-serif);
+  font-size: clamp(48px, 5vw, 68px);
+  line-height: 0.95;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.ecosystem-subtitle {
+  margin-top: 10px;
+  color: var(--eco-muted);
+  font-size: 15px;
+}
+
+.ecosystem-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 28px 0;
+}
+
+.ecosystem-search {
+  height: 42px;
+  min-width: 280px;
+  border: 1px solid var(--eco-line-strong);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.62);
+  padding: 0 14px;
+}
+
+.ecosystem-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 34px;
+}
+
+.ecosystem-tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: var(--eco-muted);
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ecosystem-tab.active {
+  background: var(--eco-dark);
+  color: #fffaf0;
+}
+
+.ecosystem-section {
+  margin-bottom: 42px;
+}
+
+.ecosystem-section-title {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--eco-muted);
+  margin-bottom: 16px;
+}
+
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.connector-card {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.76), rgba(246,241,231,0.96));
+  border: 1px solid rgba(155,145,130,0.28);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 12px 30px rgba(37,33,27,0.08);
+}
+
+.connector-card:hover {
+  border-color: rgba(110,100,85,0.42);
+  box-shadow: 0 16px 36px rgba(37,33,27,0.11);
+}
+
+.connector-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.connector-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--eco-surface-soft);
+  border: 1px solid var(--eco-line);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: var(--eco-ink);
+}
+
+.connector-name {
+  margin-top: 16px;
+  font-family: var(--font-serif);
+  font-size: 25px;
+  line-height: 1.05;
+  font-weight: 500;
+}
+
+.connector-description {
+  margin-top: 8px;
+  color: var(--eco-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.status-connected {
+  color: var(--eco-green);
+  background: rgba(47,122,79,0.12);
+}
+
+.status-missing {
+  color: var(--eco-amber);
+  background: rgba(201,138,24,0.14);
+}
+
+.status-error,
+.status-offline {
+  color: var(--eco-red);
+  background: rgba(155,63,50,0.12);
+}
+
+.status-testing {
+  color: var(--eco-blue);
+  background: rgba(63,111,145,0.12);
+}
+
+.connector-used {
+  margin-top: 18px;
+}
+
+.connector-used-label {
+  color: var(--eco-muted);
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+
+.connector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.connector-tag {
+  border-radius: 7px;
+  background: rgba(139,134,112,0.12);
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.connector-metric {
+  margin-top: 16px;
+  color: var(--eco-muted);
+  font-size: 13px;
+}
+
+.connector-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.connector-button {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--eco-line-strong);
+  background: rgba(255,255,255,0.54);
+  padding: 0 13px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--eco-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.connector-button.primary {
+  background: var(--eco-dark);
+  border-color: var(--eco-dark);
+  color: #fffaf0;
+}
+
+.connector-more {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--eco-line);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.connector-menu {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 10;
+  min-width: 170px;
+  background: var(--eco-surface);
+  border: 1px solid var(--eco-line-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(37,33,27,0.14);
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.connector-menu button,
+.connector-menu a {
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--eco-ink);
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+
+.connector-menu button:hover,
+.connector-menu a:hover {
+  background: rgba(139,134,112,0.12);
+}
+
+.connector-add-card {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  border: 1px dashed rgba(120,110,96,0.42);
+  border-radius: 16px;
+  color: var(--eco-muted);
+  background: rgba(255,255,255,0.32);
+}
+
+.connector-add-plus {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--eco-ink);
+}
+
+.connector-add-title {
+  margin-top: 14px;
+  color: var(--eco-ink);
+  font-size: 16px;
+}
+
+.connector-add-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+/* Drawer */
+
+.connector-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(31,31,28,0.08);
+  z-index: 50;
+}
+
+.connector-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(520px, 100vw);
+  height: 100vh;
+  background: #fffdf7;
+  border-left: 1px solid var(--eco-line);
+  box-shadow: -18px 0 48px rgba(37,33,27,0.16);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+}
+
+.connector-drawer-header {
+  padding: 34px;
+  border-bottom: 1px solid var(--eco-line);
+}
+
+.connector-drawer-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.connector-drawer-title {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+.connector-drawer-body {
+  padding: 30px 34px;
+  overflow: auto;
+  display: grid;
+  gap: 28px;
+}
+
+.drawer-section-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--eco-muted);
+  margin-bottom: 12px;
+}
+
+.drawer-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--eco-line);
+}
+
+.drawer-row:last-child {
+  border-bottom: 0;
+}
+
+.drawer-label {
+  color: var(--eco-muted);
+}
+
+.drawer-value {
+  color: var(--eco-ink);
+  text-align: right;
+}
+
+.drawer-field {
+  margin-top: 10px;
+}
+
+.drawer-field input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--eco-line-strong);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.6);
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.drawer-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drawer-chip {
+  border: 1px solid var(--eco-line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  background: rgba(255,255,255,0.54);
+}
+
+.connector-drawer-footer {
+  margin-top: auto;
+  padding: 22px 34px;
+  border-top: 1px solid var(--eco-line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.drawer-danger {
+  color: var(--eco-red);
+  border-color: rgba(155,63,50,0.28);
+}
+
+/* Responsive */
+
+@media (max-width: 1280px) {
+  .connector-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .connector-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ecosystem-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ecosystem-search {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .connector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .connector-drawer {
+    width: 100vw;
   }
 }
