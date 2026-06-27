@@ -1,11 +1,8 @@
 "use server";
 
 import { getSupabase } from "@/lib/supabase";
-import {
-  runOpenAICompletion,
-  testConnectorLive,
-  type TestOutcome,
-} from "@/lib/connector-status";
+import { testConnectorLive, type TestOutcome } from "@/lib/connector-status";
+import { gateway } from "@/lib/ai/gateway";
 import { getInitiatives } from "@/lib/mission";
 
 /** Run a connector's live "test connection". */
@@ -13,11 +10,18 @@ export async function testConnector(id: string): Promise<TestOutcome> {
   return testConnectorLive(id);
 }
 
-/** Run a single OpenAI prompt (used by the connector test form). */
+/** Run a single OpenAI prompt through the gateway (connector test form). */
 export async function runOpenAIPrompt(
   prompt: string
 ): Promise<{ ok: boolean; text?: string; error?: string }> {
-  return runOpenAICompletion(prompt);
+  if (!prompt.trim()) return { ok: false, error: "Prompt vazio." };
+  const r = await gateway.run({
+    provider: "openai",
+    messages: [{ role: "user", content: prompt }],
+  });
+  return r.ok
+    ? { ok: true, text: r.text }
+    : { ok: false, error: r.error ?? "Falha desconhecida." };
 }
 
 /**

@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import ChatThreadView from "@/components/workspaces/ChatThreadView";
 import { getChat, getMessages, getProject, getWorkspace } from "@/lib/workspaces";
-import { getConnectorView } from "@/lib/connector-status";
+import { gateway } from "@/lib/ai/gateway";
+import { providerIdFromLabel } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export default async function ProjectChatThreadPage({
   if (!ws || !project || !chat) notFound();
 
   const messages = await getMessages(chat.id);
-  const openaiConfigured = getConnectorView("openai")?.status === "Ligado";
+  const providerId = providerIdFromLabel(chat.provider);
+  const runnable = Boolean(providerId && gateway.get(providerId)?.available());
 
   return (
     <ChatThreadView
@@ -26,7 +28,7 @@ export default async function ProjectChatThreadPage({
       messages={messages}
       backHref={`/workspaces/${ws.id}/projects/${project.id}`}
       backLabel={project.name}
-      openaiConfigured={Boolean(openaiConfigured)}
+      runnable={runnable}
     />
   );
 }

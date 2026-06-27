@@ -51,6 +51,9 @@ const toChat = (r: any): WorkspaceChat => ({
   projectId: r.project_id ?? undefined,
   title: r.title,
   provider: r.provider ?? undefined,
+  model: r.model ?? undefined,
+  temperature: r.temperature ?? undefined,
+  reasoning: r.reasoning ?? undefined,
   status: r.status,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -62,6 +65,9 @@ const toMessage = (r: any): WorkspaceMessage => ({
   role: r.role,
   content: r.content,
   provider: r.provider ?? undefined,
+  model: r.model ?? undefined,
+  tokens: r.tokens ?? undefined,
+  latencyMs: r.latency_ms ?? undefined,
   createdAt: r.created_at,
 });
 

@@ -7,6 +7,9 @@ import {
   type ConnectorView,
 } from "@/lib/connectors";
 import { checkDatabase } from "@/lib/diagnostics";
+import { gateway } from "@/lib/ai/gateway";
+import type { ProviderId } from "@/lib/ai/types";
+import { errMessage, fetchWithTimeout } from "@/lib/ai/providers/http";
 
 /**
  * ATELIER — connector status & live tests (server-side only).
@@ -88,88 +91,26 @@ const env = (name: string): string | undefined => {
   return undefined;
 };
 
-/** fetch with a hard timeout so a hung endpoint never blocks the action. */
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit,
-  ms = 9000
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function errMessage(e: unknown): string {
-  if (e instanceof Error) {
-    if (e.name === "AbortError") return "Tempo limite excedido.";
-    return e.message;
-  }
-  return String(e);
-}
-
-async function testOpenAI(): Promise<{ ok: boolean; message: string }> {
-  const key = env("OPENAI_API_KEY");
-  if (!key) return { ok: false, message: "OPENAI_API_KEY em falta." };
-  const res = await fetchWithTimeout("https://api.openai.com/v1/models", {
-    headers: { Authorization: `Bearer ${key}` },
+/**
+ * AI provider test — runs a minimal request through the gateway. ATELIER never
+ * calls the vendor API here directly; it verifies via the same gateway the
+ * chats use, so there is no duplicated provider logic.
+ */
+async function testGatewayProvider(
+  id: ProviderId
+): Promise<{ ok: boolean; message: string }> {
+  const r = await gateway.run({
+    provider: id,
+    messages: [{ role: "user", content: "ping" }],
+    maxTokens: 1,
   });
-  if (res.ok) {
-    const data = (await res.json().catch(() => null)) as
-      | { data?: unknown[] }
-      | null;
-    const n = Array.isArray(data?.data) ? data!.data!.length : 0;
-    return { ok: true, message: `Ligação OK — ${n} modelos disponíveis.` };
+  if (r.ok) {
+    return {
+      ok: true,
+      message: `Ligação OK — ${r.model} (${r.latencyMs} ms).`,
+    };
   }
-  return { ok: false, message: `HTTP ${res.status} ${res.statusText}.` };
-}
-
-async function testClaude(): Promise<{ ok: boolean; message: string }> {
-  const key = env("ANTHROPIC_API_KEY");
-  if (!key) return { ok: false, message: "ANTHROPIC_API_KEY em falta." };
-  const res = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1,
-      messages: [{ role: "user", content: "ping" }],
-    }),
-  });
-  if (res.ok) return { ok: true, message: "Ligação OK — resposta recebida." };
-  // 400 from a minimal body still proves the key authenticated.
-  if (res.status === 400)
-    return { ok: true, message: "Chave válida (pedido mínimo aceite)." };
-  return { ok: false, message: `HTTP ${res.status} ${res.statusText}.` };
-}
-
-async function testPerplexity(): Promise<{ ok: boolean; message: string }> {
-  const key = env("PERPLEXITY_API_KEY");
-  if (!key) return { ok: false, message: "PERPLEXITY_API_KEY em falta." };
-  const res = await fetchWithTimeout(
-    "https://api.perplexity.ai/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar",
-        max_tokens: 1,
-        messages: [{ role: "user", content: "ping" }],
-      }),
-    }
-  );
-  if (res.ok) return { ok: true, message: "Ligação OK — resposta recebida." };
-  return { ok: false, message: `HTTP ${res.status} ${res.statusText}.` };
+  return { ok: false, message: r.error ?? "Falha desconhecida." };
 }
 
 async function testGitHub(): Promise<{ ok: boolean; message: string }> {
@@ -244,9 +185,9 @@ async function testSupabase(): Promise<{ ok: boolean; message: string }> {
 }
 
 const TESTERS: Record<string, () => Promise<{ ok: boolean; message: string }>> = {
-  openai: testOpenAI,
-  claude: testClaude,
-  perplexity: testPerplexity,
+  openai: () => testGatewayProvider("openai"),
+  claude: () => testGatewayProvider("claude"),
+  perplexity: () => testGatewayProvider("perplexity"),
   github: testGitHub,
   netlify: testNetlify,
   supabase: testSupabase,
@@ -284,43 +225,5 @@ export async function testConnectorLive(id: string): Promise<TestOutcome> {
     return { status: ok ? "Ligado" : "Erro", message, lastChecked };
   } catch (e) {
     return { status: "Erro", message: errMessage(e), lastChecked };
-  }
-}
-
-/** Live OpenAI completion used by the connector test form. */
-export async function runOpenAICompletion(
-  prompt: string
-): Promise<{ ok: boolean; text?: string; error?: string }> {
-  const key = env("OPENAI_API_KEY");
-  if (!key) return { ok: false, error: "OPENAI_API_KEY em falta." };
-  if (!prompt.trim()) return { ok: false, error: "Prompt vazio." };
-  try {
-    const res = await fetchWithTimeout(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 800,
-        }),
-      },
-      30000
-    );
-    if (!res.ok) {
-      return { ok: false, error: `HTTP ${res.status} ${res.statusText}.` };
-    }
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = data.choices?.[0]?.message?.content?.trim();
-    if (!text) return { ok: false, error: "Resposta vazia." };
-    return { ok: true, text };
-  } catch (e) {
-    return { ok: false, error: errMessage(e) };
   }
 }

@@ -2,9 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
-import { runOpenAICompletion } from "@/lib/connector-status";
+import { gateway } from "@/lib/ai/gateway";
+import {
+  defaultModelForLabel,
+  providerIdFromLabel,
+  type AIMessage,
+} from "@/lib/ai/types";
+import { getChat, getMessages } from "@/lib/workspaces";
 
 const now = () => new Date().toISOString();
+const shortId = (prefix: string) =>
+  `${prefix}-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+const firstLine = (text: string) =>
+  text.trim().split("\n")[0].slice(0, 120) || "Sem título";
 
 /* ── Workspaces ───────────────────────────────────────────────────────────── */
 
@@ -91,13 +101,16 @@ export async function createChat(input: {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
   const title = input.title.trim() || "Novo chat";
+  const provider = input.provider || "ATELIER";
   const { data, error } = await sb
     .from("workspace_chats")
     .insert({
       workspace_id: input.workspaceId,
       project_id: input.projectId || null,
       title,
-      provider: input.provider || "ATELIER",
+      provider,
+      model: defaultModelForLabel(provider) ?? null,
+      temperature: 0.7,
     })
     .select("id")
     .single();
@@ -139,11 +152,34 @@ export async function sendMessage(input: {
   return { ok: true, message: "Mensagem guardada." };
 }
 
+/** Update a chat's provider/model/temperature. Preserves the conversation. */
+export async function updateChatSettings(input: {
+  chatId: string;
+  provider?: string;
+  model?: string;
+  temperature?: number;
+}): Promise<{ ok: boolean }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false };
+  const patch: Record<string, unknown> = { updated_at: now() };
+  if (input.provider !== undefined) patch.provider = input.provider;
+  if (input.model !== undefined) patch.model = input.model || null;
+  if (input.temperature !== undefined) patch.temperature = input.temperature;
+  const { error } = await sb
+    .from("workspace_chats")
+    .update(patch)
+    .eq("id", input.chatId);
+  revalidatePath(`/workspaces`);
+  return { ok: !error };
+}
+
 /**
- * Save the message and run it through OpenAI, storing the assistant reply in
- * the same thread. Only used when the OpenAI connector is configured.
+ * Save the user message and run the whole thread through the chat's provider
+ * via the AI gateway, storing the assistant reply in the same thread. ATELIER
+ * calls only the gateway — never a provider directly — so the storage is
+ * independent of which engine executes the request.
  */
-export async function runMessageWithOpenAI(input: {
+export async function runChatMessage(input: {
   chatId: string;
   content: string;
 }): Promise<{ ok: boolean; message: string }> {
@@ -152,28 +188,126 @@ export async function runMessageWithOpenAI(input: {
   const content = input.content.trim();
   if (!content) return { ok: false, message: "Mensagem vazia." };
 
-  // Save the user message first, so context is preserved even if the call fails.
+  const chat = await getChat(input.chatId);
+  if (!chat) return { ok: false, message: "Chat não encontrado." };
+  const providerId = providerIdFromLabel(chat.provider);
+  if (!providerId) {
+    return {
+      ok: false,
+      message: "Este chat não tem um provider executável. Guarda como nota.",
+    };
+  }
+
+  // Persist the user message first so context survives a failed call.
   await sb.from("workspace_messages").insert({
-    chat_id: input.chatId,
+    chat_id: chat.id,
     role: "user",
     content,
-    provider: "OpenAI",
+    provider: chat.provider,
+    model: chat.model ?? null,
   });
 
-  const result = await runOpenAICompletion(content);
+  // Build the full thread (context belongs to ATELIER, not the provider).
+  const thread = await getMessages(chat.id);
+  const messages: AIMessage[] = thread
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  const result = await gateway.run({
+    provider: providerId,
+    messages,
+    model: chat.model || undefined,
+    temperature: chat.temperature,
+    reasoning: chat.reasoning ?? null,
+  });
+
   if (!result.ok) {
-    await touchChat(input.chatId);
+    await touchChat(chat.id);
     revalidatePath(`/workspaces`);
-    return { ok: false, message: result.error ?? "Falha na chamada OpenAI." };
+    return { ok: false, message: result.error ?? "Falha na execução." };
   }
 
   await sb.from("workspace_messages").insert({
-    chat_id: input.chatId,
+    chat_id: chat.id,
     role: "assistant",
     content: result.text ?? "",
-    provider: "OpenAI",
+    provider: chat.provider,
+    model: result.model,
+    tokens: result.tokens ?? null,
+    latency_ms: result.latencyMs,
   });
-  await touchChat(input.chatId);
+  await touchChat(chat.id);
   revalidatePath(`/workspaces`);
-  return { ok: true, message: "Resposta recebida." };
+  return { ok: true, message: `Resposta de ${chat.provider}.` };
+}
+
+/* ── Turn an AI response into ATELIER objects (no copy/paste) ─────────────── */
+
+export async function saveMessageAsCapture(
+  content: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { error } = await sb
+    .from("captures")
+    .insert({ kind: "texto", value: content });
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: "Guardado como captura." };
+}
+
+export async function createDecisionFromMessage(
+  content: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { error } = await sb.from("decisions").insert({
+    id: shortId("dec"),
+    title: firstLine(content),
+    kind: "direção",
+    priority: "média",
+    context: content,
+    recommendation: firstLine(content),
+    status: "pendente",
+  });
+  revalidatePath("/decisions");
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: "Decisão criada." };
+}
+
+export async function createArtifactFromMessage(
+  content: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { error } = await sb.from("artifacts").insert({
+    id: shortId("art"),
+    title: firstLine(content),
+    kind: "nota",
+    state: "rascunho",
+    updated_at: now(),
+  });
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: "Artefacto criado." };
+}
+
+export async function saveMessageAsReading(
+  content: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { error } = await sb.from("readings").insert({
+    url: null,
+    title: firstLine(content),
+    note: content,
+    tags: ["A Rever"],
+    status: "Por ler",
+    source_type: "ai",
+  });
+  revalidatePath("/readings");
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: "Guardado em Leituras." };
 }

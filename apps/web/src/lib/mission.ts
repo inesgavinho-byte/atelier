@@ -373,7 +373,7 @@ export async function getSearchCorpus(): Promise<SearchResult[]> {
   for (const r of readings)
     out.push({
       group: "Leituras",
-      label: r.title || r.url,
+      label: r.title || r.url || "Leitura",
       detail: r.tags.join(", ") || r.status,
       href: "/readings",
     });
