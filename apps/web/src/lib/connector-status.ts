@@ -9,7 +9,8 @@ import {
 import { checkDatabase } from "@/lib/diagnostics";
 import { gateway } from "@/lib/ai/gateway";
 import type { ProviderId } from "@/lib/ai/types";
-import { errMessage, fetchWithTimeout } from "@/lib/ai/providers/http";
+import { errMessage, fetchWithTimeout, readEnv } from "@/lib/ai/providers/http";
+import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 
 /**
  * ATELIER — connector status & live tests (server-side only).
@@ -31,7 +32,9 @@ const ENV_ALIASES: Record<string, string[]> = {
 
 function envPresent(name: string): boolean {
   const names = ENV_ALIASES[name] ?? [name];
-  return names.some((n) => Boolean(process.env[n]));
+  // readEnv consults both process.env and the server-side credential overrides
+  // hydrated from the secret store.
+  return Boolean(readEnv(...names));
 }
 
 function envList(def: ConnectorDef) {
@@ -87,8 +90,7 @@ export interface TestOutcome {
 
 const env = (name: string): string | undefined => {
   const names = ENV_ALIASES[name] ?? [name];
-  for (const n of names) if (process.env[n]) return process.env[n];
-  return undefined;
+  return readEnv(...names);
 };
 
 /**
@@ -195,6 +197,7 @@ const TESTERS: Record<string, () => Promise<{ ok: boolean; message: string }>> =
 
 /** Run a connector's live test (or report why it cannot be tested). */
 export async function testConnectorLive(id: string): Promise<TestOutcome> {
+  await hydrateCredentialOverrides();
   const def = getConnectorDef(id);
   const lastChecked = nowLabel();
   if (!def) {

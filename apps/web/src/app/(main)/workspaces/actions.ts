@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/types";
 import { runtime } from "@/lib/ai-runtime/runtime";
 import { skillIdForMode } from "@/lib/ai-runtime/types";
+import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import {
   getChat,
   getMessages,
@@ -224,6 +225,9 @@ export async function runChatMessage(input: {
   const messages: AIMessage[] = thread
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  // Make stored connector credentials resolvable for this run.
+  await hydrateCredentialOverrides();
 
   // Resolve workspace/project names for the session context.
   const [ws, project] = await Promise.all([
