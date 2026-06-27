@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   CATEGORY_ORDER,
+  type ConnectorCategory,
   type ConnectorStatus,
   type ConnectorView,
 } from "@/lib/connectors";
@@ -11,27 +12,13 @@ import {
   disconnectConnector,
   testConnector,
 } from "@/app/(main)/ecosystem/actions";
-import CredentialModal from "@/components/ecosystem/CredentialModal";
+import StatusBadge from "@/components/ecosystem/StatusBadge";
+import ConnectorDrawer from "@/components/ecosystem/ConnectorDrawer";
 
-/** Restrained dot colour per status — calm, not a SaaS traffic light. */
-const STATUS_COLOR: Record<ConnectorStatus, string> = {
-  Ligado: "#8B8670",
-  Erro: "#9b3f32",
-  "Credenciais em falta": "#ADAA96",
-  "Em teste": "#beb5a4",
-  "Não ligado": "#ADAA96",
-};
+const SESSION_PROVIDERS = new Set(["openai", "claude", "perplexity"]);
 
-function StatusPill({ status }: { status: ConnectorStatus }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-[12.5px] text-charcoal">
-      <span
-        className="inline-block h-2 w-2 rounded-full"
-        style={{ background: STATUS_COLOR[status] }}
-      />
-      {status}
-    </span>
-  );
+function monogram(name: string): string {
+  return name.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim().slice(0, 2).toUpperCase() || "·";
 }
 
 interface Runtime {
@@ -61,10 +48,14 @@ export default function EcosystemBoard({
       ])
     )
   );
-  const [modalId, setModalId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<"Todas" | ConnectorCategory>("Todas");
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const runTest = (id: string) => {
+    setOpenMenu(null);
     setRuntime((prev) => ({
       ...prev,
       [id]: { ...prev[id], testing: true, status: "Em teste" },
@@ -84,6 +75,7 @@ export default function EcosystemBoard({
   };
 
   const runDisconnect = (id: string) => {
+    setOpenMenu(null);
     setRuntime((prev) => ({
       ...prev,
       [id]: { ...prev[id], testing: true, status: "Em teste" },
@@ -103,102 +95,164 @@ export default function EcosystemBoard({
     });
   };
 
-  const modalConnector = connectors.find((c) => c.id === modalId) ?? null;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return connectors.filter((c) => {
+      if (tab !== "Todas" && c.category !== tab) return false;
+      if (q) {
+        const hay = `${c.name} ${c.description} ${c.category}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [connectors, query, tab]);
+
+  // Group filtered connectors by category, preserving the canonical order.
+  const sections = CATEGORY_ORDER.map((cat) => ({
+    category: cat,
+    items: filtered.filter((c) => c.category === cat),
+  })).filter((s) => s.items.length > 0);
+
+  const drawer = connectors.find((c) => c.id === drawerId) ?? null;
+
+  const renderCard = (c: ConnectorView) => {
+    const rt = runtime[c.id];
+    const usable = SESSION_PROVIDERS.has(c.id);
+    return (
+      <div key={c.id} className="connector-card">
+        <div>
+          <div className="connector-card-top">
+            <span className="connector-logo">{monogram(c.name)}</span>
+            <StatusBadge status={rt.status} />
+          </div>
+          <h3 className="connector-name">{c.name}</h3>
+          <p className="connector-description">{c.description}</p>
+
+          {c.usedIn?.length ? (
+            <div className="connector-used">
+              <div className="connector-used-label">Usado em</div>
+              <div className="connector-tags">
+                {c.usedIn.map((u) => (
+                  <span key={u} className="connector-tag">
+                    {u}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {c.metric ? <div className="connector-metric">{c.metric}</div> : null}
+        </div>
+
+        <div className="connector-actions">
+          {usable ? (
+            <Link href="/workspaces" className="connector-button primary">
+              Usar
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className="connector-button primary"
+              onClick={() => setDrawerId(c.id)}
+            >
+              Usar
+            </button>
+          )}
+          <button
+            type="button"
+            className="connector-button"
+            onClick={() => setDrawerId(c.id)}
+          >
+            Configurar
+          </button>
+          <button
+            type="button"
+            className="connector-more"
+            aria-label="Mais opções"
+            onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
+          >
+            ⋯
+            {openMenu === c.id ? (
+              <span className="connector-menu">
+                <button type="button" onClick={() => setDrawerId(c.id)}>
+                  Detalhes
+                </button>
+                <button type="button" onClick={() => runTest(c.id)}>
+                  Testar ligação
+                </button>
+                <button type="button" onClick={() => runDisconnect(c.id)}>
+                  Desligar
+                </button>
+                <Link href="/admin/system">Ver logs</Link>
+              </span>
+            ) : null}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const addCard = (
+    <div className="connector-add-card" key="__add">
+      <div>
+        <div className="connector-add-plus">+</div>
+        <div className="connector-add-title">Adicionar ferramenta</div>
+        <div className="connector-add-subtitle">Mais integrações em breve</div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-14">
-      {CATEGORY_ORDER.map((category) => {
-        const items = connectors.filter((c) => c.category === category);
-        if (items.length === 0) return null;
-        return (
-          <section key={category}>
-            <h2 className="eyebrow mb-5">{category}</h2>
-            <div className="grid grid-cols-1 gap-px border border-line bg-line md:grid-cols-2">
-              {items.map((c) => {
-                const rt = runtime[c.id];
-                return (
-                  <div key={c.id} className="bg-cream p-6">
-                    <div className="flex items-baseline justify-between gap-4">
-                      <Link
-                        href={`/ecosystem/${c.id}`}
-                        className="font-serif text-2xl text-charcoal transition-colors hover:text-olive"
-                      >
-                        {c.name}
-                      </Link>
-                      <StatusPill status={rt.status} />
-                    </div>
+    <div>
+      <div className="ecosystem-toolbar">
+        <input
+          type="search"
+          className="ecosystem-search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Pesquisar ferramentas…"
+        />
+      </div>
 
-                    <ul className="mt-4 space-y-1">
-                      {c.capabilities.map((cap) => (
-                        <li key={cap} className="meta">
-                          · {cap}
-                        </li>
-                      ))}
-                    </ul>
+      <div className="ecosystem-tabs">
+        {(["Todas", ...CATEGORY_ORDER] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={`ecosystem-tab${tab === t ? " active" : ""}`}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
 
-                    {rt.message ? (
-                      <p className="meta mt-4 font-mono text-[11.5px] break-words">
-                        {rt.message}
-                      </p>
-                    ) : null}
-
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span className="meta">
-                        {rt.lastChecked
-                          ? `verificado ${rt.lastChecked}`
-                          : "nunca verificado"}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        className="action"
-                        onClick={() => setModalId(c.id)}
-                      >
-                        Ligar
-                      </button>
-                      <button
-                        type="button"
-                        className="action"
-                        onClick={() => runTest(c.id)}
-                        disabled={rt.testing}
-                      >
-                        {rt.testing ? "A testar…" : "Testar ligação"}
-                      </button>
-                      <button
-                        type="button"
-                        className="action-quiet"
-                        onClick={() => runDisconnect(c.id)}
-                        disabled={rt.testing}
-                      >
-                        Desligar
-                      </button>
-                      <Link
-                        href={`/ecosystem/${c.id}`}
-                        className="action-quiet"
-                      >
-                        Detalhes →
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+      {sections.length === 0 ? (
+        <p className="meta italic">Nenhuma ferramenta corresponde à pesquisa.</p>
+      ) : (
+        sections.map((s, idx) => (
+          <section key={s.category} className="ecosystem-section">
+            <h2 className="ecosystem-section-title">{s.category}</h2>
+            <div className="connector-grid">
+              {s.items.map(renderCard)}
+              {idx === sections.length - 1 ? addCard : null}
             </div>
           </section>
-        );
-      })}
+        ))
+      )}
 
-      {modalConnector ? (
-        <CredentialModal
-          connector={modalConnector}
+      {drawer ? (
+        <ConnectorDrawer
+          connector={drawer}
+          status={runtime[drawer.id].status}
+          message={runtime[drawer.id].message}
+          lastChecked={runtime[drawer.id].lastChecked}
+          testing={runtime[drawer.id].testing}
           manageable={manageable}
-          onClose={() => setModalId(null)}
-          onSaved={() => {
-            const id = modalConnector.id;
-            setModalId(null);
-            runTest(id);
-          }}
+          onClose={() => setDrawerId(null)}
+          onTest={() => runTest(drawer.id)}
+          onDisconnect={() => runDisconnect(drawer.id)}
+          onSaved={() => runTest(drawer.id)}
         />
       ) : null}
     </div>
