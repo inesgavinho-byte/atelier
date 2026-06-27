@@ -28,30 +28,41 @@ export default async function MainLayout({
     return hit ? `/initiatives/${hit.slug}` : "/initiatives";
   };
 
-  const primaryNav: NavLink[] = [
-    { label: "Atelier", href: "/" },
-    { label: "Capturar", action: "capture" },
-    { label: "Leituras", href: "/readings" },
-    { label: "Workspaces", href: "/workspaces" },
-    { label: "PAPERS", href: projectHref("PAPERS") },
-    { label: "DECIMA", href: projectHref("DECIMA") },
-    { label: "GAVINHO", href: projectHref("GAVINHO") },
-    { label: "Projetos", href: "/initiatives", exact: true },
-    { label: "Decisões", href: "/decisions" },
-    { label: "Knowledge Library", href: "/knowledge" },
-    { label: "Agenda", href: "/agenda" },
-    { label: "Comunicação", href: "/comunicacao" },
-    { label: "Mission Control", href: "/mission" },
+  // Essential daily entry points only — grouped, separated by thin rules.
+  // Technical/secondary surfaces (Projetos, Agenda, Comunicação, Knowledge
+  // Library, Mission Control) stay reachable by URL and global search; they are
+  // not in the primary sidebar. Their routes are unchanged.
+  const navGroups: NavLink[][] = [
+    [
+      { label: "Hoje", href: "/" },
+      { label: "Capturar", action: "capture" },
+      { label: "Workspaces", href: "/workspaces" },
+    ],
+    [
+      { label: "PAPERS", href: projectHref("PAPERS") },
+      { label: "DECIMA", href: projectHref("DECIMA") },
+      { label: "GAVINHO", href: projectHref("GAVINHO") },
+    ],
+    [
+      { label: "Leituras", href: "/readings" },
+      { label: "Decisões", href: "/decisions" },
+      { label: "Ecossistema", href: "/ecosystem" },
+    ],
   ];
 
   const footerNav: NavLink[] = [
     { label: "Pesquisar", action: "search" },
-    { label: "Ecossistema", href: "/ecosystem" },
-    { label: "Configurações", href: "/admin/system" },
+    {
+      label: "Sistema",
+      children: [
+        { label: "Mission Control", href: "/mission" },
+        { label: "Admin / Sistema", href: "/admin/system" },
+      ],
+    },
   ];
 
   return (
-    <DeskShell corpus={corpus} primaryNav={primaryNav} footerNav={footerNav}>
+    <DeskShell corpus={corpus} navGroups={navGroups} footerNav={footerNav}>
       {children}
     </DeskShell>
   );
