@@ -87,6 +87,11 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 
 - **PRINCIPLES-0000 — A Filosofia dos Princípios** (`020-principles/PRINCIPLES-0000-filosofia-dos-principios.md`) — define o que é um Princípio. Todo o conhecimento desta camada evolui a partir desta definição.
 
+### Princípios Fundadores (`ines/`)
+
+- **PRINCIPLE-0001 — O software deve adaptar-se ao trabalho**
+- **PRINCIPLE-0002 — Primeiro executar. Melhorar depois da utilização real.**
+
 ---
 
 ## Estado
