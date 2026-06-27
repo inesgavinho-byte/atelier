@@ -38,6 +38,8 @@ export interface WorkspaceChat {
   workspaceId: string;
   projectId?: string;
   title: string;
+  mode?: string;
+  skillId?: string;
   provider?: string;
   model?: string;
   temperature?: number;
@@ -54,6 +56,7 @@ export interface WorkspaceMessage {
   content: string;
   provider?: string;
   model?: string;
+  skillId?: string;
   tokens?: number;
   latencyMs?: number;
   createdAt: string;

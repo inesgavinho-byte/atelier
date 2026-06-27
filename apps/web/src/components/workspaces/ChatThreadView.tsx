@@ -2,6 +2,7 @@ import Link from "next/link";
 import ChatComposer from "@/components/workspaces/ChatComposer";
 import ChatSettings from "@/components/workspaces/ChatSettings";
 import MessageActions from "@/components/workspaces/MessageActions";
+import { modeLabel } from "@/lib/ai-runtime/types";
 import type { WorkspaceChat, WorkspaceMessage } from "@/lib/workspaces-constants";
 
 /**
@@ -30,7 +31,10 @@ export default function ChatThreadView({
         ← {backLabel}
       </Link>
 
-      <p className="eyebrow mb-2">Chat · contexto ATELIER</p>
+      <p className="eyebrow mb-2">
+        Sessão · {modeLabel(chat.mode)}
+        {chat.skillId ? ` · ${chat.skillId}` : ""} · contexto ATELIER
+      </p>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="font-serif text-3xl md:text-4xl">{chat.title}</h1>
         <ChatSettings

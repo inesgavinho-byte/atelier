@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  NewChatForm,
   NewProjectForm,
+  NewSessionForm,
   WorkspaceAdmin,
 } from "@/components/workspaces/WorkspaceForms";
 import { ago } from "@/components/mission/bits";
@@ -113,8 +113,8 @@ export default async function WorkspaceDetailPage({
             </ul>
           )}
           <div className="panel p-5">
-            <p className="eyebrow mb-3">Novo chat</p>
-            <NewChatForm workspaceId={ws.id} />
+            <p className="eyebrow mb-3">Nova sessão de IA</p>
+            <NewSessionForm workspaceId={ws.id} />
           </div>
         </section>
       </div>

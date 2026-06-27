@@ -2,13 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
-import { gateway } from "@/lib/ai/gateway";
 import {
   defaultModelForLabel,
   providerIdFromLabel,
   type AIMessage,
 } from "@/lib/ai/types";
-import { getChat, getMessages } from "@/lib/workspaces";
+import { runtime } from "@/lib/ai-runtime/runtime";
+import { skillIdForMode } from "@/lib/ai-runtime/types";
+import {
+  getChat,
+  getMessages,
+  getProject,
+  getWorkspace,
+} from "@/lib/workspaces";
 
 const now = () => new Date().toISOString();
 const shortId = (prefix: string) =>
@@ -97,11 +103,14 @@ export async function createChat(input: {
   projectId?: string;
   title: string;
   provider?: string;
+  mode?: string;
+  model?: string;
 }): Promise<{ ok: boolean; id?: string; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
-  const title = input.title.trim() || "Novo chat";
+  const title = input.title.trim() || "Nova sessão";
   const provider = input.provider || "ATELIER";
+  const mode = input.mode || "livre";
   const { data, error } = await sb
     .from("workspace_chats")
     .insert({
@@ -109,7 +118,9 @@ export async function createChat(input: {
       project_id: input.projectId || null,
       title,
       provider,
-      model: defaultModelForLabel(provider) ?? null,
+      mode,
+      skill_id: skillIdForMode(mode),
+      model: input.model || defaultModelForLabel(provider) || null,
       temperature: 0.7,
     })
     .select("id")
@@ -205,6 +216,7 @@ export async function runChatMessage(input: {
     content,
     provider: chat.provider,
     model: chat.model ?? null,
+    skill_id: chat.skillId ?? null,
   });
 
   // Build the full thread (context belongs to ATELIER, not the provider).
@@ -213,12 +225,22 @@ export async function runChatMessage(input: {
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-  const result = await gateway.run({
+  // Resolve workspace/project names for the session context.
+  const [ws, project] = await Promise.all([
+    getWorkspace(chat.workspaceId),
+    chat.projectId ? getProject(chat.projectId) : Promise.resolve(undefined),
+  ]);
+
+  // ATELIER calls only the runtime — never a provider directly.
+  const result = await runtime.run({
     provider: providerId,
-    messages,
     model: chat.model || undefined,
     temperature: chat.temperature,
-    reasoning: chat.reasoning ?? null,
+    modeId: chat.mode,
+    skillId: chat.skillId,
+    workspaceName: ws?.name,
+    projectName: project?.name,
+    messages,
   });
 
   if (!result.ok) {
@@ -233,6 +255,7 @@ export async function runChatMessage(input: {
     content: result.text ?? "",
     provider: chat.provider,
     model: result.model,
+    skill_id: result.skillId,
     tokens: result.tokens ?? null,
     latency_ms: result.latencyMs,
   });
