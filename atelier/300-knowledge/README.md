@@ -83,8 +83,12 @@ Subpastas por origem:
 
 Sempre que houver conflito entre um princípio genérico e um **Princípio de Inês** (`ines/`), o Princípio de Inês **prevalece**.
 
+### Documento fundador
+
+- **PRINCIPLES-0000 — A Filosofia dos Princípios** (`020-principles/PRINCIPLES-0000-filosofia-dos-principios.md`) — define o que é um Princípio. Todo o conhecimento desta camada evolui a partir desta definição.
+
 ---
 
 ## Estado
 
-Estrutura criada e pronta a receber conhecimento real. Ainda sem documentos — nada de exemplos, amostras ou marcadores de posição. O primeiro documento de conhecimento real será integrado num passo seguinte.
+Estrutura criada e a receber conhecimento real. O primeiro documento — `PRINCIPLES-0000 — A Filosofia dos Princípios` — define a natureza dos Princípios. Os princípios concretos serão acrescentados às subpastas de `020-principles/` por origem.
