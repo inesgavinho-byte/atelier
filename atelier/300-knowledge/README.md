@@ -91,6 +91,7 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 
 - **PRINCIPLE-0001 — O software deve adaptar-se ao trabalho**
 - **PRINCIPLE-0002 — Primeiro executar. Melhorar depois da utilização real.**
+- **PRINCIPLE-0003 — O conhecimento vive nas relações, não nos documentos.**
 
 ---
 
