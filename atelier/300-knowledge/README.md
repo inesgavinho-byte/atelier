@@ -94,6 +94,8 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 - **PRINCIPLE-0003 — O conhecimento vive nas relações, não nos documentos.**
 - **PRINCIPLE-0004 — O contexto pertence ao ATELIER, não à ferramenta.**
 - **PRINCIPLE-0005 — O verdadeiro ativo é a biblioteca de pensamento.**
+- **PRINCIPLE-0006 — Decidir com base em evidência, não em opinião.**
+- **PRINCIPLE-0007 — O conhecimento só tem valor quando altera uma decisão.**
 
 ---
 
