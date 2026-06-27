@@ -44,6 +44,7 @@ export default async function MainLayout({
 
   const footerNav: NavLink[] = [
     { label: "Pesquisar", action: "search" },
+    { label: "Ecossistema", href: "/ecosystem" },
     { label: "Configurações", href: "/admin/system" },
   ];
 
