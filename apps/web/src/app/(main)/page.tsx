@@ -1,231 +1,280 @@
 import Link from "next/link";
-import DecisionItem from "@/components/mission/DecisionItem";
-import {
-  Meter,
-  ObjectiveDot,
-  SectionHead,
-  ago,
-} from "@/components/mission/bits";
+import { ago } from "@/components/mission/bits";
 import {
   getActivity,
-  getAgents,
   getInitiatives,
   getNextAction,
-  getObjectivesAtRisk,
   getPendingDecisions,
+  getRecentCaptures,
   getTodaySummary,
 } from "@/lib/mission";
 import { owner, todayLabel } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
 
-export default async function MissionControlPage() {
-  const [summary, decisions, agents, atRisk, initiatives, activityAll] =
+/** Timing label derived from a decision's priority. */
+const TIMING: Record<string, string> = {
+  alta: "Hoje",
+  média: "Esta semana",
+  baixa: "Quando possível",
+};
+
+/**
+ * Atelier Desk — the working surface at `/`.
+ *
+ * Answers one question: "where do I continue working?". Work-first, not
+ * metric-first (metrics live in Mission Control). Every section degrades to a
+ * calm empty state when its data source is not yet available.
+ */
+export default async function AtelierDeskPage() {
+  const [initiatives, pending, activityAll, captures, summary] =
     await Promise.all([
-      getTodaySummary(),
-      getPendingDecisions(),
-      getAgents(),
-      getObjectivesAtRisk(),
       getInitiatives(),
+      getPendingDecisions(),
       getActivity(),
+      getRecentCaptures(50),
+      getTodaySummary(),
     ]);
   const next = getNextAction();
-  const running = agents.filter((a) => a.state === "em execução");
-  const activity = activityAll.slice(0, 6);
-  const iniById = new Map(initiatives.map((i) => [i.id, i]));
-  const agentById = new Map(agents.map((a) => [a.id, a]));
 
-  const stats: { v: string | number; label: string; href?: string }[] = [
-    { v: summary.decisions, label: "decisões pendentes", href: "/decisions" },
-    { v: summary.agentsActive, label: "agentes ativos", href: "/agents" },
-    { v: summary.initiatives, label: "iniciativas", href: "/initiatives" },
-    {
-      v: summary.publications,
-      label: "publicação pronta",
-      href: `/decisions/${next.decisionId}`,
-    },
-    { v: summary.sync, label: "sincronização" },
+  // The lead piece of work to resume: the most-advanced unfinished initiative.
+  const ranked = [...initiatives].sort((a, b) => b.progress - a.progress);
+  const lead = ranked.find((i) => i.progress < 100) ?? ranked[0];
+
+  const nextSteps = pending.slice(0, 5);
+  const activity = activityAll.slice(0, 5);
+
+  // Inbox counts grouped from the captured items by kind.
+  const countKind = (...kinds: string[]) =>
+    captures.filter((c) => kinds.includes(c.kind)).length;
+  const inbox = [
+    { label: "Capturas", value: captures.length },
+    { label: "Emails", value: countKind("email") },
+    { label: "Ideias", value: countKind("nota", "texto") },
+    { label: "Documentos", value: countKind("pdf", "imagem", "url") },
+    { label: "Áudios", value: countKind("áudio") },
   ];
+
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
 
   return (
     <div>
-      {/* 1 — Hoje */}
-      <section className="mb-12">
-        <div className="eyebrow mb-3">{todayLabel}</div>
-        <h1 className="font-serif text-4xl md:text-5xl">Bom dia, {owner}.</h1>
-        <dl className="mt-8 grid grid-cols-2 border-l border-t border-line sm:grid-cols-3 lg:grid-cols-5">
-          {stats.map((s) =>
-            s.href ? (
-              <Link
-                key={s.label}
-                href={s.href}
-                className="group border-b border-r border-line bg-cream px-5 py-5 transition-colors hover:bg-surface"
-              >
-                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
-                <dt className="meta mt-1 group-hover:text-charcoal">
-                  {s.label}
-                </dt>
-              </Link>
-            ) : (
-              <div
-                key={s.label}
-                className="border-b border-r border-line bg-cream px-5 py-5"
-              >
-                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
-                <dt className="meta mt-1">{s.label}</dt>
-              </div>
-            )
-          )}
-        </dl>
-      </section>
+      {/* 1 — Greeting */}
+      <header>
+        <p className="atelier-date">{todayLabel}</p>
+        <h1 className="atelier-title">Bom dia, {owner}.</h1>
+        <p className="atelier-subtitle">Onde queres continuar a trabalhar?</p>
+      </header>
 
-      {/* Próxima ação — surfaced high: it orients the whole day */}
-      <section className="mb-16 border-l-2 border-charcoal pl-5">
-        <div className="eyebrow mb-2">Próxima ação</div>
-        <p className="max-w-2xl font-serif text-2xl leading-snug text-charcoal">
-          {next.label}
-        </p>
-        <p className="meta mt-2 max-w-2xl">{next.rationale}</p>
-        <Link href={`/decisions/${next.decisionId}`} className="action mt-5">
-          Continuar
-        </Link>
-      </section>
-
-      {/* Decisões (primary) with a risk / running rail */}
-      <div className="grid gap-x-12 gap-y-16 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SectionHead
-            aside={
-              <Link href="/decisions" className="hover:text-charcoal">
-                Todas →
-              </Link>
-            }
-          >
-            Requer decisão
-          </SectionHead>
-          {decisions.length === 0 ? (
-            <p className="meta italic">Nada requer julgamento agora.</p>
-          ) : (
-            <div>
-              {decisions.map((d) => {
-                const ini = iniById.get(d.initiativeId);
-                const agent = agentById.get(d.agentId);
-                return (
-                  <DecisionItem
-                    key={d.id}
-                    decision={d}
-                    initiativeName={ini?.name ?? "—"}
-                    initiativeSlug={ini?.slug}
-                    agentRole={agent?.role ?? "—"}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <aside className="lg:col-span-1">
-          {/* Objetivos em risco */}
-          <div id="risco" className="mb-12 scroll-mt-24">
-            <SectionHead>Objetivos em risco</SectionHead>
-            <ul className="space-y-5">
-              {atRisk.map((o) => {
-                const ini = iniById.get(o.initiativeId);
-                return (
-                  <li key={o.id}>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="inline-flex items-center gap-2 text-[14px] text-charcoal">
-                        <ObjectiveDot status={o.status} />
-                        {o.title}
-                      </span>
-                      <span className="meta shrink-0">{ini?.name}</span>
+      <div className="atelier-desk-grid">
+        {/* Left column */}
+        <div className="atelier-left-stack">
+          {/* 2 — Continue working */}
+          <section className="atelier-card">
+            <div className="atelier-card-inner">
+              <p className="atelier-section-label">Continuar a trabalhar</p>
+              {lead ? (
+                <div className="continue-card">
+                  <div className="issue-cover">
+                    <span className="issue-number">{lead.name}</span>
+                  </div>
+                  <div>
+                    <p className="atelier-card-meta">{lead.name}</p>
+                    <h2 className="atelier-card-title mt-2">{lead.focus}</h2>
+                    <p className="atelier-list-subtitle">{lead.intent}</p>
+                    <div
+                      className="progress-line"
+                      style={
+                        { ["--progress" as string]: `${lead.progress}%` }
+                      }
+                    >
+                      <span />
                     </div>
-                    {o.risk ? <p className="meta mt-1 pl-3.5">{o.risk}</p> : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                    <p className="atelier-list-subtitle">{lead.progress}%</p>
+                  </div>
+                  <div className="continue-actions">
+                    <Link
+                      href={`/initiatives/${lead.slug}`}
+                      className="atelier-button primary"
+                    >
+                      Continuar a trabalhar
+                    </Link>
+                    <Link
+                      href={`/initiatives/${lead.slug}`}
+                      className="atelier-button"
+                    >
+                      Abrir projeto
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="atelier-empty">
+                    Ainda não há trabalho activo. Começa por capturar uma ideia
+                    ou abrir um projeto.
+                  </p>
+                  <div className="continue-actions mt-5">
+                    <Link href="/initiatives" className="atelier-button">
+                      Ver projetos
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
-          {/* Em execução */}
-          <div>
-            <SectionHead
-              aside={
-                <Link href="/agents" className="hover:text-charcoal">
-                  Equipa →
+          {/* 3 — Today */}
+          <section className="atelier-card">
+            <div className="atelier-card-inner">
+              <p className="atelier-section-label">Hoje</p>
+              <div className="today-grid">
+                <Link href="/decisions" className="today-item">
+                  <div className="today-number">{summary.decisions}</div>
+                  <div className="today-label">Decisões</div>
+                  <div className="today-detail">pendentes</div>
                 </Link>
-              }
-            >
-              Em execução
-            </SectionHead>
-            <ul className="space-y-5">
-              {running.map((a) => (
-                <li key={a.id}>
-                  <Link
-                    href={`/agents/${a.id}`}
-                    className="text-[14px] text-charcoal transition-colors hover:text-olive"
-                  >
-                    {a.role}
-                  </Link>
-                  <p className="meta mb-2 mt-0.5 line-clamp-1">{a.currentTask}</p>
-                  <Meter value={a.progress} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-      </div>
+                <Link href="/agenda" className="today-item">
+                  <div className="today-number">—</div>
+                  <div className="today-label">Reunião</div>
+                  <div className="today-detail">sem agenda</div>
+                </Link>
+                <div className="today-item">
+                  <div className="today-number">{captures.length}</div>
+                  <div className="today-label">Capturas</div>
+                  <div className="today-detail">por organizar</div>
+                </div>
+                <Link href="/decisions" className="today-item">
+                  <div className="today-number">{summary.publications}</div>
+                  <div className="today-label">Publicação</div>
+                  <div className="today-detail">por aprovar</div>
+                </Link>
+              </div>
+            </div>
+          </section>
 
-      {/* Iniciativas ativas */}
-      <section className="mt-20">
-        <SectionHead
-          aside={
-            <Link href="/initiatives" className="hover:text-charcoal">
-              Todas →
-            </Link>
-          }
-        >
-          Iniciativas ativas
-        </SectionHead>
-        <div className="grid grid-cols-1 border-l border-t border-line sm:grid-cols-2 lg:grid-cols-4">
-          {initiatives.map((i) => (
-            <Link
-              key={i.id}
-              href={`/initiatives/${i.slug}`}
-              className="group border-b border-r border-line bg-cream p-6 transition-colors hover:bg-surface"
-            >
-              <div className="font-serif text-2xl tracking-wide">{i.name}</div>
-              <p className="meta mb-5 mt-2 line-clamp-2">{i.focus}</p>
-              <Meter value={i.progress} />
-              <p className="meta mt-1">{i.progress}%</p>
-            </Link>
-          ))}
+          {/* 4 — Active work */}
+          <section className="atelier-card">
+            <div className="atelier-card-inner">
+              <p className="atelier-section-label">Trabalho activo</p>
+              {initiatives.length === 0 ? (
+                <p className="atelier-empty">
+                  Ainda não há projetos activos.
+                </p>
+              ) : (
+                <div className="work-grid">
+                  {initiatives.map((i) => (
+                    <Link
+                      key={i.id}
+                      href={`/initiatives/${i.slug}`}
+                      className="work-card"
+                    >
+                      <h3>{i.name}</h3>
+                      <div className="work-status">
+                        {i.progress < 100 ? "Em curso" : "Concluído"} ·{" "}
+                        {i.progress}%
+                      </div>
+                      <div className="work-focus">{i.focus}</div>
+                      <p className="work-description">{i.intent}</p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 5 — Next steps */}
+          <section className="atelier-card">
+            <div className="atelier-card-inner">
+              <p className="atelier-section-label">Próximos passos</p>
+              {nextSteps.length === 0 ? (
+                <p className="atelier-empty">Nada requer decisão agora.</p>
+              ) : (
+                <div className="atelier-list">
+                  {nextSteps.map((d) => {
+                    const ini = iniById.get(d.initiativeId);
+                    return (
+                      <Link
+                        key={d.id}
+                        href={`/decisions/${d.id}`}
+                        className="atelier-list-row"
+                      >
+                        <div>
+                          <div className="atelier-list-title">{d.title}</div>
+                          <div className="atelier-list-subtitle">
+                            {ini?.name ?? "—"}
+                          </div>
+                        </div>
+                        <div className="atelier-list-timing">
+                          {TIMING[d.priority] ?? d.priority}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
         </div>
-      </section>
 
-      {/* Atividade */}
-      <section className="mt-20">
-        <SectionHead
-          aside={
-            <Link href="/activity" className="hover:text-charcoal">
-              Tudo →
-            </Link>
-          }
-        >
-          Atividade
-        </SectionHead>
-        <ul className="divide-y divide-line border-t border-line">
-          {activity.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-baseline justify-between gap-6 py-3"
-            >
-              <span className="text-[14px]">{e.title}</span>
-              <span className="meta shrink-0">{ago(e.at)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+        {/* Right rail */}
+        <div className="atelier-right-stack">
+          {/* Inbox */}
+          <section className="atelier-card rail-card">
+            <div className="atelier-card-inner">
+              <div className="rail-header">
+                <p className="atelier-section-label" style={{ marginBottom: 0 }}>
+                  Inbox
+                </p>
+              </div>
+              <div>
+                {inbox.map((row) => (
+                  <div key={row.label} className="inbox-row">
+                    <span>{row.label}</span>
+                    <span className="count">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Recent activity */}
+          <section className="atelier-card rail-card">
+            <div className="atelier-card-inner">
+              <div className="rail-header">
+                <p className="atelier-section-label" style={{ marginBottom: 0 }}>
+                  Atividade recente
+                </p>
+                <Link href="/activity" className="rail-link">
+                  Ver tudo
+                </Link>
+              </div>
+              {activity.length === 0 ? (
+                <p className="atelier-empty">Sem atividade recente.</p>
+              ) : (
+                <div>
+                  {activity.map((e) => (
+                    <div key={e.id} className="activity-row">
+                      <span className="activity-icon">
+                        {e.kind.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="atelier-list-title">{e.title}</span>
+                      <span className="activity-meta">{ago(e.at)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Quote */}
+          <section className="atelier-card">
+            <div className="quote-card">
+              Clareza não é simplificar. É tornar o essencial inevitável.
+              <div className="quote-author">— Inês Gavinho</div>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
