@@ -22,6 +22,8 @@ Fontes (Sources)
 ↓
 Princípios (Principles)
 ↓
+Modelos Mentais (Mental Models)
+↓
 Skills
 ↓
 Playbooks
@@ -44,12 +46,25 @@ Resultados (Outputs)
 | `000-index/` | Índice-mestre da biblioteca (`INDEX-SOURCES.md`, `INDEX-PRINCIPLES.md`, `INDEX-SKILLS.md`, `INDEX-PLAYBOOKS.md`). Gerados automaticamente mais tarde. |
 | `010-sources/` | Conhecimento original: livros, artigos, papers, vídeos, podcasts, entrevistas, documentos internos. **Nunca reescrever nem resumir aqui** — só material original. |
 | `020-principles/` | A pasta mais importante. Cada princípio é **atómico**: uma ideia, um ficheiro. |
-| `030-skills/` | Sistemas de raciocínio operacional (Estratégia, Editorial, Arquitetura, Investigação, Negociação, Liderança, Comunicação, Escrita, Investimento). Cada Skill combina vários Princípios. |
-| `040-playbooks/` | Procedimentos de execução (Escrever um Paper, Lançar um Issue, Rever Arquitetura, Preparar reunião de investidores, Recrutar, Publicar no LinkedIn, Rever Pull Request, Responder a cliente). |
-| `050-frameworks/` | Frameworks de pensamento (SWOT, OODA, Cinco Forças de Porter, JTBD, Cynefin, Modelos Mentais, Pensamento de segunda ordem). |
-| `060-prompts/` | Prompts reutilizáveis. **Apenas modelos** — sem conversas, sem resultados. |
-| `070-references/` | Bibliografias, autores, citações, referências cruzadas, investigação, ligações externas. |
-| `080-taxonomy/` | A ontologia da Knowledge Layer: tipos de conhecimento, tags, relações, regras de classificação, convenções de nomenclatura, definições de metadados. |
+| `030-mental-models/` | **Modelos Mentais** — padrões de raciocínio reutilizáveis, transversais a várias Skills (ver definição abaixo). |
+| `040-skills/` | Sistemas de raciocínio operacional (Estratégia, Editorial, Arquitetura, Investigação, Negociação, Liderança, Comunicação, Escrita, Investimento). Cada Skill combina vários Princípios e Modelos Mentais. |
+| `050-playbooks/` | Procedimentos de execução (Escrever um Paper, Lançar um Issue, Rever Arquitetura, Preparar reunião de investidores, Recrutar, Publicar no LinkedIn, Rever Pull Request, Responder a cliente). |
+| `060-frameworks/` | Frameworks de pensamento (SWOT, OODA, Cinco Forças de Porter, JTBD, Cynefin). |
+| `070-prompts/` | Prompts reutilizáveis. **Apenas modelos** — sem conversas, sem resultados. |
+| `080-references/` | Bibliografias, autores, citações, referências cruzadas, investigação, ligações externas. |
+| `090-taxonomy/` | A ontologia da Knowledge Layer: tipos de conhecimento, tags, relações, regras de classificação, convenções de nomenclatura, definições de metadados. |
+
+---
+
+## Modelos Mentais (`030-mental-models/`)
+
+**Modelos Mentais são padrões de raciocínio reutilizáveis, usados transversalmente em várias Skills.**
+
+Não são Princípios. Não são Skills. Não são Frameworks. São ferramentas conceptuais que estruturam a forma de pensar um problema e podem ser aplicadas em contextos muito diferentes.
+
+Exemplos: Centro de Gravidade, Pensamento de Segunda Ordem, Inversão, Trade-offs, Alavancagem, Incentivos, Sistemas, Círculo de Competência, Custo de Oportunidade, Assimetria.
+
+No fluxo do conhecimento situam-se entre os **Princípios** e as **Skills**: um Princípio é uma verdade operacional; um Modelo Mental é uma lente de raciocínio; uma Skill combina ambos para produzir trabalho.
 
 ---
 
