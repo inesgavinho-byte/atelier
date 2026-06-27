@@ -377,6 +377,26 @@
   padding-top: 18px;
 }
 
+/* Thin separator between primary nav groups. */
+.atelier-nav-sep {
+  height: 1px;
+  background: var(--atelier-line);
+  margin: 12px 6px;
+}
+
+/* Collapsible sub-items (e.g. Sistema). */
+.atelier-nav-sub {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 2px 12px;
+  padding-left: 10px;
+  border-left: 1px solid var(--atelier-line);
+}
+.atelier-nav-sub .atelier-nav-item {
+  min-height: 36px;
+  font-size: 14px;
+}
+
 .atelier-user {
   display: flex;
   align-items: center;

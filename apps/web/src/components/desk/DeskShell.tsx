@@ -14,29 +14,32 @@ export interface NavLink {
   action?: "search" | "capture";
   /** Match the route exactly (no descendant highlighting). */
   exact?: boolean;
+  /** Sub-items rendered as a collapsible group (e.g. Sistema). */
+  children?: NavLink[];
 }
 
 /**
  * Atelier Desk shell.
  *
  * A persistent left navigation plus a quiet topbar (global search + universal
- * capture). The shell wraps the whole working area; the two overlays keep the
- * user in place. Applied to every page in the (main) group so navigation is
- * consistent across the desk and the supervision views.
+ * capture). The primary nav is grouped into a few essential entry points
+ * separated by thin rules; secondary/technical surfaces live in the footer
+ * (e.g. Sistema → Mission Control, Admin). The overlays keep the user in place.
  */
 export default function DeskShell({
   corpus,
-  primaryNav,
+  navGroups,
   footerNav,
   children,
 }: {
   corpus: SearchResult[];
-  primaryNav: NavLink[];
+  navGroups: NavLink[][];
   footerNav: NavLink[];
   children: React.ReactNode;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [openSub, setOpenSub] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -56,7 +59,8 @@ export default function DeskShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [onKey]);
 
-  const isActive = (item: NavLink) => {
+  const isActive = (item: NavLink): boolean => {
+    if (item.children) return item.children.some(isActive);
     if (!item.href) return false;
     if (item.href === "/") return pathname === "/";
     if (item.exact) return pathname === item.href;
@@ -64,6 +68,31 @@ export default function DeskShell({
   };
 
   const renderItem = (item: NavLink) => {
+    if (item.children) {
+      const expanded = openSub === item.label || isActive(item);
+      return (
+        <div key={item.label}>
+          <button
+            type="button"
+            className={`atelier-nav-item${isActive(item) ? " active" : ""}`}
+            onClick={() =>
+              setOpenSub((cur) => (cur === item.label ? null : item.label))
+            }
+            aria-expanded={expanded}
+          >
+            {item.label}
+            <span aria-hidden className="ml-auto text-[11px]">
+              {expanded ? "▾" : "▸"}
+            </span>
+          </button>
+          {expanded ? (
+            <div className="atelier-nav-sub">
+              {item.children.map(renderItem)}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
     if (item.action) {
       return (
         <button
@@ -98,7 +127,14 @@ export default function DeskShell({
           <Link href="/" className="atelier-logo">
             Atelier
           </Link>
-          <nav className="atelier-nav">{primaryNav.map(renderItem)}</nav>
+          <nav className="atelier-nav">
+            {navGroups.map((group, i) => (
+              <div key={i}>
+                {i > 0 ? <div className="atelier-nav-sep" /> : null}
+                {group.map(renderItem)}
+              </div>
+            ))}
+          </nav>
         </div>
 
         <div className="atelier-sidebar-foot">
