@@ -1,215 +1,195 @@
 import Link from "next/link";
 import { ago } from "@/components/mission/bits";
+import { QuickActions, QuickCaptureList } from "@/components/app/HomeIslands";
 import {
   getActivity,
+  getArtifacts,
   getInitiatives,
-  getNextAction,
-  getPendingDecisions,
-  getRecentCaptures,
-  getTodaySummary,
 } from "@/lib/mission";
-import { countUnreadReadings } from "@/lib/readings";
-import { owner, todayLabel } from "@/data/mission";
+import { getReadings } from "@/lib/readings";
+import { owner } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
 
-/** Timing label derived from a decision's priority. */
-const TIMING: Record<string, string> = {
-  alta: "Hoje",
-  média: "Esta semana",
-  baixa: "Quando possível",
-};
-
 /**
- * Atelier Desk — the working surface at `/`.
- *
- * Answers one question: "where do I continue working?". Work-first, not
- * metric-first (metrics live in Mission Control). Every section degrades to a
- * calm empty state when its data source is not yet available.
+ * Atelier Home — a daily working launcher. Answers "o que queres fazer hoje?":
+ * quick actions, a workspace launcher, what to continue, recent activity and
+ * readings, with a calm right rail. All sections degrade to empty states.
  */
-export default async function AtelierDeskPage() {
-  const [initiatives, pending, activityAll, captures, summary, unreadReadings] =
-    await Promise.all([
-      getInitiatives(),
-      getPendingDecisions(),
-      getActivity(),
-      getRecentCaptures(50),
-      getTodaySummary(),
-      countUnreadReadings(),
-    ]);
-  const next = getNextAction();
-
-  // The lead piece of work to resume: the most-advanced unfinished initiative.
-  const ranked = [...initiatives].sort((a, b) => b.progress - a.progress);
-  const lead = ranked.find((i) => i.progress < 100) ?? ranked[0];
-
-  const nextSteps = pending.slice(0, 5);
-  const activity = activityAll.slice(0, 5);
-
-  // Inbox counts grouped from the captured items by kind.
-  const countKind = (...kinds: string[]) =>
-    captures.filter((c) => kinds.includes(c.kind)).length;
-  const inbox = [
-    { label: "Leituras", value: unreadReadings, href: "/readings" },
-    { label: "Capturas", value: captures.length },
-    { label: "Emails", value: countKind("email") },
-    { label: "Ideias", value: countKind("nota", "texto") },
-    { label: "Documentos", value: countKind("pdf", "imagem", "url") },
-    { label: "Áudios", value: countKind("áudio") },
-  ];
+export default async function HomePage() {
+  const [initiatives, artifacts, activityAll, readings] = await Promise.all([
+    getInitiatives(),
+    getArtifacts(),
+    getActivity(),
+    getReadings(),
+  ]);
 
   const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const continueItems = artifacts.slice(0, 5);
+  const activity = activityAll.slice(0, 5);
+  const recentReadings = readings.slice(0, 5);
+
+  const workspaceHref = (name: string) => {
+    const hit = initiatives.find(
+      (i) => i.name.toLowerCase() === name.toLowerCase()
+    );
+    return hit ? `/initiatives/${hit.slug}` : "/workspaces";
+  };
+  const launchers = ["PAPERS", "DECIMA", "GAVINHO", "NUDO"];
 
   return (
     <div>
-      {/* 1 — Greeting */}
       <header>
-        <p className="atelier-date">{todayLabel}</p>
-        <h1 className="atelier-title">Bom dia, {owner}.</h1>
-        <p className="atelier-subtitle">Onde queres continuar a trabalhar?</p>
+        <h1 className="home-title">Bom dia, {owner}.</h1>
+        <p className="home-subtitle">O que queres fazer hoje?</p>
       </header>
 
-      <div className="atelier-desk-grid">
-        {/* Left column */}
-        <div className="atelier-left-stack">
-          {/* 2 — Continue working */}
-          <section className="atelier-card">
-            <div className="atelier-card-inner">
-              <p className="atelier-section-label">Continuar a trabalhar</p>
-              {lead ? (
-                <div className="continue-card">
-                  <div className="issue-cover">
-                    <span className="issue-number">{lead.name}</span>
-                  </div>
-                  <div>
-                    <p className="atelier-card-meta">{lead.name}</p>
-                    <h2 className="atelier-card-title mt-2">{lead.focus}</h2>
-                    <p className="atelier-list-subtitle">{lead.intent}</p>
-                    <div
-                      className="progress-line"
-                      style={
-                        { ["--progress" as string]: `${lead.progress}%` }
-                      }
-                    >
-                      <span />
-                    </div>
-                    <p className="atelier-list-subtitle">{lead.progress}%</p>
-                  </div>
-                  <div className="continue-actions">
-                    <Link
-                      href={`/initiatives/${lead.slug}`}
-                      className="atelier-button primary"
-                    >
-                      Continuar a trabalhar
-                    </Link>
-                    <Link
-                      href={`/initiatives/${lead.slug}`}
-                      className="atelier-button"
-                    >
-                      Abrir projeto
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <p className="atelier-empty">
-                    Ainda não há trabalho activo. Começa por capturar uma ideia
-                    ou abrir um projeto.
-                  </p>
-                  <div className="continue-actions mt-5">
-                    <Link href="/initiatives" className="atelier-button">
-                      Ver projetos
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* 3 — Today */}
-          <section className="atelier-card">
-            <div className="atelier-card-inner">
-              <p className="atelier-section-label">Hoje</p>
-              <div className="today-grid">
-                <Link href="/decisions" className="today-item">
-                  <div className="today-number">{summary.decisions}</div>
-                  <div className="today-label">Decisões</div>
-                  <div className="today-detail">pendentes</div>
-                </Link>
-                <Link href="/agenda" className="today-item">
-                  <div className="today-number">—</div>
-                  <div className="today-label">Reunião</div>
-                  <div className="today-detail">sem agenda</div>
-                </Link>
-                <div className="today-item">
-                  <div className="today-number">{captures.length}</div>
-                  <div className="today-label">Capturas</div>
-                  <div className="today-detail">por organizar</div>
-                </div>
-                <Link href="/decisions" className="today-item">
-                  <div className="today-number">{summary.publications}</div>
-                  <div className="today-label">Publicação</div>
-                  <div className="today-detail">por aprovar</div>
+      <div className="home-grid">
+        {/* Main column */}
+        <div className="content-stack">
+          {/* Quick actions + workspace launcher */}
+          <div className="quick-row">
+            <QuickActions />
+            <div className="card workspace-launcher">
+              <p className="card-label" style={{ marginBottom: 0 }}>
+                Abrir workspace
+              </p>
+              <div className="workspace-buttons">
+                {launchers.map((name) => (
+                  <Link
+                    key={name}
+                    href={workspaceHref(name)}
+                    className="workspace-button"
+                  >
+                    <span className="workspace-initial">{name.charAt(0)}</span>
+                    <span>{name}</span>
+                  </Link>
+                ))}
+                <Link href="/workspaces" className="workspace-button">
+                  <span className="workspace-initial">+</span>
+                  <span>Novo</span>
                 </Link>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* 4 — Active work */}
-          <section className="atelier-card">
-            <div className="atelier-card-inner">
-              <p className="atelier-section-label">Trabalho activo</p>
-              {initiatives.length === 0 ? (
+          {/* Continue */}
+          <section className="card">
+            <div className="card-inner">
+              <p className="card-label">Continuar a partir de onde ficaste</p>
+              {continueItems.length === 0 ? (
                 <p className="atelier-empty">
-                  Ainda não há projetos activos.
+                  Ainda não há trabalho recente. Começa por capturar ou abrir um
+                  workspace.
                 </p>
               ) : (
-                <div className="work-grid">
-                  {initiatives.map((i) => (
-                    <Link
-                      key={i.id}
-                      href={`/initiatives/${i.slug}`}
-                      className="work-card"
-                    >
-                      <h3>{i.name}</h3>
-                      <div className="work-status">
-                        {i.progress < 100 ? "Em curso" : "Concluído"} ·{" "}
-                        {i.progress}%
-                      </div>
-                      <div className="work-focus">{i.focus}</div>
-                      <p className="work-description">{i.intent}</p>
-                    </Link>
-                  ))}
+                <div className="recent-list">
+                  {continueItems.map((a) => {
+                    const ini = iniById.get(a.initiativeId);
+                    return (
+                      <Link
+                        key={a.id}
+                        href={ini ? `/initiatives/${ini.slug}` : "/workspaces"}
+                        className="recent-row"
+                      >
+                        <span className="recent-thumb">
+                          {a.title.charAt(0).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className="recent-title">{a.title}</span>
+                          <span className="recent-meta">
+                            {ini?.name ?? "—"} · {a.kind}
+                          </span>
+                        </span>
+                        <span className="recent-meta">{ago(a.updatedAt)}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </section>
 
-          {/* 5 — Next steps */}
-          <section className="atelier-card">
-            <div className="atelier-card-inner">
-              <p className="atelier-section-label">Próximos passos</p>
-              {nextSteps.length === 0 ? (
-                <p className="atelier-empty">Nada requer decisão agora.</p>
+          {/* Activity + (placeholder) */}
+          <div className="two-col">
+            <section className="card">
+              <div className="card-inner">
+                <p className="card-label">Atividade recente</p>
+                {activity.length === 0 ? (
+                  <p className="atelier-empty">Sem atividade recente.</p>
+                ) : (
+                  <div>
+                    {activity.map((e) => (
+                      <div key={e.id} className="activity-row">
+                        <span className="activity-icon">
+                          {e.kind.charAt(0).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className="activity-title">{e.title}</span>
+                        </span>
+                        <span className="activity-meta">{ago(e.at)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="card">
+              <div className="card-inner">
+                <p className="card-label">Decisões e capturas</p>
+                <p className="atelier-empty">
+                  Usa Capturar para guardar ideias e Decisões para o que requer
+                  julgamento.
+                </p>
+              </div>
+            </section>
+          </div>
+
+          {/* Recent readings */}
+          <section className="card">
+            <div className="card-inner">
+              <div className="rail-header">
+                <p className="card-label" style={{ marginBottom: 0 }}>
+                  Leituras recentes
+                </p>
+                <Link href="/readings" className="rail-link">
+                  Ver tudo
+                </Link>
+              </div>
+              {recentReadings.length === 0 ? (
+                <p className="atelier-empty">
+                  Ainda não guardaste leituras. Cola um link em Leituras.
+                </p>
               ) : (
-                <div className="atelier-list">
-                  {nextSteps.map((d) => {
-                    const ini = iniById.get(d.initiativeId);
-                    return (
-                      <Link
-                        key={d.id}
-                        href={`/decisions/${d.id}`}
-                        className="atelier-list-row"
+                <div className="readings-row">
+                  {recentReadings.map((r) => {
+                    const card = (
+                      <>
+                        <div className="reading-source">
+                          <span>{r.tags[0] ?? "Leitura"}</span>
+                        </div>
+                        <div className="reading-title">
+                          {r.title || r.url || "Sem título"}
+                        </div>
+                        {r.note ? (
+                          <div className="reading-author">{r.note}</div>
+                        ) : null}
+                      </>
+                    );
+                    return r.url ? (
+                      <a
+                        key={r.id}
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="reading-card"
                       >
-                        <div>
-                          <div className="atelier-list-title">{d.title}</div>
-                          <div className="atelier-list-subtitle">
-                            {ini?.name ?? "—"}
-                          </div>
-                        </div>
-                        <div className="atelier-list-timing">
-                          {TIMING[d.priority] ?? d.priority}
-                        </div>
+                        {card}
+                      </a>
+                    ) : (
+                      <Link key={r.id} href="/readings" className="reading-card">
+                        {card}
                       </Link>
                     );
                   })}
@@ -220,68 +200,31 @@ export default async function AtelierDeskPage() {
         </div>
 
         {/* Right rail */}
-        <div className="atelier-right-stack">
-          {/* Inbox */}
-          <section className="atelier-card rail-card">
-            <div className="atelier-card-inner">
+        <div className="right-rail">
+          <section className="rail-card">
+            <div className="rail-inner">
               <div className="rail-header">
-                <p className="atelier-section-label" style={{ marginBottom: 0 }}>
-                  Inbox
-                </p>
+                <span className="rail-label">Agenda de Hoje</span>
               </div>
-              <div>
-                {inbox.map((row) =>
-                  row.href ? (
-                    <Link key={row.label} href={row.href} className="inbox-row">
-                      <span>{row.label}</span>
-                      <span className="count">{row.value}</span>
-                    </Link>
-                  ) : (
-                    <div key={row.label} className="inbox-row">
-                      <span>{row.label}</span>
-                      <span className="count">{row.value}</span>
-                    </div>
-                  )
-                )}
-              </div>
+              <p className="atelier-empty">
+                Sem eventos. Liga um calendário em Ecossistema.
+              </p>
             </div>
           </section>
 
-          {/* Recent activity */}
-          <section className="atelier-card rail-card">
-            <div className="atelier-card-inner">
+          <section className="rail-card">
+            <div className="rail-inner">
               <div className="rail-header">
-                <p className="atelier-section-label" style={{ marginBottom: 0 }}>
-                  Atividade recente
-                </p>
-                <Link href="/activity" className="rail-link">
-                  Ver tudo
-                </Link>
+                <span className="rail-label">Capturas rápidas</span>
               </div>
-              {activity.length === 0 ? (
-                <p className="atelier-empty">Sem atividade recente.</p>
-              ) : (
-                <div>
-                  {activity.map((e) => (
-                    <div key={e.id} className="activity-row">
-                      <span className="activity-icon">
-                        {e.kind.charAt(0).toUpperCase()}
-                      </span>
-                      <span className="atelier-list-title">{e.title}</span>
-                      <span className="activity-meta">{ago(e.at)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <QuickCaptureList />
             </div>
           </section>
 
-          {/* Quote */}
-          <section className="atelier-card">
-            <div className="quote-card">
-              Clareza não é simplificar. É tornar o essencial inevitável.
-              <div className="quote-author">— Inês Gavinho</div>
-            </div>
+          <section className="rail-card quote-card">
+            <span className="quote-mark">“</span>
+            <p className="quote-text">O tempo é o recurso mais valioso.</p>
+            <span className="quote-foot">Princípio Fundador n.º 9</span>
           </section>
         </div>
       </div>
