@@ -1,126 +1,231 @@
 import Link from "next/link";
-import ApprovalCard from "@/components/ApprovalCard";
-import { PageHeader, Section, StatusTag, CardLink } from "@/components/ui";
+import DecisionItem from "@/components/mission/DecisionItem";
+import {
+  Meter,
+  ObjectiveDot,
+  SectionHead,
+  ago,
+} from "@/components/mission/bits";
 import {
   getActivity,
-  getAgentById,
   getAgents,
-  getPendingApprovals,
-  getProjectById,
-  getProjects,
-} from "@/lib/data";
-import { todaysFocus } from "@/data/mock";
-import {
-  AGENT_STATUS_LABELS,
-  PROJECT_STATUS_LABELS,
-  formatTimestamp,
-} from "@/lib/format";
+  getInitiatives,
+  getNextAction,
+  getObjectivesAtRisk,
+  getPendingDecisions,
+  getTodaySummary,
+} from "@/lib/mission";
+import { owner, todayLabel } from "@/data/mission";
 
-export default function HomePage() {
-  const approvals = getPendingApprovals();
-  const projects = getProjects();
-  const agents = getAgents();
-  const recent = getActivity().slice(0, 5);
+export const dynamic = "force-dynamic";
+
+export default async function MissionControlPage() {
+  const [summary, decisions, agents, atRisk, initiatives, activityAll] =
+    await Promise.all([
+      getTodaySummary(),
+      getPendingDecisions(),
+      getAgents(),
+      getObjectivesAtRisk(),
+      getInitiatives(),
+      getActivity(),
+    ]);
+  const next = getNextAction();
+  const running = agents.filter((a) => a.state === "em execução");
+  const activity = activityAll.slice(0, 6);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const agentById = new Map(agents.map((a) => [a.id, a]));
+
+  const stats: { v: string | number; label: string; href?: string }[] = [
+    { v: summary.decisions, label: "decisões pendentes", href: "/decisions" },
+    { v: summary.agentsActive, label: "agentes ativos", href: "/agents" },
+    { v: summary.initiatives, label: "iniciativas", href: "/initiatives" },
+    {
+      v: summary.publications,
+      label: "publicação pronta",
+      href: `/decisions/${next.decisionId}`,
+    },
+    { v: summary.sync, label: "sincronização" },
+  ];
 
   return (
     <div>
-      <PageHeader title="ATELIER" lead="Where thought becomes work." />
+      {/* 1 — Hoje */}
+      <section className="mb-12">
+        <div className="eyebrow mb-3">{todayLabel}</div>
+        <h1 className="font-serif text-4xl md:text-5xl">Bom dia, {owner}.</h1>
+        <dl className="mt-8 grid grid-cols-2 border-l border-t border-line sm:grid-cols-3 lg:grid-cols-5">
+          {stats.map((s) =>
+            s.href ? (
+              <Link
+                key={s.label}
+                href={s.href}
+                className="group border-b border-r border-line bg-cream px-5 py-5 transition-colors hover:bg-surface"
+              >
+                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
+                <dt className="meta mt-1 group-hover:text-charcoal">
+                  {s.label}
+                </dt>
+              </Link>
+            ) : (
+              <div
+                key={s.label}
+                className="border-b border-r border-line bg-cream px-5 py-5"
+              >
+                <dd className="font-serif text-4xl text-charcoal">{s.v}</dd>
+                <dt className="meta mt-1">{s.label}</dt>
+              </div>
+            )
+          )}
+        </dl>
+      </section>
 
-      {/* Today's focus */}
-      <div className="mb-14 border-l-2 border-charcoal pl-5">
-        <div className="eyebrow mb-2">Today&rsquo;s focus</div>
+      {/* Próxima ação — surfaced high: it orients the whole day */}
+      <section className="mb-16 border-l-2 border-charcoal pl-5">
+        <div className="eyebrow mb-2">Próxima ação</div>
         <p className="max-w-2xl font-serif text-2xl leading-snug text-charcoal">
-          {todaysFocus}
+          {next.label}
         </p>
+        <p className="meta mt-2 max-w-2xl">{next.rationale}</p>
+        <Link href={`/decisions/${next.decisionId}`} className="action mt-5">
+          Continuar
+        </Link>
+      </section>
+
+      {/* Decisões (primary) with a risk / running rail */}
+      <div className="grid gap-x-12 gap-y-16 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <SectionHead
+            aside={
+              <Link href="/decisions" className="hover:text-charcoal">
+                Todas →
+              </Link>
+            }
+          >
+            Requer decisão
+          </SectionHead>
+          {decisions.length === 0 ? (
+            <p className="meta italic">Nada requer julgamento agora.</p>
+          ) : (
+            <div>
+              {decisions.map((d) => {
+                const ini = iniById.get(d.initiativeId);
+                const agent = agentById.get(d.agentId);
+                return (
+                  <DecisionItem
+                    key={d.id}
+                    decision={d}
+                    initiativeName={ini?.name ?? "—"}
+                    initiativeSlug={ini?.slug}
+                    agentRole={agent?.role ?? "—"}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <aside className="lg:col-span-1">
+          {/* Objetivos em risco */}
+          <div id="risco" className="mb-12 scroll-mt-24">
+            <SectionHead>Objetivos em risco</SectionHead>
+            <ul className="space-y-5">
+              {atRisk.map((o) => {
+                const ini = iniById.get(o.initiativeId);
+                return (
+                  <li key={o.id}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="inline-flex items-center gap-2 text-[14px] text-charcoal">
+                        <ObjectiveDot status={o.status} />
+                        {o.title}
+                      </span>
+                      <span className="meta shrink-0">{ini?.name}</span>
+                    </div>
+                    {o.risk ? <p className="meta mt-1 pl-3.5">{o.risk}</p> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Em execução */}
+          <div>
+            <SectionHead
+              aside={
+                <Link href="/agents" className="hover:text-charcoal">
+                  Equipa →
+                </Link>
+              }
+            >
+              Em execução
+            </SectionHead>
+            <ul className="space-y-5">
+              {running.map((a) => (
+                <li key={a.id}>
+                  <Link
+                    href={`/agents/${a.id}`}
+                    className="text-[14px] text-charcoal transition-colors hover:text-olive"
+                  >
+                    {a.role}
+                  </Link>
+                  <p className="meta mb-2 mt-0.5 line-clamp-1">{a.currentTask}</p>
+                  <Meter value={a.progress} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
       </div>
 
-      {/* Requires judgement */}
-      <Section
-        title="Requires your judgement"
-        aside={`${approvals.length} open`}
-      >
-        <div className="space-y-4">
-          {approvals.map((a) => {
-            const project = getProjectById(a.projectId);
-            const agent = getAgentById(a.requestedByAgentId);
-            return (
-              <ApprovalCard
-                key={a.id}
-                approval={a}
-                projectName={project?.name ?? "—"}
-                projectSlug={project?.slug}
-                agentRole={agent?.role ?? "—"}
-                variant="compact"
-              />
-            );
-          })}
-        </div>
-      </Section>
-
-      {/* Active projects */}
-      <Section title="Active projects" aside={<Link href="/projects" className="hover:text-charcoal">All projects →</Link>}>
-        <div className="grid grid-cols-1 border-l border-t border-line sm:grid-cols-2">
-          {projects.map((p) => (
+      {/* Iniciativas ativas */}
+      <section className="mt-20">
+        <SectionHead
+          aside={
+            <Link href="/initiatives" className="hover:text-charcoal">
+              Todas →
+            </Link>
+          }
+        >
+          Iniciativas ativas
+        </SectionHead>
+        <div className="grid grid-cols-1 border-l border-t border-line sm:grid-cols-2 lg:grid-cols-4">
+          {initiatives.map((i) => (
             <Link
-              key={p.id}
-              href={`/projects/${p.slug}`}
+              key={i.id}
+              href={`/initiatives/${i.slug}`}
               className="group border-b border-r border-line bg-cream p-6 transition-colors hover:bg-surface"
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="font-serif text-2xl tracking-wide">{p.name}</h3>
-                <StatusTag
-                  status={p.status}
-                  label={PROJECT_STATUS_LABELS[p.status]}
-                />
-              </div>
-              <p className="meta mt-2">{p.currentFocus}</p>
+              <div className="font-serif text-2xl tracking-wide">{i.name}</div>
+              <p className="meta mb-5 mt-2 line-clamp-2">{i.focus}</p>
+              <Meter value={i.progress} />
+              <p className="meta mt-1">{i.progress}%</p>
             </Link>
           ))}
         </div>
-      </Section>
+      </section>
 
-      {/* Team status */}
-      <Section title="Team status" aside={<Link href="/team" className="hover:text-charcoal">Full team →</Link>}>
-        <div className="grid grid-cols-1 border-l border-t border-line sm:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
-            <div key={agent.id} className="border-b border-r border-line bg-cream p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[14px] text-charcoal">{agent.role}</span>
-                <StatusTag
-                  status={agent.status}
-                  label={AGENT_STATUS_LABELS[agent.status]}
-                />
-              </div>
-              <p className="meta mt-1">{agent.provider}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* Recent activity */}
-      <Section title="Recent activity" aside={<Link href="/activity" className="hover:text-charcoal">All activity →</Link>}>
-        <ul className="divide-y divide-line">
-          {recent.map((item) => (
-            <li key={item.id} className="flex items-baseline justify-between gap-6 py-3">
-              <span className="text-[14px]">{item.title}</span>
-              <span className="meta shrink-0">{formatTimestamp(item.timestamp)}</span>
+      {/* Atividade */}
+      <section className="mt-20">
+        <SectionHead
+          aside={
+            <Link href="/activity" className="hover:text-charcoal">
+              Tudo →
+            </Link>
+          }
+        >
+          Atividade
+        </SectionHead>
+        <ul className="divide-y divide-line border-t border-line">
+          {activity.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-baseline justify-between gap-6 py-3"
+            >
+              <span className="text-[14px]">{e.title}</span>
+              <span className="meta shrink-0">{ago(e.at)}</span>
             </li>
           ))}
         </ul>
-      </Section>
-
-      {/* Next recommended action */}
-      <div className="rule mt-2 pt-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="eyebrow mb-1">Next recommended action</div>
-            <p className="font-serif text-xl">Review the homepage direction for PAPERS</p>
-          </div>
-          <Link href="/approvals" className="action">
-            Continue work
-          </Link>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

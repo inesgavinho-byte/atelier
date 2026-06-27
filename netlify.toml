@@ -1,0 +1,24 @@
+# ATELIER — Netlify deploy configuration
+#
+# The Next.js app lives in apps/web (npm workspaces monorepo). Netlify builds
+# from that directory; the @netlify/plugin-nextjs runtime handles the dynamic
+# (server-rendered) Mission Control pages.
+#
+# Required environment variables (set in the Netlify UI → Site settings →
+# Environment variables — NOT committed):
+#   NEXT_PUBLIC_SUPABASE_URL       = https://gfrfzsiqhiqggwxjptxh.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY  = <publishable/anon key for "Atelier">
+#
+# The client reads these (and falls back to SUPABASE_URL / SUPABASE_ANON_KEY).
+# See src/lib/supabase.ts.
+
+[build]
+  base = "apps/web"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
