@@ -96,6 +96,8 @@ Sempre que houver conflito entre um princípio genérico e um **Princípio de In
 - **PRINCIPLE-0005 — O verdadeiro ativo é a biblioteca de pensamento.**
 - **PRINCIPLE-0006 — Decidir com base em evidência, não em opinião.**
 - **PRINCIPLE-0007 — O conhecimento só tem valor quando altera uma decisão.**
+- **PRINCIPLE-0008 — Toda a decisão deve produzir aprendizagem.**
+- **PRINCIPLE-0009 — O tempo é o recurso mais valioso.**
 
 ---
 
