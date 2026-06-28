@@ -49,6 +49,7 @@ const toAgent = (r: any): Agent => ({
   office: r.office,
   provider: r.provider,
   state: r.state,
+  workspaceId: r.workspace_id ?? undefined,
   mission: r.mission,
   currentTask: r.current_task,
   priority: r.priority ?? "média",
