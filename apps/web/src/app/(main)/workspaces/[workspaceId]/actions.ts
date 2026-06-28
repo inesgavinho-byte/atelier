@@ -8,6 +8,7 @@ import { runtime } from "@/lib/ai-runtime/runtime";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import { getArtifactsForInitiative, getDecisions } from "@/lib/mission";
 import {
+  getCanonicalChat,
   getMessages,
   getWorkspace,
   getWorkspaceContext,
@@ -78,15 +79,9 @@ async function ensureCanonicalChat(
   workspaceId: string,
   workspaceName: string | undefined
 ): Promise<string | null> {
-  const { data: existing } = await sb
-    .from("workspace_chats")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .is("project_id", null)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (existing?.id) return existing.id as string;
+  // Same selection the page uses, so reads and writes hit the same chat.
+  const existing = await getCanonicalChat(workspaceId);
+  if (existing) return existing.id;
 
   const { data, error } = await sb
     .from("workspace_chats")
@@ -113,8 +108,8 @@ function councilSystemMessage(
   artifacts: { title: string; kind: string }[]
 ): string {
   const parts: string[] = [
-    `És o Council do ATELIER — um sistema de agentes que apoia o pensamento e trabalho de Inês Gavinho. Este é o workspace ${workspaceName ?? "(sem nome)"}.`,
-    "Responde em português europeu, com rigor e concisão. O contexto pertence ao ATELIER; o provider é apenas o motor de execução.",
+    `És o Council do ATELIER — o parceiro de pensamento e trabalho de Inês Gavinho. Este é o workspace ${workspaceName ?? "(sem nome)"}.`,
+    "Responde em português europeu, com rigor e concisão. Nunca menciones a tua arquitectura interna (modos, sessões, modelos ou providers) — responde de forma natural, como uma conversa contínua que se lembra do contexto.",
   ];
   if (ctx?.summary.trim()) {
     parts.push(`## Memória comprimida do workspace\n${ctx.summary.trim()}`);

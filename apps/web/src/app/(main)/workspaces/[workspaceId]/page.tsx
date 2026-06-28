@@ -8,7 +8,11 @@ import {
   getInitiativeByIdOrSlug,
   getPendingDecisions,
 } from "@/lib/mission";
-import { getChats, getMessages, getWorkspaceContext } from "@/lib/workspaces";
+import {
+  getCanonicalChat,
+  getMessages,
+  getWorkspaceContext,
+} from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 
@@ -22,14 +26,14 @@ export default async function WorkspaceDetailPage({
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
 
-  const [allDecisions, pending, artifacts, agents, context, chats] =
+  const [allDecisions, pending, artifacts, agents, context, canonical] =
     await Promise.all([
       getDecisions(),
       getPendingDecisions(),
       getArtifactsForInitiative(ws.id),
       getAgentsForInitiative(ws.id),
       getWorkspaceContext(ws.id),
-      getChats(ws.id),
+      getCanonicalChat(ws.id),
     ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
@@ -44,8 +48,9 @@ export default async function WorkspaceDetailPage({
     });
 
   // Read-only load of the canonical chat's history for the initial render. We
-  // never create the chat here — sending the first message does that.
-  const canonical = chats.find((c) => !c.projectId);
+  // never create the chat here — sending the first message does that. Uses the
+  // shared getCanonicalChat so this matches exactly the chat the send action
+  // writes to (continuous, persistent conversation).
   const history = canonical ? await getMessages(canonical.id) : [];
   const initial = history
     .filter((m) => m.role === "user" || m.role === "assistant")
@@ -80,6 +85,7 @@ export default async function WorkspaceDetailPage({
 
       <div className="ws-layout">
         <WorkspaceChat
+          key={ws.id}
           workspaceId={ws.id}
           workspaceName={ws.name}
           initialMessages={initial}
