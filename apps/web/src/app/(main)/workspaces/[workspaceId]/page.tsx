@@ -87,6 +87,8 @@ export default async function WorkspaceDetailPage({
           contextUpdatedAt={context?.lastUpdatedAt}
         />
         <ContextPanel
+          workspaceId={ws.id}
+          githubRepo={ws.githubRepo}
           context={context}
           decisions={wsDecisions}
           artifacts={artifacts}

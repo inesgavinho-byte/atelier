@@ -1,4 +1,5 @@
 import { StateTag, ago } from "@/components/mission/bits";
+import RepoPanel from "@/components/workspaces/RepoPanel";
 import type { WorkspaceContext } from "@/lib/workspaces";
 import type { Agent, Artifact, Decision } from "@/data/mission";
 
@@ -21,11 +22,15 @@ function decisionDotClass(status: string): string {
 }
 
 export default function ContextPanel({
+  workspaceId,
+  githubRepo,
   context,
   decisions,
   artifacts,
   agents,
 }: {
+  workspaceId: string;
+  githubRepo?: string;
   context: WorkspaceContext | null;
   decisions: Decision[];
   artifacts: Artifact[];
@@ -58,7 +63,10 @@ export default function ContextPanel({
         )}
       </section>
 
-      {/* 2. Decisions */}
+      {/* 2. Repository (GitHub per workspace) */}
+      <RepoPanel workspaceId={workspaceId} initialRepo={githubRepo} />
+
+      {/* 3. Decisions */}
       <section className="ctx-section">
         <SectionTitle>Decisões</SectionTitle>
         {decisions.length === 0 ? (

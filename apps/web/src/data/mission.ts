@@ -70,6 +70,8 @@ export interface Initiative {
   focus: string;
   /** ids referencing Agent.id */
   agentIds: string[];
+  /** Associated GitHub repository, "owner/repo" (optional). */
+  githubRepo?: string;
 }
 
 export interface Artifact {
