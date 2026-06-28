@@ -27,12 +27,12 @@ export const ROUTING_TABLE: Record<TaskType, ModelRoute> = {
   search: {
     provider: "perplexity",
     model: "sonar-pro",
-    reason: "Tem acesso à web em tempo real",
+    reason: "Acesso à web em tempo real",
   },
   code: {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    reason: "Melhor relação qualidade/custo para código",
+    provider: "deepseek",
+    model: "deepseek-chat",
+    reason: "Especializado em código, muito barato",
   },
   writing: {
     provider: "anthropic",
@@ -42,29 +42,29 @@ export const ROUTING_TABLE: Record<TaskType, ModelRoute> = {
   planning: {
     provider: "anthropic",
     model: "claude-sonnet-4-6",
-    reason: "Raciocínio estruturado e multi-passo",
+    reason: "Raciocínio estruturado",
   },
   summary: {
-    provider: "anthropic",
-    model: "claude-haiku-4-5-20251001",
+    provider: "groq",
+    model: "llama-3.3-70b-versatile",
     reason: "Rápido e barato para resumos",
   },
   reasoning: {
     provider: "anthropic",
     model: "claude-sonnet-4-6",
-    reason: "Análise profunda e raciocínio",
+    reason: "Análise profunda",
   },
   general: {
-    provider: "anthropic",
-    model: "claude-haiku-4-5-20251001",
-    reason: "Conversação geral — modelo mais económico",
+    provider: "groq",
+    model: "llama-3.3-70b-versatile",
+    reason: "Conversação geral — económico",
   },
 };
 
 /**
- * Map a routing-table provider to a registered gateway ProviderId. Providers
- * not yet wired into the gateway (groq, deepseek) map to null so the runtime
- * falls back to an available provider.
+ * Map a routing-table provider to a registered gateway ProviderId. Groq and
+ * DeepSeek are now wired into the gateway, so every route resolves to a real
+ * provider; the runtime still falls back when the chosen one has no API key.
  */
 export function routeToGatewayProvider(p: RouteProvider): ProviderId | null {
   switch (p) {
@@ -75,7 +75,8 @@ export function routeToGatewayProvider(p: RouteProvider): ProviderId | null {
     case "perplexity":
       return "perplexity";
     case "groq":
+      return "groq";
     case "deepseek":
-      return null;
+      return "deepseek";
   }
 }
