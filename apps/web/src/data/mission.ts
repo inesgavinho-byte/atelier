@@ -103,6 +103,8 @@ export interface Agent {
   /** the agent's permanent mission (distinct from the current task) */
   mission: string;
   currentTask: string;
+  /** operator-set supervision priority */
+  priority: Priority;
   /** 0–5 */
   autonomy: number;
   /** 0–100, only meaningful while working */

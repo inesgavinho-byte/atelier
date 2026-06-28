@@ -1,78 +1,90 @@
 "use client";
 
-import { useState } from "react";
-import type { AgentState } from "@/data/mission";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import type { AgentState, Priority } from "@/data/mission";
+import { setAgentState, setAgentPriority } from "@/app/(main)/agents/actions";
 
-type Action = "delegado" | "interrompido" | null;
-
-const PRIORITIES = ["Normal", "Alta", "Baixa"] as const;
+const PRIORITIES: Priority[] = ["alta", "média", "baixa"];
 
 /**
- * Supervision controls for an agent (EPIC-001 §3): interrupt, delegate, change
- * priority. DEMONSTRATION ONLY — state is local and does not persist. Real
- * persistence (server actions + activity log) is planned for a later phase.
+ * Supervision controls for an agent (EPIC-001 §3): interrupt/resume, delegate,
+ * change priority. These persist via server actions — each change updates the
+ * agent and appends to the activity log — and the page refreshes to show it.
  */
-export default function AgentControls({ state }: { state: AgentState }) {
-  const [action, setAction] = useState<Action>(null);
-  const [priority, setPriority] = useState<(typeof PRIORITIES)[number]>(
-    "Normal"
-  );
+export default function AgentControls({
+  agentId,
+  state,
+  priority,
+}: {
+  agentId: string;
+  state: AgentState;
+  priority: Priority;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
 
-  const cyclePriority = () =>
-    setPriority(
-      (p) => PRIORITIES[(PRIORITIES.indexOf(p) + 1) % PRIORITIES.length]
-    );
+  const run = (fn: () => Promise<void>) =>
+    start(async () => {
+      await fn();
+      router.refresh();
+    });
 
-  const canInterrupt = state === "em execução" && action !== "interrompido";
+  const running = state === "em execução";
+  const nextPriority =
+    PRIORITIES[(PRIORITIES.indexOf(priority) + 1) % PRIORITIES.length];
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        className="action"
+        disabled={pending || state === "em revisão"}
+        onClick={() =>
+          run(() =>
+            setAgentState(agentId, "em revisão", "Trabalho delegado para revisão")
+          )
+        }
+      >
+        Delegar trabalho
+      </button>
+
+      {running ? (
         <button
           type="button"
-          className="action"
-          onClick={() => setAction("delegado")}
+          className="action-quiet"
+          disabled={pending}
+          onClick={() =>
+            run(() =>
+              setAgentState(agentId, "a aguardar", "Execução interrompida")
+            )
+          }
         >
-          Delegar trabalho
+          Interromper
         </button>
-        {canInterrupt ? (
-          <button
-            type="button"
-            className="action-quiet"
-            onClick={() => setAction("interrompido")}
-          >
-            Interromper
-          </button>
-        ) : action === "interrompido" ? (
-          <button
-            type="button"
-            className="action-quiet"
-            onClick={() => setAction(null)}
-          >
-            Retomar
-          </button>
-        ) : null}
-        <button type="button" className="action-quiet" onClick={cyclePriority}>
-          Prioridade: {priority}
+      ) : (
+        <button
+          type="button"
+          className="action-quiet"
+          disabled={pending}
+          onClick={() =>
+            run(() => setAgentState(agentId, "em execução", "Execução retomada"))
+          }
+        >
+          Retomar
         </button>
-        <span className="meta italic">demonstração — não persiste</span>
-      </div>
+      )}
 
-      {action ? (
-        <p className="meta mt-3 inline-flex items-center gap-2">
-          <span className="dot bg-olive" />
-          {action === "delegado"
-            ? "Trabalho delegado a outro agente."
-            : "Execução interrompida."}
-          <button
-            type="button"
-            className="action-quiet underline"
-            onClick={() => setAction(null)}
-          >
-            Anular
-          </button>
-        </p>
-      ) : null}
+      <button
+        type="button"
+        className="action-quiet"
+        disabled={pending}
+        onClick={() => run(() => setAgentPriority(agentId, nextPriority))}
+      >
+        Prioridade: {priority}
+      </button>
+
+      {pending ? <span className="meta italic">a guardar…</span> : null}
     </div>
   );
 }

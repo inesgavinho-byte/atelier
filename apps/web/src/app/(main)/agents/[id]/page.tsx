@@ -56,10 +56,14 @@ export default async function AgentDetailPage({
         </div>
       ) : null}
 
-      <dl className="mt-8 grid grid-cols-2 gap-px border-l border-t border-line">
+      <dl className="mt-8 grid grid-cols-3 gap-px border-l border-t border-line">
         <div className="border-b border-r border-line bg-cream p-5">
           <dt className="eyebrow mb-1">Autonomia</dt>
           <dd className="text-[14px]">Nível {agent.autonomy}</dd>
+        </div>
+        <div className="border-b border-r border-line bg-cream p-5">
+          <dt className="eyebrow mb-1">Prioridade</dt>
+          <dd className="text-[14px] capitalize">{agent.priority}</dd>
         </div>
         <div className="border-b border-r border-line bg-cream p-5">
           <dt className="eyebrow mb-1">Último evento</dt>
@@ -68,7 +72,11 @@ export default async function AgentDetailPage({
       </dl>
 
       <div className="mt-6">
-        <AgentControls state={agent.state} />
+        <AgentControls
+          agentId={agent.id}
+          state={agent.state}
+          priority={agent.priority}
+        />
       </div>
 
       <div className="mt-12">
