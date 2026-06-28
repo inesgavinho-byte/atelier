@@ -11,14 +11,22 @@
 #
 # The client reads these (and falls back to SUPABASE_URL / SUPABASE_ANON_KEY).
 # See src/lib/supabase.ts.
+#
+# IMPORTANT (deploys): the production branch in the Netlify UI must be set to
+# `main`, with auto-publish enabled — otherwise merges to main do not deploy and
+# newly added routes (e.g. /jobs) silently never appear in production.
+#
+# The command removes any cached .next before building so a deploy never serves
+# a stale build of the app shell or routes.
 
 [build]
   base = "apps/web"
-  command = "npm run build"
+  command = "rm -rf .next && npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
