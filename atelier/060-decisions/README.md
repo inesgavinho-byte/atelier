@@ -13,3 +13,4 @@ Registos de Decisões Arquitecturais (ADR — *Architecture Decision Records*). 
 
 - `ADR-0001-template.md` — Modelo de ADR (não é uma decisão real)
 - `ADR-0002-runtime-execucao-council.md` — Runtime de execução: Council + Claude Code CLI (Proposed)
+- `ADR-0004-chat-continuo-workspace.md` — Chat contínuo por workspace com agente de contexto (Proposed)
