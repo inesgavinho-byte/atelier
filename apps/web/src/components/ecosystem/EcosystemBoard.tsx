@@ -14,12 +14,9 @@ import {
 } from "@/app/(main)/ecosystem/actions";
 import StatusBadge from "@/components/ecosystem/StatusBadge";
 import ConnectorDrawer from "@/components/ecosystem/ConnectorDrawer";
+import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
 
 const SESSION_PROVIDERS = new Set(["openai", "claude", "perplexity"]);
-
-function monogram(name: string): string {
-  return name.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim().slice(0, 2).toUpperCase() || "·";
-}
 
 interface Runtime {
   status: ConnectorStatus;
@@ -107,12 +104,6 @@ export default function EcosystemBoard({
     });
   }, [connectors, query, tab]);
 
-  // Group filtered connectors by category, preserving the canonical order.
-  const sections = CATEGORY_ORDER.map((cat) => ({
-    category: cat,
-    items: filtered.filter((c) => c.category === cat),
-  })).filter((s) => s.items.length > 0);
-
   const drawer = connectors.find((c) => c.id === drawerId) ?? null;
 
   const renderCard = (c: ConnectorView) => {
@@ -120,39 +111,22 @@ export default function EcosystemBoard({
     const usable = SESSION_PROVIDERS.has(c.id);
     return (
       <div key={c.id} className="connector-card">
-        <div>
-          <div className="connector-card-top">
-            <span className="connector-logo">{monogram(c.name)}</span>
-            <StatusBadge status={rt.status} />
-          </div>
-          <h3 className="connector-name">{c.name}</h3>
-          <p className="connector-description">{c.description}</p>
-
-          {c.usedIn?.length ? (
-            <div className="connector-used">
-              <div className="connector-used-label">Usado em</div>
-              <div className="connector-tags">
-                {c.usedIn.map((u) => (
-                  <span key={u} className="connector-tag">
-                    {u}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {c.metric ? <div className="connector-metric">{c.metric}</div> : null}
+        <div className="connector-card-top">
+          <ConnectorIcon id={c.id} name={c.name} />
+          <StatusBadge status={rt.status} />
         </div>
+        <h3 className="connector-name">{c.name}</h3>
+        <p className="connector-description">{c.description}</p>
 
         <div className="connector-actions">
           {usable ? (
-            <Link href="/workspaces" className="connector-button primary">
+            <Link href="/workspaces" className="btn-primary btn-sm">
               Usar
             </Link>
           ) : (
             <button
               type="button"
-              className="connector-button primary"
+              className="btn-primary btn-sm"
               onClick={() => setDrawerId(c.id)}
             >
               Usar
@@ -160,7 +134,7 @@ export default function EcosystemBoard({
           )}
           <button
             type="button"
-            className="connector-button"
+            className="btn-secondary btn-sm"
             onClick={() => setDrawerId(c.id)}
           >
             Configurar
@@ -169,11 +143,13 @@ export default function EcosystemBoard({
             type="button"
             className="connector-more"
             aria-label="Mais opções"
+            aria-haspopup="menu"
+            aria-expanded={openMenu === c.id}
             onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
           >
             ⋯
             {openMenu === c.id ? (
-              <span className="connector-menu">
+              <span className="connector-menu" role="menu">
                 <button type="button" onClick={() => setDrawerId(c.id)}>
                   Detalhes
                 </button>
@@ -192,18 +168,23 @@ export default function EcosystemBoard({
     );
   };
 
-  const addCard = (
-    <div className="connector-add-card" key="__add">
-      <div>
-        <div className="connector-add-plus">+</div>
-        <div className="connector-add-title">Adicionar ferramenta</div>
-        <div className="connector-add-subtitle">Mais integrações em breve</div>
-      </div>
-    </div>
-  );
-
   return (
     <div>
+      <div className="ecosystem-tabs" role="tablist">
+        {(["Todas", ...CATEGORY_ORDER] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            className={`ecosystem-pill${tab === t ? " active" : ""}`}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       <div className="ecosystem-toolbar">
         <input
           type="search"
@@ -214,31 +195,10 @@ export default function EcosystemBoard({
         />
       </div>
 
-      <div className="ecosystem-tabs">
-        {(["Todas", ...CATEGORY_ORDER] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`ecosystem-tab${tab === t ? " active" : ""}`}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {sections.length === 0 ? (
+      {filtered.length === 0 ? (
         <p className="meta italic">Nenhuma ferramenta corresponde à pesquisa.</p>
       ) : (
-        sections.map((s, idx) => (
-          <section key={s.category} className="ecosystem-section">
-            <h2 className="ecosystem-section-title">{s.category}</h2>
-            <div className="connector-grid">
-              {s.items.map(renderCard)}
-              {idx === sections.length - 1 ? addCard : null}
-            </div>
-          </section>
-        ))
+        <div className="connector-grid">{filtered.map(renderCard)}</div>
       )}
 
       {drawer ? (

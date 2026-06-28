@@ -6,10 +6,7 @@ import type { ConnectorStatus, ConnectorView } from "@/lib/connectors";
 import { PROVIDER_META, type ProviderId } from "@/lib/ai/types";
 import { saveConnectorCredential } from "@/app/(main)/ecosystem/actions";
 import StatusBadge from "@/components/ecosystem/StatusBadge";
-
-function monogram(name: string): string {
-  return name.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim().slice(0, 2).toUpperCase() || "·";
-}
+import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
 
 /**
  * Right drawer with a connector's full detail. Opens over the page (no
@@ -68,7 +65,7 @@ export default function ConnectorDrawer({
         <header className="connector-drawer-header">
           <div className="connector-drawer-title-row">
             <div className="flex items-start gap-4">
-              <span className="connector-logo">{monogram(connector.name)}</span>
+              <ConnectorIcon id={connector.id} name={connector.name} />
               <div>
                 <h2 className="connector-drawer-title">{connector.name}</h2>
                 <div className="mt-3">

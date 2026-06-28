@@ -28,26 +28,23 @@ export default async function EcosystemPage() {
   return (
     <div className="ecosystem-page">
       <header className="ecosystem-header">
-        <p className="atelier-date">Ferramentas</p>
         <h1 className="ecosystem-title">Ecossistema</h1>
         <p className="ecosystem-subtitle">
-          A biblioteca de ferramentas do ATELIER. {configured} ligadas ·{" "}
-          {missing} por configurar.
+          {configured} ligadas · {missing} por configurar
         </p>
+        {!security.manageable ? (
+          <p className="ecosystem-note">
+            Para configurar credenciais a partir desta página, define
+            SUPABASE_SERVICE_ROLE_KEY no ambiente do deploy. Sem ela, as chaves
+            continuam a ser lidas das variáveis de ambiente.
+          </p>
+        ) : !security.encrypted ? (
+          <p className="ecosystem-note">
+            Credenciais guardadas em texto simples — define ATELIER_CRED_KEY
+            para as encriptar em repouso.
+          </p>
+        ) : null}
       </header>
-
-      {!security.manageable ? (
-        <p className="panel mb-8 p-4 meta">
-          Para configurar credenciais a partir desta página, define
-          SUPABASE_SERVICE_ROLE_KEY no ambiente do deploy (uma única vez). Sem
-          ela, as chaves continuam a ser lidas das variáveis de ambiente.
-        </p>
-      ) : !security.encrypted ? (
-        <p className="panel mb-8 p-4 meta">
-          As credenciais são guardadas no servidor, mas em texto simples. Define
-          ATELIER_CRED_KEY no ambiente para as encriptar em repouso.
-        </p>
-      ) : null}
 
       <EcosystemBoard
         connectors={connectors}
