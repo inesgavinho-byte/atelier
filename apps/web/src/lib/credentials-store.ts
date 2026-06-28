@@ -56,6 +56,27 @@ export function credentialsHydrated(): boolean {
   return hydrated;
 }
 
+/**
+ * Read a single stored credential value directly (decrypted), or null when it
+ * is not stored / the service role is unavailable. Lets a server module resolve
+ * a specific connector credential without relying on the global hydration cache.
+ */
+export async function getStoredCredential(
+  connectorId: string,
+  envKey: string
+): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const { data, error } = await admin
+    .from("connector_credentials")
+    .select("value, encrypted")
+    .eq("connector_id", connectorId)
+    .eq("env_key", envKey)
+    .maybeSingle();
+  if (error || !data) return null;
+  return readValue(data);
+}
+
 /** Save (upsert) a credential value. Encrypts when possible. */
 export async function saveCredential(
   connectorId: string,
