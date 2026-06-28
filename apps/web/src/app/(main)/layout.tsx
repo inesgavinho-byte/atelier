@@ -1,6 +1,7 @@
 import AppShell, { type NavSection } from "@/components/app/AppShell";
 import { getInitiatives, getSearchCorpus } from "@/lib/mission";
 import { countUnreadReadings } from "@/lib/readings";
+import { gateEnabled } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function MainLayout({
   ];
 
   return (
-    <AppShell corpus={corpus} sections={sections}>
+    <AppShell corpus={corpus} sections={sections} gated={gateEnabled()}>
       {children}
     </AppShell>
   );

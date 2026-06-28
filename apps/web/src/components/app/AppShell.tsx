@@ -7,6 +7,7 @@ import type { SearchResult } from "@/lib/mission";
 import CommandSearch from "@/components/mission/CommandSearch";
 import CapturePanel from "@/components/mission/CapturePanel";
 import { OverlayContext } from "@/components/app/overlay";
+import { logout } from "@/app/login/actions";
 
 export interface NavItem {
   label: string;
@@ -35,10 +36,13 @@ export interface NavSection {
 export default function AppShell({
   corpus,
   sections,
+  gated = false,
   children,
 }: {
   corpus: SearchResult[];
   sections: NavSection[];
+  /** When the access gate is on, show a Sair (logout) control. */
+  gated?: boolean;
   children: React.ReactNode;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -140,6 +144,13 @@ export default function AppShell({
                 ATELIER
               </div>
             </div>
+            {gated ? (
+              <form action={logout} className="sidebar-logout">
+                <button type="submit" className="sidebar-logout-button">
+                  Sair
+                </button>
+              </form>
+            ) : null}
           </div>
         </aside>
 
