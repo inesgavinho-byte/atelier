@@ -12,6 +12,7 @@ export type ConnectorStatus =
   | "Ligado"
   | "Erro"
   | "Credenciais em falta"
+  | "Requer OAuth"
   | "Em teste";
 
 export type ConnectorCategory =
@@ -44,6 +45,12 @@ export interface ConnectorDef {
   capabilities: string[];
   /** Whether a live "test connection" is implemented server-side. */
   testable: boolean;
+  /**
+   * Authentication model. "key" connectors are configured with API keys/URLs
+   * stored as credentials; "oauth" connectors require an OAuth flow (not yet
+   * available) and expose no credential fields. Absent is treated as "key".
+   */
+  auth?: "key" | "oauth";
   /** Display-only: where the tool is used (curated). */
   usedIn?: string[];
   /** Display-only: a small contextual metric (mock). */
@@ -113,6 +120,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "transformar email em decisão",
     ],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "outlook-email",
@@ -128,6 +136,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "transformar email em decisão",
     ],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "teams",
@@ -137,6 +146,7 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
     capabilities: ["ler mensagens", "pesquisar mensagens", "guardar como captura"],
     testable: false,
+    auth: "oauth",
   },
 
   /* ── Calendário ─────────────────────────────────────────────────────── */
@@ -166,6 +176,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "criar captura a partir de reunião",
     ],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "outlook-calendar",
@@ -180,6 +191,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "criar captura a partir de reunião",
     ],
     testable: false,
+    auth: "oauth",
   },
 
   /* ── Documentos ─────────────────────────────────────────────────────── */
@@ -197,6 +209,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "indexar conteúdo futuramente",
     ],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "sharepoint",
@@ -212,6 +225,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "indexar conteúdo futuramente",
     ],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "onedrive",
@@ -226,6 +240,7 @@ export const CONNECTORS: ConnectorDef[] = [
       "associar documento a iniciativa",
     ],
     testable: false,
+    auth: "oauth",
   },
 
   /* ── Desenvolvimento ────────────────────────────────────────────────── */
@@ -284,6 +299,7 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
     capabilities: ["publicar", "ler publicações", "associar a iniciativa"],
     testable: false,
+    auth: "oauth",
   },
   {
     id: "instagram",
@@ -293,11 +309,35 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["INSTAGRAM_CLIENT_ID", "INSTAGRAM_CLIENT_SECRET"],
     capabilities: ["publicar", "ler publicações", "associar a iniciativa"],
     testable: false,
+    auth: "oauth",
   },
 ];
 
 export function getConnectorDef(id: string): ConnectorDef | undefined {
   return CONNECTORS.find((c) => c.id === id);
+}
+
+/**
+ * Per-env-var input hints (placeholder + one-line helper), keyed by env var
+ * name. Kept here so the drawer can render a sensible placeholder/helper for a
+ * field without connector-specific branches scattered through the UI.
+ */
+export interface EnvHint {
+  placeholder?: string;
+  helper?: string;
+}
+
+export const ENV_HINTS: Record<string, EnvHint> = {
+  ICS_CALENDAR_URL: {
+    placeholder:
+      "https://calendar.google.com/calendar/ical/.../basic.ics",
+    helper:
+      "Encontras este URL em Google Calendar → Definições → Endereço secreto iCal.",
+  },
+};
+
+export function getEnvHint(envKey: string): EnvHint | undefined {
+  return ENV_HINTS[envKey];
 }
 
 /** Serializable per-connector state passed to the client. Never holds secrets. */

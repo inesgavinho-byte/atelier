@@ -1645,6 +1645,7 @@
   --eco-amber: #c98a18;
   --eco-red: #9b3f32;
   --eco-blue: #3f6f91;
+  --eco-slate: #5b6472;
 
   background: var(--eco-bg);
 }
@@ -1842,6 +1843,11 @@
 .status-testing {
   color: var(--eco-blue);
   background: rgba(63,111,145,0.12);
+}
+
+.status-oauth {
+  color: var(--eco-slate);
+  background: rgba(91,100,114,0.14);
 }
 
 .connector-used {
@@ -2042,6 +2048,19 @@
   border-bottom: 0;
 }
 
+.drawer-log-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawer-log-list li {
+  word-break: break-word;
+}
+
 .drawer-label {
   color: var(--eco-muted);
 }
@@ -2116,6 +2135,7 @@
   --eco-amber: #e0b84a;
   --eco-red: #e08a7d;
   --eco-blue: #8aa9d8;
+  --eco-slate: #9aa5b5;
 }
 
 [data-theme="dark"] .ecosystem-page .connector-card {

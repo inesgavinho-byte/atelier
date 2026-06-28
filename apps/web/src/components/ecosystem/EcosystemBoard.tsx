@@ -178,13 +178,26 @@ export default function EcosystemBoard({
                 <button type="button" onClick={() => setDrawerId(c.id)}>
                   Detalhes
                 </button>
-                <button type="button" onClick={() => runTest(c.id)}>
+                <button
+                  type="button"
+                  onClick={() => runTest(c.id)}
+                  disabled={c.auth === "oauth"}
+                  title={c.auth === "oauth" ? "Requer OAuth" : undefined}
+                >
                   Testar ligação
                 </button>
                 <button type="button" onClick={() => runDisconnect(c.id)}>
                   Desligar
                 </button>
-                <Link href="/admin/system">Ver logs</Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setDrawerId(c.id);
+                  }}
+                >
+                  Ver logs
+                </button>
               </span>
             ) : null}
           </button>
