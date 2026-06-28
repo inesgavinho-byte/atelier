@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type {
   Workspace,
   WorkspaceChat,
@@ -171,4 +172,43 @@ export async function getMessages(
     .eq("chat_id", chatId)
     .order("created_at", { ascending: true });
   return (data ?? []).map(toMessage);
+}
+
+/* ── Workspace context (ADR-0004) ─────────────────────────────────────────── */
+
+export interface WorkspaceContext {
+  workspaceId: string;
+  summary: string;
+  decisions: unknown[];
+  artifacts: unknown[];
+  lessons: unknown[];
+  version: number;
+  lastUpdatedAt: string | null;
+}
+
+/**
+ * The compressed memory for a workspace, maintained by the context agent. Read
+ * via the service role (the table is RLS-locked). Returns null when absent or
+ * unreachable — the chat then runs with no compressed context yet.
+ */
+export async function getWorkspaceContext(
+  workspaceId: string
+): Promise<WorkspaceContext | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const { data, error } = await admin
+    .from("workspace_context")
+    .select("workspace_id, summary, decisions, artifacts, lessons, version, last_updated_at")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    workspaceId: data.workspace_id,
+    summary: data.summary ?? "",
+    decisions: data.decisions ?? [],
+    artifacts: data.artifacts ?? [],
+    lessons: data.lessons ?? [],
+    version: data.version ?? 1,
+    lastUpdatedAt: data.last_updated_at ?? null,
+  };
 }
