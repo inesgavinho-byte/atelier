@@ -6,6 +6,7 @@ const BADGE: Record<ConnectorStatus, { cls: string; label: string }> = {
   "Credenciais em falta": { cls: "status-missing", label: "Credenciais em falta" },
   Erro: { cls: "status-error", label: "Erro" },
   "Em teste": { cls: "status-testing", label: "A testar" },
+  "Requer OAuth": { cls: "status-oauth", label: "Requer OAuth" },
   "Não ligado": { cls: "status-offline", label: "Offline" },
 };
 

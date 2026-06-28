@@ -54,9 +54,13 @@ function envList(def: ConnectorDef) {
 
 /** Credential-based status before any live test. */
 function computeStatus(def: ConnectorDef): ConnectorStatus {
+  if (def.auth === "oauth") return "Requer OAuth";
   const missing = def.envRequired.some((name) => !envPresent(name));
   return missing ? "Credenciais em falta" : "Ligado";
 }
+
+const OAUTH_MESSAGE =
+  "Esta integração requer autenticação OAuth — disponível em breve.";
 
 function nowLabel(): string {
   try {
@@ -204,6 +208,11 @@ export async function testConnectorLive(id: string): Promise<TestOutcome> {
   const lastChecked = nowLabel();
   if (!def) {
     return { status: "Erro", message: "Conector desconhecido.", lastChecked };
+  }
+
+  // OAuth-only connectors have no key flow — never attempt a network call.
+  if (def.auth === "oauth") {
+    return { status: "Requer OAuth", message: OAUTH_MESSAGE, lastChecked };
   }
 
   // Credentials missing — surface that before attempting a call.

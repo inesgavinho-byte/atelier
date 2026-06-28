@@ -1,6 +1,7 @@
 "use server";
 
 import { getSupabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { testConnectorLive, type TestOutcome } from "@/lib/connector-status";
 import { gateway } from "@/lib/ai/gateway";
 import { getConnectorDef } from "@/lib/connectors";
@@ -38,6 +39,32 @@ export async function saveConnectorCredential(
     messages.push(r.message);
   }
   return { ok: true, message: messages[messages.length - 1] };
+}
+
+/** A single credential activity row (no secret value is ever exposed). */
+export interface ConnectorLog {
+  env_key: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Read a connector's credential activity from the secret store via the service
+ * role. Selects ONLY metadata columns — never the credential value. Returns []
+ * when the service role is unavailable or on any error.
+ */
+export async function getConnectorLogs(
+  connectorId: string
+): Promise<ConnectorLog[]> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return [];
+  const { data, error } = await admin
+    .from("connector_credentials")
+    .select("env_key, created_at, updated_at")
+    .eq("connector_id", connectorId)
+    .order("updated_at", { ascending: false });
+  if (error || !data) return [];
+  return data as ConnectorLog[];
 }
 
 /** Remove a connector's stored credentials. */
