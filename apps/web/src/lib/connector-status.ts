@@ -11,6 +11,7 @@ import { gateway } from "@/lib/ai/gateway";
 import type { ProviderId } from "@/lib/ai/types";
 import { errMessage, fetchWithTimeout, readEnv } from "@/lib/ai/providers/http";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
+import { probeAgenda } from "@/lib/agenda";
 
 /**
  * ATELIER — connector status & live tests (server-side only).
@@ -193,6 +194,7 @@ const TESTERS: Record<string, () => Promise<{ ok: boolean; message: string }>> =
   github: testGitHub,
   netlify: testNetlify,
   supabase: testSupabase,
+  "ics-calendar": probeAgenda,
 };
 
 /** Run a connector's live test (or report why it cannot be tested). */
