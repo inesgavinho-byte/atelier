@@ -17,12 +17,10 @@ export const READING_TAGS = [
   "Para NUDO",
 ] as const;
 
-export const READING_STATUSES = [
-  "Por ler",
-  "Em leitura",
-  "Usado",
-  "Arquivado",
-] as const;
+// Instapaper-style three-state reading flow. "Por ler" is preserved from the
+// previous model (the Home inbox counts it and AI-sourced readings default to
+// it); "Em leitura"/"Usado"/"Arquivado" were retired.
+export const READING_STATUSES = ["Por ler", "A ler", "Lido"] as const;
 
 export type ReadingStatus = (typeof READING_STATUSES)[number];
 
@@ -37,6 +35,17 @@ export interface Reading {
   status: string;
   sourceType?: string;
   usedInArtifactId?: string;
+  /** Clean reader-mode HTML extracted with Readability (sanitised). */
+  content?: string;
+  /** Short summary — og:description or the first lines of the article. */
+  excerpt?: string;
+  /** og:image of the source page, if any. */
+  thumbnail?: string;
+  /** Estimated reading time in minutes (word count / 200 wpm). */
+  readTimeMinutes?: number;
+  author?: string;
+  /** Publication / site name (og:site_name or the domain). */
+  siteName?: string;
   createdAt: string;
   updatedAt: string;
 }
