@@ -1,15 +1,16 @@
 import "server-only";
-import { fetchWithTimeout, readEnv } from "@/lib/ai/providers/http";
-import { hydrateCredentialOverrides } from "@/lib/credentials-store";
+import { fetchWithTimeout } from "@/lib/ai/providers/http";
+import { getStoredCredential } from "@/lib/credentials-store";
 
 /**
  * ATELIER — Agenda from an ICS calendar feed (server-only).
  *
  * The most portable way to read a calendar without OAuth: a public/secret ICS
- * feed URL (Google, Outlook and Apple all publish one). The URL is stored as
- * the `ICS_CALENDAR_URL` connector credential (encrypted at rest) and resolved
- * via `readEnv`, so the secret never reaches the browser and the fetch happens
- * entirely server-side.
+ * feed URL (Google, Outlook and Apple all publish one). The URL is configured
+ * from /ecosystem and stored (encrypted at rest) in `connector_credentials`
+ * (connector_id `ics-calendar`, env_key `ICS_CALENDAR_URL`). It is read back
+ * directly via the service-role client, falling back to the `ICS_CALENDAR_URL`
+ * env var. Either way the secret stays server-side and the fetch happens here.
  *
  * The parser is a focused subset of RFC 5545: VEVENT blocks, DTSTART/DTEND,
  * SUMMARY/LOCATION, all-day vs timed, and enough RRULE (DAILY/WEEKLY/MONTHLY/
@@ -300,10 +301,18 @@ function buildIfToday(
 
 /* ── Public API ───────────────────────────────────────────────────────────── */
 
+/**
+ * The configured ICS feed URL — from the connector credential store first
+ * (set via /ecosystem), then the env var for compatibility.
+ */
+async function getIcsUrl(): Promise<string | undefined> {
+  const stored = await getStoredCredential("ics-calendar", "ICS_CALENDAR_URL");
+  return stored ?? process.env.ICS_CALENDAR_URL ?? undefined;
+}
+
 /** Today's agenda from the configured ICS feed. Degrades to empty/connected. */
 export async function getAgenda(): Promise<Agenda> {
-  await hydrateCredentialOverrides();
-  const url = readEnv("ICS_CALENDAR_URL");
+  const url = await getIcsUrl();
   if (!url) return { connected: false, events: [] };
 
   try {
@@ -325,7 +334,7 @@ export async function probeAgenda(): Promise<{
   ok: boolean;
   message: string;
 }> {
-  const url = readEnv("ICS_CALENDAR_URL");
+  const url = await getIcsUrl();
   if (!url) return { ok: false, message: "ICS_CALENDAR_URL em falta." };
   const res = await fetchWithTimeout(url, {
     headers: { Accept: "text/calendar, text/plain, */*" },
