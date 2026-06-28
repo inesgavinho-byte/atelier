@@ -3,6 +3,7 @@ import { ago } from "@/components/mission/bits";
 import { QuickActions, QuickCaptureList } from "@/components/app/HomeIslands";
 import { getActivity, getInitiatives, getRecentWork } from "@/lib/mission";
 import { getReadings } from "@/lib/readings";
+import { getAgenda } from "@/lib/agenda";
 import { owner } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +17,14 @@ export const dynamic = "force-dynamic";
  * the page. The interactive cards (search/capture) stay as client islands.
  */
 export default async function HomePage() {
-  const [recent, activityAll, readingsAll, initiatives] = await Promise.all([
-    getRecentWork(3).catch(() => []),
-    getActivity().catch(() => []),
-    getReadings().catch(() => []),
-    getInitiatives().catch(() => []),
-  ]);
+  const [recent, activityAll, readingsAll, initiatives, agenda] =
+    await Promise.all([
+      getRecentWork(3).catch(() => []),
+      getActivity().catch(() => []),
+      getReadings().catch(() => []),
+      getInitiatives().catch(() => []),
+      getAgenda().catch(() => ({ connected: false, events: [] as const })),
+    ]);
 
   const activity = activityAll.slice(0, 5);
   const readings = readingsAll.slice(0, 4);
@@ -172,9 +175,27 @@ export default async function HomePage() {
               <div className="rail-header">
                 <span className="rail-label">Agenda de Hoje</span>
               </div>
-              <p className="atelier-empty">
-                Liga um calendário em Ecossistema.
-              </p>
+              {!agenda.connected ? (
+                <p className="atelier-empty">
+                  Liga um calendário em Ecossistema.
+                </p>
+              ) : agenda.events.length === 0 ? (
+                <p className="atelier-empty">Sem eventos hoje.</p>
+              ) : (
+                <ul className="agenda-list">
+                  {agenda.events.map((e) => (
+                    <li key={e.id} className="agenda-row">
+                      <span className="agenda-time">{e.timeLabel}</span>
+                      <span className="agenda-body">
+                        <span className="agenda-title">{e.title}</span>
+                        {e.location ? (
+                          <span className="agenda-loc">{e.location}</span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </section>
 

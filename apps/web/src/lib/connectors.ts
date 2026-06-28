@@ -141,6 +141,19 @@ export const CONNECTORS: ConnectorDef[] = [
 
   /* ── Calendário ─────────────────────────────────────────────────────── */
   {
+    id: "ics-calendar",
+    name: "Calendário (ICS)",
+    category: "Calendário",
+    description: "Agenda por feed ICS — Google, Outlook ou Apple.",
+    envRequired: ["ICS_CALENDAR_URL"],
+    capabilities: [
+      "ler agenda",
+      "mostrar reuniões do dia",
+      "suportar eventos recorrentes",
+    ],
+    testable: true,
+  },
+  {
     id: "google-calendar",
     name: "Google Calendar",
     category: "Calendário",

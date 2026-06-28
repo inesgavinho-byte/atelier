@@ -2139,3 +2139,42 @@
   color: var(--atelier-ink);
   text-decoration: underline;
 }
+
+/* ── Home: Agenda de Hoje (ICS) ─────────────────────────────────────────── */
+
+.app-shell .agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-shell .agenda-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.app-shell .agenda-time {
+  flex: 0 0 auto;
+  min-width: 58px;
+  font-size: 13px;
+  color: var(--atelier-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .agenda-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-shell .agenda-title {
+  font-size: 14px;
+  color: var(--atelier-ink);
+}
+
+.app-shell .agenda-loc {
+  font-size: 12px;
+  color: var(--atelier-muted);
+}
