@@ -69,8 +69,6 @@ export const CONNECTORS: ConnectorDef[] = [
       "associar resposta a iniciativa",
     ],
     testable: true,
-    usedIn: ["PAPERS", "DECIMA"],
-    metric: "7 sessões esta semana",
   },
   {
     id: "claude",
@@ -80,8 +78,6 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["ANTHROPIC_API_KEY"],
     capabilities: ["enviar prompt", "receber resposta"],
     testable: true,
-    usedIn: ["PAPERS"],
-    metric: "3 sessões esta semana",
   },
   {
     id: "perplexity",
@@ -91,7 +87,6 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["PERPLEXITY_API_KEY"],
     capabilities: ["pesquisar", "receber resposta com fontes"],
     testable: true,
-    usedIn: ["Investigação"],
   },
   {
     id: "manus",
@@ -228,7 +223,6 @@ export const CONNECTORS: ConnectorDef[] = [
     description: "Código, PRs, commits e issues.",
     envRequired: ["GITHUB_TOKEN"],
     envOptional: ["GITHUB_REPO"],
-    usedIn: ["ATELIER"],
     capabilities: [
       "ler PRs",
       "ler commits",
@@ -259,7 +253,6 @@ export const CONNECTORS: ConnectorDef[] = [
     description: "Base de dados e persistência.",
     envRequired: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
     envOptional: ["SUPABASE_SERVICE_ROLE_KEY"],
-    usedIn: ["ATELIER"],
     capabilities: [
       "estado da ligação",
       "base de dados acessível",

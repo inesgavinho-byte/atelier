@@ -130,24 +130,10 @@ export interface ActivityEvent {
   at: string;
 }
 
-// ── App constants (no data source yet) ───────────────────────────────────
+// ── App constants ─────────────────────────────────────────────────────────
 
-/**
- * The highest-impact recommendation. Still a constant — there is no engine
- * computing it yet (a candidate for a future, real source).
- */
-export const nextAction = {
-  label: "Aprovar a publicação do Issue 005 do PAPERS",
-  rationale:
-    "Desbloqueia o lançamento do site e o anúncio. É a ação de maior impacto hoje.",
-  decisionId: "dec-issue-005",
-};
-
+/** The single operator of this ATELIER. */
 export const owner = "Inês";
-export const todayLabel = "Sexta-feira, 26 de Junho";
-
-/** Mocked: there is no backend sync this sprint. */
-export const syncStatus = "Local";
 
 export const captureKinds: { kind: CaptureKind; label: string }[] = [
   { kind: "texto", label: "Texto" },
