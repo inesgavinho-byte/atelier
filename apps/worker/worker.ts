@@ -103,8 +103,8 @@ async function tick(): Promise<void> {
 
 interface ContextSummary {
   summary: string;
-  decisions: string[];
-  artifacts: string[];
+  decisions: { title: string; status: string }[];
+  artifacts: { title: string; kind: string }[];
   lessons: string[];
 }
 
@@ -131,8 +131,9 @@ async function summarise(
       system:
         "És o agente de contexto do ATELIER. Resume a conversa de forma comprimida " +
         "e útil para continuar o trabalho. Responde APENAS com JSON válido, sem texto " +
-        "à volta, com as chaves: summary (string), decisions (string[]), artifacts " +
-        "(string[]), lessons (string[]). Português europeu.",
+        "à volta, com as chaves: summary (string, 2-3 frases sobre o estado do " +
+        "projecto), decisions (array de {title, status}), artifacts (array de " +
+        "{title, kind}), lessons (string[] com aprendizagens chave). Português europeu.",
       messages: [
         {
           role: "user",
