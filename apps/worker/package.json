@@ -1,0 +1,20 @@
+{
+  "name": "@atelier/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ATELIER execution worker — polls the jobs queue and runs them (POC: simulated). ADR-0002.",
+  "main": "dist/worker.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/worker.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.5.3"
+  }
+}
