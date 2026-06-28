@@ -11,6 +11,7 @@ import {
 import { getChats, getMessages, getWorkspaceContext } from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import ContextPanel from "@/components/workspaces/ContextPanel";
+import ImportContext from "@/components/workspaces/ImportContext";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,7 @@ export default async function WorkspaceDetailPage({
             {pendingCount}{" "}
             {pendingCount === 1 ? "decisão pendente" : "decisões pendentes"}
           </Link>
+          <ImportContext workspaceId={ws.id} />
         </div>
       </header>
 
