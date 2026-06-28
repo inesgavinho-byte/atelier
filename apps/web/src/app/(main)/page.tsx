@@ -1,48 +1,21 @@
 import Link from "next/link";
-import { ago } from "@/components/mission/bits";
 import { QuickActions, QuickCaptureList } from "@/components/app/HomeIslands";
-import {
-  getActivity,
-  getArtifacts,
-  getInitiatives,
-} from "@/lib/mission";
-import { getReadings } from "@/lib/readings";
-import { owner } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Atelier Home — a daily working launcher. Answers "o que queres fazer hoje?":
- * quick actions, a workspace launcher, what to continue, recent activity and
- * readings, with a calm right rail. All sections degrade to empty states.
+ * Atelier Home — faithful structure of the approved mockup.
+ *
+ * Phase 1: the structure is implemented exactly as designed, with illustrative
+ * placeholder content. Real data is wired in a follow-up (Phase 2): the
+ * "Continuar", "Atividade", "Leituras" and "Agenda" sections will read from
+ * their real sources, keeping graceful empty states where no source exists.
  */
-export default async function HomePage() {
-  const [initiatives, artifacts, activityAll, readings] = await Promise.all([
-    getInitiatives(),
-    getArtifacts(),
-    getActivity(),
-    getReadings(),
-  ]);
-
-  const iniById = new Map(initiatives.map((i) => [i.id, i]));
-  const continueItems = artifacts.slice(0, 5);
-  const activity = activityAll.slice(0, 5);
-  const recentReadings = readings.slice(0, 5);
-
-  const workspaceHref = (name: string) => {
-    const hit = initiatives.find(
-      (i) => i.name.toLowerCase() === name.toLowerCase()
-    );
-    return hit ? `/initiatives/${hit.slug}` : "/workspaces";
-  };
-  const launchers = ["PAPERS", "DECIMA", "GAVINHO", "NUDO"];
-
+export default function HomePage() {
   return (
     <div>
-      <header>
-        <h1 className="home-title">Bom dia, {owner}.</h1>
-        <p className="home-subtitle">O que queres fazer hoje?</p>
-      </header>
+      <h1 className="home-title">Bom dia, Inês.</h1>
+      <p className="home-subtitle">O que queres fazer hoje?</p>
 
       <div className="home-grid">
         {/* Main column */}
@@ -52,96 +25,69 @@ export default async function HomePage() {
             <QuickActions />
             <div className="card workspace-launcher">
               <p className="card-label" style={{ marginBottom: 0 }}>
-                Abrir workspace
+                Abrir Workspace
               </p>
               <div className="workspace-buttons">
-                {launchers.map((name) => (
-                  <Link
-                    key={name}
-                    href={workspaceHref(name)}
-                    className="workspace-button"
-                  >
-                    <span className="workspace-initial">{name.charAt(0)}</span>
-                    <span>{name}</span>
+                {[
+                  { i: "P", n: "PAPERS" },
+                  { i: "D", n: "DECIMA" },
+                  { i: "G", n: "GAVINHO" },
+                  { i: "N", n: "NUDO" },
+                  { i: "＋", n: "Novo" },
+                ].map((w) => (
+                  <Link key={w.n} href="/workspaces" className="workspace-button">
+                    <span className="workspace-initial">{w.i}</span>
+                    <span>{w.n}</span>
                   </Link>
                 ))}
-                <Link href="/workspaces" className="workspace-button">
-                  <span className="workspace-initial">+</span>
-                  <span>Novo</span>
-                </Link>
               </div>
             </div>
           </div>
 
-          {/* Continue */}
-          <section className="card">
-            <div className="card-inner">
-              <p className="card-label">Continuar a partir de onde ficaste</p>
-              {continueItems.length === 0 ? (
-                <p className="atelier-empty">
-                  Ainda não há trabalho recente. Começa por capturar ou abrir um
-                  workspace.
-                </p>
-              ) : (
-                <div className="recent-list">
-                  {continueItems.map((a) => {
-                    const ini = iniById.get(a.initiativeId);
-                    return (
-                      <Link
-                        key={a.id}
-                        href={ini ? `/initiatives/${ini.slug}` : "/workspaces"}
-                        className="recent-row"
-                      >
-                        <span className="recent-thumb">
-                          {a.title.charAt(0).toUpperCase()}
-                        </span>
-                        <span>
-                          <span className="recent-title">{a.title}</span>
-                          <span className="recent-meta">
-                            {ini?.name ?? "—"} · {a.kind}
-                          </span>
-                        </span>
-                        <span className="recent-meta">{ago(a.updatedAt)}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Activity + (placeholder) */}
+          {/* Continue + Activity */}
           <div className="two-col">
             <section className="card">
               <div className="card-inner">
-                <p className="card-label">Atividade recente</p>
-                {activity.length === 0 ? (
-                  <p className="atelier-empty">Sem atividade recente.</p>
-                ) : (
-                  <div>
-                    {activity.map((e) => (
-                      <div key={e.id} className="activity-row">
-                        <span className="activity-icon">
-                          {e.kind.charAt(0).toUpperCase()}
-                        </span>
-                        <span>
-                          <span className="activity-title">{e.title}</span>
-                        </span>
-                        <span className="activity-meta">{ago(e.at)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <p className="card-label">Continuar a partir de onde ficaste</p>
+                <div className="recent-list">
+                  {[
+                    { t: "006", dark: true, title: "Issue 006 — O futuro do trabalho", meta: "PAPERS · Chat", when: "2min atrás" },
+                    { t: "D", dark: false, title: "Manifesto ATELIER", meta: "PAPERS · Documento", when: "1h atrás" },
+                    { t: "D", dark: false, title: "Reunião Estratégica — Notas", meta: "DECIMA · Nota", when: "3h atrás" },
+                    { t: "IMG", dark: false, title: "Casa em Ourique — Decisões", meta: "GAVINHO · Decisões", when: "Ontem" },
+                  ].map((r, idx) => (
+                    <Link key={idx} href="/workspaces" className="recent-row">
+                      <span className={`recent-thumb${r.dark ? " dark" : ""}`}>
+                        {r.t}
+                      </span>
+                      <span>
+                        <span className="recent-title">{r.title}</span>
+                        <span className="recent-meta">{r.meta}</span>
+                      </span>
+                      <span className="recent-meta">{r.when} ›</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </section>
 
             <section className="card">
               <div className="card-inner">
-                <p className="card-label">Decisões e capturas</p>
-                <p className="atelier-empty">
-                  Usa Capturar para guardar ideias e Decisões para o que requer
-                  julgamento.
-                </p>
+                <p className="card-label">Atividade Recente</p>
+                {[
+                  { ic: "▤", t: "Nova leitura guardada", m: "The Design of Everyday Things", w: "7min" },
+                  { ic: "✓", t: "Decisão tomada", m: "Fornecedores — Esquadrias", w: "2h" },
+                  { ic: "▧", t: "Documento atualizado", m: "Brief — Issue 006", w: "Ontem" },
+                ].map((a, idx) => (
+                  <div key={idx} className="activity-row">
+                    <span className="activity-icon">{a.ic}</span>
+                    <span>
+                      <span className="activity-title">{a.t}</span>
+                      <span className="recent-meta">{a.m}</span>
+                    </span>
+                    <span className="activity-meta">{a.w}</span>
+                  </div>
+                ))}
               </div>
             </section>
           </div>
@@ -151,50 +97,32 @@ export default async function HomePage() {
             <div className="card-inner">
               <div className="rail-header">
                 <p className="card-label" style={{ marginBottom: 0 }}>
-                  Leituras recentes
+                  Leituras Recentes
                 </p>
                 <Link href="/readings" className="rail-link">
                   Ver tudo
                 </Link>
               </div>
-              {recentReadings.length === 0 ? (
-                <p className="atelier-empty">
-                  Ainda não guardaste leituras. Cola um link em Leituras.
-                </p>
-              ) : (
-                <div className="readings-row">
-                  {recentReadings.map((r) => {
-                    const card = (
-                      <>
-                        <div className="reading-source">
-                          <span>{r.tags[0] ?? "Leitura"}</span>
-                        </div>
-                        <div className="reading-title">
-                          {r.title || r.url || "Sem título"}
-                        </div>
-                        {r.note ? (
-                          <div className="reading-author">{r.note}</div>
-                        ) : null}
-                      </>
-                    );
-                    return r.url ? (
-                      <a
-                        key={r.id}
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="reading-card"
-                      >
-                        {card}
-                      </a>
-                    ) : (
-                      <Link key={r.id} href="/readings" className="reading-card">
-                        {card}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="readings-row">
+                {[
+                  { s: "W", time: "12min", title: "The creative act: A way of being", a: "Rick Rubin" },
+                  { s: "HBR", time: "8min", title: "The second-order thinker", a: "Harvard Business Review" },
+                  { s: "fs", time: "15min", title: "How to build systems that learn", a: "Farnam Street" },
+                  { s: "oe", time: "10min", title: "The cost of not deciding", a: "Observer Effect" },
+                ].map((r, idx) => (
+                  <Link key={idx} href="/readings" className="reading-card">
+                    <span className="reading-source">
+                      <b>{r.s}</b>
+                      <span>{r.time}</span>
+                    </span>
+                    <span className="reading-title">{r.title}</span>
+                    <span className="reading-author">{r.a}</span>
+                  </Link>
+                ))}
+                <Link href="/readings" className="reading-card">
+                  <span className="reading-title">Ver todas as leituras →</span>
+                </Link>
+              </div>
             </div>
           </section>
         </div>
@@ -205,17 +133,31 @@ export default async function HomePage() {
             <div className="rail-inner">
               <div className="rail-header">
                 <span className="rail-label">Agenda de Hoje</span>
+                <Link href="/agenda" className="rail-link">
+                  Ver agenda
+                </Link>
               </div>
-              <p className="atelier-empty">
-                Sem eventos. Liga um calendário em Ecossistema.
-              </p>
+              {[
+                { time: "10:00", title: "Reunião de Projeto", meta: "PAPERS — Issue 006" },
+                { time: "14:30", title: "Call com Equipa", meta: "DECIMA" },
+                { time: "16:00", title: "Revisão de Decisões", meta: "GAVINHO" },
+              ].map((e, idx) => (
+                <div key={idx} className="agenda-row">
+                  <span className="agenda-time">{e.time}</span>
+                  <span className="agenda-dot" />
+                  <span>
+                    <span className="agenda-title">{e.title}</span>
+                    <span className="agenda-meta">{e.meta}</span>
+                  </span>
+                </div>
+              ))}
             </div>
           </section>
 
           <section className="rail-card">
             <div className="rail-inner">
               <div className="rail-header">
-                <span className="rail-label">Capturas rápidas</span>
+                <span className="rail-label">Capturas Rápidas</span>
               </div>
               <QuickCaptureList />
             </div>
@@ -224,7 +166,7 @@ export default async function HomePage() {
           <section className="rail-card quote-card">
             <span className="quote-mark">“</span>
             <p className="quote-text">O tempo é o recurso mais valioso.</p>
-            <span className="quote-foot">Princípio Fundador n.º 9</span>
+            <span className="quote-foot">Princípio Fundador N.º 9</span>
           </section>
         </div>
       </div>

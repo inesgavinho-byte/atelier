@@ -12,6 +12,8 @@ export interface NavItem {
   label: string;
   href?: string;
   action?: "search" | "capture";
+  /** Leading glyph icon (when not a workspace monogram). */
+  icon?: string;
   /** Monogram shown in a tile (workspace entries). */
   initial?: string;
   /** Small count badge. */
@@ -72,6 +74,10 @@ export default function AppShell({
       <>
         {item.initial ? (
           <span className="workspace-initial">{item.initial}</span>
+        ) : item.icon ? (
+          <span className="sidebar-icon" aria-hidden>
+            {item.icon}
+          </span>
         ) : null}
         <span>{item.label}</span>
         {item.badge ? <span className="sidebar-badge">{item.badge}</span> : null}

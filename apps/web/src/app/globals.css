@@ -1026,6 +1026,20 @@
   font-size: 17px;
 }
 
+.app-shell .sidebar-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: var(--atelier-ink);
+}
+
+.app-shell .recent-thumb.dark {
+  background: #111;
+  color: #fff;
+  font-size: 16px;
+}
+
 .app-shell .sidebar-badge {
   margin-left: auto;
   min-width: 26px;
@@ -1158,11 +1172,16 @@
   min-height: 136px;
   padding: 24px;
   display: grid;
-  grid-template-columns: 44px 1fr;
+  grid-template-columns: 44px 1fr auto;
   align-items: center;
   gap: 18px;
   text-align: left;
   cursor: pointer;
+}
+
+.app-shell .quick-chevron {
+  color: var(--atelier-muted);
+  font-size: 22px;
 }
 
 .app-shell .quick-icon {
