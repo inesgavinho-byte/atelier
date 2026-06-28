@@ -1,10 +1,10 @@
 -- Migração initiatives → workspaces — FASE CONTRACT.
 --
--- ⚠️ NÃO APLICAR até o frontend (PR2) estar em PRODUÇÃO a usar workspace_id.
+-- ✅ APLICADA em 2026-06-28, depois de confirmar: workspace_id 100% preenchido
+-- em todas as dependentes, e zero referências a `initiatives`/`initiative_id`
+-- no código (frontend já migrado e mergeado). O mapeamento sobrevive em
+-- workspaces.legacy_initiative_id, por isso a remoção é recuperável se preciso.
 -- Remove `initiative_id` das tabelas dependentes e a tabela `initiatives`.
--- É destrutivo/irreversível em termos de dados — só correr depois de confirmar:
---   * workspace_id 100% preenchido (a fase EXPAND verificou-o), e
---   * nenhum código em produção lê mais `initiatives` / `initiative_id`.
 
 alter table public.decisions  drop column if exists initiative_id;
 alter table public.objectives drop column if exists initiative_id;
