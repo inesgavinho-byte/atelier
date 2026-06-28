@@ -72,6 +72,10 @@ export interface Initiative {
   agentIds: string[];
   /** Associated GitHub repository, "owner/repo" (optional). */
   githubRepo?: string;
+  /** Per-workspace Supabase project URL (non-secret; keys live encrypted). */
+  supabaseUrl?: string;
+  /** Per-workspace Supabase project ref/id (non-secret). */
+  supabaseProjectId?: string;
 }
 
 export interface Artifact {
