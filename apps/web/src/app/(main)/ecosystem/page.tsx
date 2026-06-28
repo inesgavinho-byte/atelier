@@ -52,6 +52,7 @@ export default async function EcosystemPage() {
       <EcosystemBoard
         connectors={connectors}
         manageable={security.manageable}
+        encrypted={security.encrypted}
       />
     </div>
   );
