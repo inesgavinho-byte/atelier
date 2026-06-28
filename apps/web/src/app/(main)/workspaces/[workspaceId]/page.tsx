@@ -97,6 +97,7 @@ export default async function WorkspaceDetailPage({
         <ContextPanel
           workspaceId={ws.id}
           githubRepo={ws.githubRepo}
+          supabaseUrl={ws.supabaseUrl}
           context={context}
           decisions={wsDecisions}
           artifacts={artifacts}

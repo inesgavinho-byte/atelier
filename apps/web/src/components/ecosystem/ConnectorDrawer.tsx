@@ -261,7 +261,7 @@ export default function ConnectorDrawer({
                 ))}
               </div>
             ) : (
-              <p className="meta">Ainda não associado a nenhuma iniciativa.</p>
+              <p className="meta">Ainda não associado a nenhum workspace.</p>
             )}
           </section>
 
