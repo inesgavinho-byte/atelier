@@ -38,7 +38,7 @@ async function count(table: string): Promise<TestResult> {
 }
 
 export async function testDatabase(): Promise<TestResult> {
-  return count("initiatives");
+  return count("workspaces");
 }
 export async function testAgents(): Promise<TestResult> {
   return count("agents");

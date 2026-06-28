@@ -64,7 +64,7 @@ export default function Timeline({ items }: { items: TimelineItem[] }) {
                 <p className="text-[15px] text-charcoal">{e.title}</p>
                 {e.initiativeSlug ? (
                   <Link
-                    href={`/initiatives/${e.initiativeSlug}`}
+                    href={`/workspaces/${e.initiativeSlug}`}
                     className="meta mt-1 inline-block hover:text-charcoal"
                   >
                     {e.initiativeName}

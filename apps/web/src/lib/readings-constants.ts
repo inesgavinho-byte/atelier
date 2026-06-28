@@ -32,7 +32,7 @@ export interface Reading {
   url?: string;
   title?: string;
   note?: string;
-  initiativeId?: string;
+  workspaceId?: string;
   tags: string[];
   status: string;
   sourceType?: string;

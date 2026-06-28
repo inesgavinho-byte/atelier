@@ -49,7 +49,7 @@ export default async function HomePage() {
                 {launchers.map((i) => (
                   <Link
                     key={i.id}
-                    href={`/initiatives/${i.slug}`}
+                    href={`/workspaces/${i.slug}`}
                     className="workspace-button"
                   >
                     <span className="workspace-initial">

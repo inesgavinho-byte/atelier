@@ -24,19 +24,6 @@ export default async function MainLayout({
     countUnreadReadings(),
   ]);
 
-  const workspaceHref = (name: string): string => {
-    const hit = initiatives.find(
-      (i) => i.name.toLowerCase() === name.toLowerCase()
-    );
-    return hit ? `/initiatives/${hit.slug}` : "/workspaces";
-  };
-
-  const workspace = (name: string) => ({
-    label: name,
-    href: workspaceHref(name),
-    initial: name.charAt(0).toUpperCase(),
-  });
-
   const sections: NavSection[] = [
     {
       items: [
@@ -48,12 +35,12 @@ export default async function MainLayout({
     {
       label: "Workspaces",
       items: [
-        workspace("PAPERS"),
-        workspace("DECIMA"),
-        workspace("GAVINHO"),
-        workspace("NUDO"),
-        { label: "Pessoal", href: workspaceHref("Pessoal"), icon: "♙" },
-        { label: "Novo Workspace", href: "/workspaces", icon: "＋" },
+        ...initiatives.map((w) => ({
+          label: w.name,
+          href: `/workspaces/${w.slug}`,
+          initial: w.name.charAt(0).toUpperCase(),
+        })),
+        { label: "Novo Workspace", href: "/workspaces", icon: "+" },
       ],
     },
     {

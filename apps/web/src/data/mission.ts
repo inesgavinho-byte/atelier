@@ -76,7 +76,7 @@ export interface Artifact {
   id: string;
   title: string;
   kind: ArtifactKind;
-  initiativeId: string;
+  workspaceId: string;
   state: string;
   updatedAt: string;
 }
@@ -86,7 +86,7 @@ export interface Decision {
   title: string;
   kind: DecisionKind;
   priority: Priority;
-  initiativeId: string;
+  workspaceId: string;
   agentId: string;
   context: string;
   impact: string;
@@ -116,7 +116,7 @@ export interface Agent {
 export interface Objective {
   id: string;
   title: string;
-  initiativeId: string;
+  workspaceId: string;
   status: ObjectiveStatus;
   progress: number;
   /** present when status === "em risco" */
@@ -127,7 +127,7 @@ export interface ActivityEvent {
   id: string;
   kind: ActivityKind;
   title: string;
-  initiativeId?: string;
+  workspaceId?: string;
   agentId?: string;
   at: string;
 }

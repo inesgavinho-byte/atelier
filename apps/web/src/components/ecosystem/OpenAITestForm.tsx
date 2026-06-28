@@ -50,7 +50,7 @@ export default function OpenAITestForm({
       const r = await saveOpenAICapture({
         prompt,
         response,
-        initiativeId: initiativeId || undefined,
+        workspaceId: initiativeId || undefined,
       });
       setSaveMsg(r.message);
     });
@@ -82,7 +82,7 @@ export default function OpenAITestForm({
 
       <div className="mt-4">
         <label htmlFor="initiative" className="eyebrow mb-2 block">
-          Iniciativa (opcional)
+          Workspace (opcional)
         </label>
         <select
           id="initiative"

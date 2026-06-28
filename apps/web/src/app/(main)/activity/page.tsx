@@ -20,7 +20,7 @@ export default async function ActivityPage() {
   ]);
   const iniById = new Map(initiatives.map((i) => [i.id, i]));
   const items: TimelineItem[] = events.map((e) => {
-    const ini = e.initiativeId ? iniById.get(e.initiativeId) : undefined;
+    const ini = e.workspaceId ? iniById.get(e.workspaceId) : undefined;
     return {
       id: e.id,
       kindLabel: KIND_LABEL[e.kind] ?? "Evento",

@@ -63,7 +63,7 @@ const toDecision = (r: any): Decision => ({
   title: r.title,
   kind: r.kind,
   priority: r.priority,
-  initiativeId: r.initiative_id,
+  workspaceId: r.workspace_id,
   agentId: r.agent_id,
   context: r.context,
   impact: r.impact,
@@ -74,7 +74,7 @@ const toDecision = (r: any): Decision => ({
 const toObjective = (r: any): Objective => ({
   id: r.id,
   title: r.title,
-  initiativeId: r.initiative_id,
+  workspaceId: r.workspace_id,
   status: r.status,
   progress: r.progress,
   risk: r.risk ?? undefined,
@@ -84,7 +84,7 @@ const toActivity = (r: any): ActivityEvent => ({
   id: r.id,
   kind: r.kind,
   title: r.title,
-  initiativeId: r.initiative_id ?? undefined,
+  workspaceId: r.workspace_id ?? undefined,
   agentId: r.agent_id ?? undefined,
   at: r.at,
 });
@@ -93,7 +93,7 @@ const toArtifact = (r: any): Artifact => ({
   id: r.id,
   title: r.title,
   kind: r.kind,
-  initiativeId: r.initiative_id,
+  workspaceId: r.workspace_id,
   state: r.state,
   updatedAt: r.updated_at,
 });
@@ -104,7 +104,7 @@ export async function getInitiatives(): Promise<Initiative[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
-    .from("initiatives")
+    .from("workspaces")
     .select("*")
     .order("sort");
   return (data ?? []).map(toInitiative);
@@ -116,11 +116,17 @@ export async function getInitiative(
   const sb = getSupabase();
   if (!sb) return undefined;
   const { data } = await sb
-    .from("initiatives")
+    .from("workspaces")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
   return data ? toInitiative(data) : undefined;
+}
+
+export async function getInitiativeByIdOrSlug(
+  idOrSlug: string
+): Promise<Initiative | undefined> {
+  return (await getInitiativeById(idOrSlug)) ?? (await getInitiative(idOrSlug));
 }
 
 /* ── Agents ──────────────────────────────────────────────────────────────── */
@@ -162,7 +168,7 @@ export async function getInitiativeById(
   const sb = getSupabase();
   if (!sb) return undefined;
   const { data } = await sb
-    .from("initiatives")
+    .from("workspaces")
     .select("*")
     .eq("id", id)
     .maybeSingle();
@@ -202,7 +208,7 @@ export async function getDecision(id: string): Promise<Decision | undefined> {
 export async function getDecisionsForInitiative(
   id: string
 ): Promise<Decision[]> {
-  return (await getPendingDecisions()).filter((d) => d.initiativeId === id);
+  return (await getPendingDecisions()).filter((d) => d.workspaceId === id);
 }
 
 /* ── Objectives ──────────────────────────────────────────────────────────── */
@@ -224,7 +230,7 @@ export async function getObjectivesAtRisk(): Promise<Objective[]> {
 export async function getObjectivesForInitiative(
   id: string
 ): Promise<Objective[]> {
-  return (await getObjectives()).filter((o) => o.initiativeId === id);
+  return (await getObjectives()).filter((o) => o.workspaceId === id);
 }
 
 /* ── Activity ────────────────────────────────────────────────────────────── */
@@ -242,7 +248,7 @@ export async function getActivity(): Promise<ActivityEvent[]> {
 export async function getActivityForInitiative(
   id: string
 ): Promise<ActivityEvent[]> {
-  return (await getActivity()).filter((e) => e.initiativeId === id);
+  return (await getActivity()).filter((e) => e.workspaceId === id);
 }
 
 /* ── Artifacts ───────────────────────────────────────────────────────────── */
@@ -260,7 +266,7 @@ export async function getArtifacts(): Promise<Artifact[]> {
 export async function getArtifactsForInitiative(
   id: string
 ): Promise<Artifact[]> {
-  return (await getArtifacts()).filter((a) => a.initiativeId === id);
+  return (await getArtifacts()).filter((a) => a.workspaceId === id);
 }
 
 /* ── Derived figures + config ────────────────────────────────────────────── */
@@ -315,14 +321,14 @@ export async function getRecentWork(limit = 3): Promise<RecentWorkItem[]> {
 
   const items: RecentWorkItem[] = [];
   for (const a of artifacts.slice(0, limit)) {
-    const ini = iniById.get(a.initiativeId);
+    const ini = iniById.get(a.workspaceId);
     items.push({
       id: a.id,
       title: a.title,
       type: "artifact",
       context: ini?.name,
       updatedAt: a.updatedAt,
-      href: ini ? `/initiatives/${ini.slug}` : "/initiatives",
+      href: ini ? `/workspaces/${ini.slug}` : "/workspaces",
     });
   }
   for (const c of chats.slice(0, limit)) {
@@ -394,13 +400,8 @@ export async function getSearchCorpus(): Promise<SearchResult[]> {
   const iniById = new Map(initiatives.map((i) => [i.id, i]));
   const out: SearchResult[] = [];
 
-  for (const i of initiatives)
-    out.push({
-      group: "Iniciativas",
-      label: i.name,
-      detail: i.focus,
-      href: `/initiatives/${i.slug}`,
-    });
+  // Workspaces themselves are added once below (from getWorkspaces); here we
+  // only keep the id→slug map for artifact/objective hrefs.
   for (const d of decisions)
     out.push({
       group: "Decisões",
@@ -420,14 +421,14 @@ export async function getSearchCorpus(): Promise<SearchResult[]> {
       group: "Artefactos",
       label: art.title,
       detail: `${art.kind} · ${art.state}`,
-      href: `/initiatives/${iniById.get(art.initiativeId)?.slug ?? ""}`,
+      href: `/workspaces/${iniById.get(art.workspaceId)?.slug ?? ""}`,
     });
   for (const o of objectives)
     out.push({
       group: "Objetivos",
       label: o.title,
       detail: o.risk ?? o.status,
-      href: `/initiatives/${iniById.get(o.initiativeId)?.slug ?? ""}`,
+      href: `/workspaces/${iniById.get(o.workspaceId)?.slug ?? ""}`,
     });
   // Documents come from their real registries (markdown is the source of truth).
   for (const doc of getDocs())

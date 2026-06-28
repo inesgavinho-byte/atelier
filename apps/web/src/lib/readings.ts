@@ -23,7 +23,7 @@ const toReading = (r: any): Reading => ({
   url: r.url ?? undefined,
   title: r.title ?? undefined,
   note: r.note ?? undefined,
-  initiativeId: r.initiative_id ?? undefined,
+  workspaceId: r.workspace_id ?? undefined,
   tags: r.tags ?? [],
   status: r.status,
   sourceType: r.source_type ?? undefined,

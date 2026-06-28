@@ -8,7 +8,7 @@ export async function createReading(input: {
   url: string;
   title?: string;
   note?: string;
-  initiativeId?: string;
+  workspaceId?: string;
   tags: string[];
   status?: string;
   sourceType?: string;
@@ -24,7 +24,7 @@ export async function createReading(input: {
     url,
     title: input.title?.trim() || null,
     note: input.note?.trim() || null,
-    initiative_id: input.initiativeId || null,
+    workspace_id: input.workspaceId || null,
     tags: input.tags ?? [],
     status: input.status || "Por ler",
     source_type: input.sourceType?.trim() || null,
