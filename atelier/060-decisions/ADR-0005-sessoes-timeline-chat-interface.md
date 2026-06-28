@@ -2,7 +2,7 @@
 id: ADR-0005
 title: Sessões, Timeline e Chat como Interface
 version: v0.1
-status: Proposed
+status: Accepted
 owner: Inês Gavinho
 created: 2026-06-28
 updated: 2026-06-28
@@ -18,7 +18,7 @@ impacts:
 # ADR-0005 — Sessões, Timeline e Chat como Interface
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 
