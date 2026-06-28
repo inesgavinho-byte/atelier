@@ -42,11 +42,16 @@ export default async function MainLayout({
     {
       label: "Workspaces",
       items: [
-        ...initiatives.map((w) => ({
-          label: w.name,
-          href: `/workspaces/${w.slug}`,
-          workspace: w.name,
-        })),
+        // Guard against rows with neither slug nor id (would render
+        // /workspaces/null). Link by slug, falling back to id — the route
+        // resolves either (getInitiativeByIdOrSlug).
+        ...initiatives
+          .filter((w) => w.slug || w.id)
+          .map((w) => ({
+            label: w.name,
+            href: `/workspaces/${w.slug ?? w.id}`,
+            workspace: w.name,
+          })),
         { label: "Novo Workspace", href: "/workspaces", icon: "+" },
       ],
     },
