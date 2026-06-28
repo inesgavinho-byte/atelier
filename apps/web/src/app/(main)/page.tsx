@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { ago } from "@/components/mission/bits";
-import { QuickActions, QuickCaptureList } from "@/components/app/HomeIslands";
-import { getActivity, getInitiatives, getRecentWork } from "@/lib/mission";
+import { HomeQuickActions } from "@/components/app/HomeIslands";
+import Panel from "@/components/shell/Panel";
+import PanelHeader from "@/components/shell/PanelHeader";
+import ActivityDot from "@/components/shell/ActivityDot";
+import {
+  getActivity,
+  getInitiatives,
+  getPendingDecisions,
+  getRecentWork,
+} from "@/lib/mission";
 import { getReadings } from "@/lib/readings";
 import { getAgenda } from "@/lib/agenda";
 import { owner } from "@/data/mission";
@@ -17,203 +25,148 @@ export const dynamic = "force-dynamic";
  * the page. The interactive cards (search/capture) stay as client islands.
  */
 export default async function HomePage() {
-  const [recent, activityAll, readingsAll, initiatives, agenda] =
-    await Promise.all([
-      getRecentWork(3).catch(() => []),
-      getActivity().catch(() => []),
-      getReadings().catch(() => []),
-      getInitiatives().catch(() => []),
-      getAgenda().catch(() => ({ connected: false, events: [] as const })),
-    ]);
+  const [recent, activityAll, , , agenda, pending] = await Promise.all([
+    getRecentWork(3).catch(() => []),
+    getActivity().catch(() => []),
+    getReadings().catch(() => []),
+    getInitiatives().catch(() => []),
+    getAgenda().catch(() => ({ connected: false, events: [] as const })),
+    getPendingDecisions().catch(() => []),
+  ]);
 
   const activity = activityAll.slice(0, 5);
-  const readings = readingsAll.slice(0, 4);
-  const launchers = initiatives.slice(0, 3);
+  const pendingTop = pending.slice(0, 4);
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Bom dia," : hour < 20 ? "Boa tarde," : "Boa noite,";
+  const dateLabel = new Intl.DateTimeFormat("pt-PT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
 
   return (
-    <div>
-      <h1 className="home-title">Bom dia, {owner}.</h1>
-      <p className="home-subtitle">O que queres fazer hoje?</p>
+    <div className="home">
+      <h1 className="home-greeting">
+        {greeting} {owner}.
+      </h1>
+      <p className="home-sub">
+        {dateLabel} · {pending.length} decisões pendentes
+      </p>
 
-      <div className="home-grid">
-        {/* Main column */}
-        <div className="content-stack">
-          {/* Quick actions + workspace launcher */}
-          <div className="quick-row">
-            <QuickActions />
-            <div className="card workspace-launcher">
-              <p className="card-label" style={{ marginBottom: 0 }}>
-                Abrir Workspace
-              </p>
-              <div className="workspace-buttons">
-                {launchers.map((i) => (
-                  <Link
-                    key={i.id}
-                    href={`/workspaces/${i.slug}`}
-                    className="workspace-button"
-                  >
-                    <span className="workspace-initial">
-                      {i.name.charAt(0).toUpperCase()}
+      <div className="home-quick-row">
+        <HomeQuickActions />
+        <Link href="/workspaces" className="home-quick-card">
+          <span className="home-quick-glyph" aria-hidden>
+            ⊞
+          </span>
+          <span className="home-quick-title">Novo workspace</span>
+          <span className="home-quick-copy">Cria um espaço de trabalho.</span>
+        </Link>
+      </div>
+
+      <div className="home-cols">
+        <Panel>
+          <PanelHeader title="Continuar" />
+          {recent.length === 0 ? (
+            <p className="home-empty">Ainda não há trabalho recente.</p>
+          ) : (
+            <div className="home-list">
+              {recent.map((r) => (
+                <Link
+                  key={`${r.type}-${r.id}`}
+                  href={r.href}
+                  className="home-list-row"
+                >
+                  <span>
+                    <span className="home-list-title">{r.title}</span>
+                    <span className="home-list-meta">
+                      {[r.context, r.type === "chat" ? "Chat" : "Artefacto"]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
-                    <span>{i.name}</span>
-                  </Link>
-                ))}
-                <Link href="/workspaces" className="workspace-button">
-                  <span className="workspace-initial">＋</span>
-                  <span>Novo</span>
+                  </span>
+                  <span className="home-list-timing">{ago(r.updatedAt)}</span>
                 </Link>
-              </div>
+              ))}
             </div>
-          </div>
+          )}
+        </Panel>
 
-          {/* Continue + Activity */}
-          <div className="two-col">
-            <section className="card">
-              <div className="card-inner">
-                <p className="card-label">Continuar a partir de onde ficaste</p>
-                {recent.length === 0 ? (
-                  <p className="atelier-empty">
-                    Ainda não há trabalho recente. Captura ou abre um workspace.
-                  </p>
-                ) : (
-                  <div className="recent-list">
-                    {recent.map((r) => (
-                      <Link key={`${r.type}-${r.id}`} href={r.href} className="recent-row">
-                        <span className="recent-thumb">
-                          {r.title.charAt(0).toUpperCase()}
-                        </span>
-                        <span>
-                          <span className="recent-title">{r.title}</span>
-                          <span className="recent-meta">
-                            {[r.context, r.type === "chat" ? "Chat" : "Artefacto"]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        </span>
-                        <span className="recent-meta">{ago(r.updatedAt)} ›</span>
-                      </Link>
-                    ))}
+        <Panel>
+          <PanelHeader
+            title="Decisões pendentes"
+            action={{ label: "Ver tudo", href: "/decisions" }}
+          />
+          {pendingTop.length === 0 ? (
+            <p className="home-empty">Sem decisões pendentes.</p>
+          ) : (
+            <div className="home-list">
+              {pendingTop.map((d) => (
+                <div key={d.id} className="home-decision">
+                  <div className="home-decision-title">{d.title}</div>
+                  <div className="home-decision-actions">
+                    <Link
+                      href={`/decisions/${d.id}`}
+                      className="btn-approve btn-sm"
+                    >
+                      Aprovar
+                    </Link>
+                    <Link
+                      href={`/decisions/${d.id}`}
+                      className="btn-quiet btn-sm"
+                    >
+                      Rever
+                    </Link>
                   </div>
-                )}
-              </div>
-            </section>
-
-            <section className="card">
-              <div className="card-inner">
-                <p className="card-label">Atividade Recente</p>
-                {activity.length === 0 ? (
-                  <p className="atelier-empty">Sem atividade recente.</p>
-                ) : (
-                  activity.map((e) => (
-                    <div key={e.id} className="activity-row">
-                      <span className="activity-icon">
-                        {e.kind.charAt(0).toUpperCase()}
-                      </span>
-                      <span>
-                        <span className="activity-title">{e.title}</span>
-                      </span>
-                      <span className="activity-meta">{ago(e.at)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-
-          {/* Recent readings */}
-          <section className="card">
-            <div className="card-inner">
-              <div className="rail-header">
-                <p className="card-label" style={{ marginBottom: 0 }}>
-                  Leituras Recentes
-                </p>
-                <Link href="/readings" className="rail-link">
-                  Ver tudo
-                </Link>
-              </div>
-              {readings.length === 0 ? (
-                <p className="atelier-empty">Ainda não guardaste leituras.</p>
-              ) : (
-                <div className="readings-row">
-                  {readings.map((r) => {
-                    const inner = (
-                      <>
-                        <span className="reading-source">
-                          <b>{r.tags[0] ?? "Leitura"}</b>
-                        </span>
-                        <span className="reading-title">
-                          {r.title || r.url || "Sem título"}
-                        </span>
-                      </>
-                    );
-                    return r.url ? (
-                      <a
-                        key={r.id}
-                        href={r.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="reading-card"
-                      >
-                        {inner}
-                      </a>
-                    ) : (
-                      <Link key={r.id} href="/readings" className="reading-card">
-                        {inner}
-                      </Link>
-                    );
-                  })}
                 </div>
-              )}
+              ))}
             </div>
-          </section>
-        </div>
+          )}
+        </Panel>
+      </div>
 
-        {/* Right rail */}
-        <div className="right-rail">
-          <section className="rail-card">
-            <div className="rail-inner">
-              <div className="rail-header">
-                <span className="rail-label">Agenda de Hoje</span>
-              </div>
-              {!agenda.connected ? (
-                <p className="atelier-empty">
-                  Liga um calendário em Ecossistema.
-                </p>
-              ) : agenda.events.length === 0 ? (
-                <p className="atelier-empty">Sem eventos hoje.</p>
-              ) : (
-                <ul className="agenda-list">
-                  {agenda.events.map((e) => (
-                    <li key={e.id} className="agenda-row">
-                      <span className="agenda-time">{e.timeLabel}</span>
-                      <span className="agenda-body">
-                        <span className="agenda-title">{e.title}</span>
-                        {e.location ? (
-                          <span className="agenda-loc">{e.location}</span>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+      <div className="home-cols">
+        <Panel>
+          <PanelHeader title="Atividade recente" />
+          {activity.length === 0 ? (
+            <p className="home-empty">Sem atividade recente.</p>
+          ) : (
+            <div className="home-list">
+              {activity.map((e) => (
+                <div key={e.id} className="home-activity-row">
+                  <ActivityDot kind={e.kind} />
+                  <span className="home-activity-title">{e.title}</span>
+                  <span className="home-activity-meta">{ago(e.at)}</span>
+                </div>
+              ))}
             </div>
-          </section>
+          )}
+        </Panel>
 
-          <section className="rail-card">
-            <div className="rail-inner">
-              <div className="rail-header">
-                <span className="rail-label">Capturas Rápidas</span>
-              </div>
-              <QuickCaptureList />
+        <Panel>
+          <PanelHeader title="Agenda de hoje" />
+          {!agenda.connected ? (
+            <p className="home-empty">Liga um calendário em Ecossistema.</p>
+          ) : agenda.events.length === 0 ? (
+            <p className="home-empty">Sem eventos hoje.</p>
+          ) : (
+            <div className="home-list">
+              {agenda.events.map((e) => (
+                <div key={e.id} className="home-agenda-row">
+                  <span className="home-agenda-time">{e.timeLabel}</span>
+                  <span>
+                    <span className="home-agenda-title">{e.title}</span>
+                    {e.location ? (
+                      <span className="home-agenda-loc">{e.location}</span>
+                    ) : null}
+                  </span>
+                </div>
+              ))}
             </div>
-          </section>
-
-          <section className="rail-card quote-card">
-            <span className="quote-mark">“</span>
-            <p className="quote-text">O tempo é o recurso mais valioso.</p>
-            <span className="quote-foot">Princípio Fundador N.º 9</span>
-          </section>
-        </div>
+          )}
+        </Panel>
       </div>
     </div>
   );

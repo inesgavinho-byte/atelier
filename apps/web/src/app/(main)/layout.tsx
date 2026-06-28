@@ -1,5 +1,9 @@
-import AppShell, { type NavSection } from "@/components/app/AppShell";
-import { getInitiatives, getSearchCorpus } from "@/lib/mission";
+import AppShell, { type NavSection } from "@/components/shell/AppShell";
+import {
+  getInitiatives,
+  getPendingDecisions,
+  getSearchCorpus,
+} from "@/lib/mission";
 import { countUnreadReadings } from "@/lib/readings";
 import { gateEnabled } from "@/lib/auth";
 
@@ -18,11 +22,14 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives, unread] = await Promise.all([
+  const [corpus, initiatives, unread, pending] = await Promise.all([
     getSearchCorpus(),
     getInitiatives(),
     countUnreadReadings(),
+    getPendingDecisions(),
   ]);
+
+  const pendingDecisions = pending.length;
 
   const sections: NavSection[] = [
     {
@@ -38,17 +45,27 @@ export default async function MainLayout({
         ...initiatives.map((w) => ({
           label: w.name,
           href: `/workspaces/${w.slug}`,
-          initial: w.name.charAt(0).toUpperCase(),
+          workspace: w.name,
         })),
         { label: "Novo Workspace", href: "/workspaces", icon: "+" },
       ],
     },
     {
-      label: "Caixas de Entrada",
+      label: "Caixas de entrada",
       items: [
         { label: "Leituras", href: "/readings", icon: "▧" },
-        { label: "Decisões", href: "/decisions", icon: "✓" },
-        { label: "Inbox", href: "/readings", icon: "⌂", badge: unread || undefined },
+        {
+          label: "Decisões",
+          href: "/decisions",
+          icon: "✓",
+          badge: pendingDecisions || undefined,
+        },
+        {
+          label: "Inbox",
+          href: "/readings",
+          icon: "⌂",
+          badge: unread || undefined,
+        },
       ],
     },
     {
@@ -62,7 +79,13 @@ export default async function MainLayout({
   ];
 
   return (
-    <AppShell corpus={corpus} sections={sections} gated={gateEnabled()}>
+    <AppShell
+      corpus={corpus}
+      sections={sections}
+      gated={gateEnabled()}
+      pendingDecisions={pendingDecisions}
+      unread={unread}
+    >
       {children}
     </AppShell>
   );
