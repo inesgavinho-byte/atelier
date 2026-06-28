@@ -50,6 +50,7 @@ async function mergeIntoContext(
     .from("workspace_context")
     .select("summary, decisions, artifacts, lessons, version")
     .eq("workspace_id", workspaceId)
+    .is("project_id", null)
     .maybeSingle();
 
   const summaryParts = [
@@ -60,6 +61,7 @@ async function mergeIntoContext(
   await admin.from("workspace_context").upsert(
     {
       workspace_id: workspaceId,
+      project_id: null,
       summary: summaryParts.join("\n\n"),
       decisions: mergeList(existing?.decisions ?? [], extracted.decisions),
       artifacts: mergeList(existing?.artifacts ?? [], extracted.artifacts),
@@ -67,7 +69,7 @@ async function mergeIntoContext(
       version: (existing?.version ?? 0) + 1,
       last_updated_at: new Date().toISOString(),
     },
-    { onConflict: "workspace_id" }
+    { onConflict: "workspace_id,project_id" }
   );
 }
 

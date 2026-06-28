@@ -10,6 +10,7 @@ import { getArtifactsForInitiative, getDecisions } from "@/lib/mission";
 import {
   getCanonicalChat,
   getMessages,
+  getProject,
   getWorkspace,
   getWorkspaceContext,
   type WorkspaceContext,
@@ -71,23 +72,26 @@ export async function getWorkspaceRepoOverview(
 }
 
 /**
- * The single canonical chat for a workspace (compat shim while workspace_chats
- * still exists — ADR-0004). Finds the earliest project-less chat or creates one.
+ * The single canonical chat for a workspace or one of its projects (compat shim
+ * while workspace_chats still exists — ADR-0004 / ADR-0005 F1). Finds the
+ * earliest matching chat (project-less, or scoped to projectId) or creates one.
  */
 async function ensureCanonicalChat(
   sb: SupabaseClient,
   workspaceId: string,
-  workspaceName: string | undefined
+  title: string | undefined,
+  projectId?: string
 ): Promise<string | null> {
   // Same selection the page uses, so reads and writes hit the same chat.
-  const existing = await getCanonicalChat(workspaceId);
+  const existing = await getCanonicalChat(workspaceId, projectId);
   if (existing) return existing.id;
 
   const { data, error } = await sb
     .from("workspace_chats")
     .insert({
       workspace_id: workspaceId,
-      title: workspaceName || "Conversa",
+      project_id: projectId || null,
+      title: title || "Conversa",
       provider: "ATELIER",
       mode: "livre",
     })
@@ -105,14 +109,23 @@ function councilSystemMessage(
   workspaceName: string | undefined,
   ctx: WorkspaceContext | null,
   decisions: { title: string; status: string }[],
-  artifacts: { title: string; kind: string }[]
+  artifacts: { title: string; kind: string }[],
+  project?: { name: string; ctx: WorkspaceContext | null }
 ): string {
+  const place = project
+    ? `Estás no projecto ${project.name} do workspace ${workspaceName ?? "(sem nome)"}.`
+    : `Este é o workspace ${workspaceName ?? "(sem nome)"}.`;
   const parts: string[] = [
-    `És o Council do ATELIER — o parceiro de pensamento e trabalho de Inês Gavinho. Este é o workspace ${workspaceName ?? "(sem nome)"}.`,
+    `És o Council do ATELIER — o parceiro de pensamento e trabalho de Inês Gavinho. ${place}`,
     "Responde em português europeu, com rigor e concisão. Nunca menciones a tua arquitectura interna (modos, sessões, modelos ou providers) — responde de forma natural, como uma conversa contínua que se lembra do contexto.",
   ];
   if (ctx?.summary.trim()) {
     parts.push(`## Memória comprimida do workspace\n${ctx.summary.trim()}`);
+  }
+  if (project?.ctx?.summary.trim()) {
+    parts.push(
+      `## Memória comprimida do projecto ${project.name}\n${project.ctx.summary.trim()}`
+    );
   }
   if (decisions.length) {
     parts.push(
@@ -126,11 +139,14 @@ function councilSystemMessage(
         artifacts.map((a) => `- ${a.title} (${a.kind})`).join("\n")
     );
   }
-  if (ctx?.lessons?.length) {
-    const lessons = ctx.lessons.map((l) =>
-      typeof l === "string" ? l : JSON.stringify(l)
+  const allLessons = [
+    ...(ctx?.lessons ?? []),
+    ...(project?.ctx?.lessons ?? []),
+  ].map((l) => (typeof l === "string" ? l : JSON.stringify(l)));
+  if (allLessons.length) {
+    parts.push(
+      "## Lições aprendidas\n" + allLessons.map((l) => `- ${l}`).join("\n")
     );
-    parts.push("## Lições aprendidas\n" + lessons.map((l) => `- ${l}`).join("\n"));
   }
   return parts.join("\n\n");
 }
@@ -143,7 +159,8 @@ function councilSystemMessage(
  */
 export async function sendWorkspaceMessage(
   workspaceId: string,
-  content: string
+  content: string,
+  projectId?: string
 ): Promise<{
   ok: boolean;
   text?: string;
@@ -162,16 +179,21 @@ export async function sendWorkspaceMessage(
   await hydrateCredentialOverrides();
 
   const ws = await getWorkspace(workspaceId);
-  const chatId = await ensureCanonicalChat(sb, workspaceId, ws?.name);
+  const project = projectId ? await getProject(projectId) : undefined;
+  const chatTitle = project?.name ?? ws?.name;
+  const chatId = await ensureCanonicalChat(sb, workspaceId, chatTitle, projectId);
   if (!chatId) return { ok: false, error: "Não foi possível abrir a conversa." };
 
-  // Compressed memory + the workspace's live active decisions and artifacts.
-  const [ctx, allDecisions, artifacts] = await Promise.all([
+  // Compressed memory (workspace-level + project-level) plus the workspace's
+  // live active decisions and artifacts.
+  const [ctx, projectCtx, allDecisions, artifacts] = await Promise.all([
     getWorkspaceContext(workspaceId),
+    projectId ? getWorkspaceContext(workspaceId, projectId) : Promise.resolve(null),
     getDecisions().catch(() => []),
     getArtifactsForInitiative(workspaceId).catch(() => []),
   ]);
-  const ctxVersion = ctx?.version ?? null;
+  // The project's own memory version drives the displayed context line.
+  const ctxVersion = (project ? projectCtx?.version : ctx?.version) ?? null;
   const activeDecisions = allDecisions
     .filter(
       (d) =>
@@ -200,7 +222,8 @@ export async function sendWorkspaceMessage(
     ws?.name,
     ctx,
     activeDecisions,
-    artifactList
+    artifactList,
+    project ? { name: project.name, ctx: projectCtx } : undefined
   );
   const messages: AIMessage[] = [
     { role: "system", content: system },
@@ -209,11 +232,18 @@ export async function sendWorkspaceMessage(
 
   const result = await runtime.run({
     workspaceName: ws?.name,
+    projectName: project?.name,
     messages,
   });
 
-  if (!result.ok) {
+  const revalidate = () => {
     revalidatePath(`/workspaces/${workspaceId}`);
+    if (projectId)
+      revalidatePath(`/workspaces/${workspaceId}/projects/${projectId}`);
+  };
+
+  if (!result.ok) {
+    revalidate();
     return { ok: false, error: result.error ?? "Falha na execução." };
   }
 
@@ -230,7 +260,7 @@ export async function sendWorkspaceMessage(
   });
   await sb.from("workspace_chats").update({ updated_at: now() }).eq("id", chatId);
 
-  revalidatePath(`/workspaces/${workspaceId}`);
+  revalidate();
   return {
     ok: true,
     text: result.text,

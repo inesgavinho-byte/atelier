@@ -42,6 +42,8 @@ const toProject = (r: any): WorkspaceProject => ({
   name: r.name,
   description: r.description ?? undefined,
   status: r.status,
+  githubRepo: r.github_repo ?? undefined,
+  sort: r.sort ?? 0,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -102,7 +104,8 @@ export async function getProjects(
     .from("workspace_projects")
     .select("*")
     .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false });
+    .order("sort", { ascending: true })
+    .order("created_at", { ascending: true });
   return (data ?? []).map(toProject);
 }
 
@@ -176,21 +179,25 @@ export async function getMessages(
 }
 
 /**
- * The single canonical (project-less) chat for a workspace — the continuous
- * conversation (ADR-0004). Deterministically the EARLIEST created project-less
- * chat, so the page and the send action always agree on the same chat. Returns
- * undefined when none exists yet (the first sent message creates it).
+ * The single canonical chat for a workspace or one of its projects — the
+ * continuous conversation (ADR-0004 / ADR-0005 F1). Without a projectId this is
+ * the workspace-level chat (project_id IS NULL); with one it is that project's
+ * chat. Deterministically the EARLIEST created matching chat, so the page and
+ * the send action always agree. Returns undefined when none exists yet (the
+ * first sent message creates it).
  */
 export async function getCanonicalChat(
-  workspaceId: string
+  workspaceId: string,
+  projectId?: string
 ): Promise<WorkspaceChat | undefined> {
   const sb = getSupabase();
   if (!sb) return undefined;
-  const { data } = await sb
+  let q = sb
     .from("workspace_chats")
     .select("*")
-    .eq("workspace_id", workspaceId)
-    .is("project_id", null)
+    .eq("workspace_id", workspaceId);
+  q = projectId ? q.eq("project_id", projectId) : q.is("project_id", null);
+  const { data } = await q
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -201,6 +208,7 @@ export async function getCanonicalChat(
 
 export interface WorkspaceContext {
   workspaceId: string;
+  projectId: string | null;
   summary: string;
   decisions: unknown[];
   artifacts: unknown[];
@@ -210,23 +218,30 @@ export interface WorkspaceContext {
 }
 
 /**
- * The compressed memory for a workspace, maintained by the context agent. Read
- * via the service role (the table is RLS-locked). Returns null when absent or
+ * The compressed memory for a workspace or one of its projects, maintained by
+ * the context agent. Without a projectId this is the workspace-level memory
+ * (project_id IS NULL); with one it is that project's memory. Read via the
+ * service role (the table is RLS-locked). Returns null when absent or
  * unreachable — the chat then runs with no compressed context yet.
  */
 export async function getWorkspaceContext(
-  workspaceId: string
+  workspaceId: string,
+  projectId?: string
 ): Promise<WorkspaceContext | null> {
   const admin = getSupabaseAdmin();
   if (!admin) return null;
-  const { data, error } = await admin
+  let q = admin
     .from("workspace_context")
-    .select("workspace_id, summary, decisions, artifacts, lessons, version, last_updated_at")
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
+    .select(
+      "workspace_id, project_id, summary, decisions, artifacts, lessons, version, last_updated_at"
+    )
+    .eq("workspace_id", workspaceId);
+  q = projectId ? q.eq("project_id", projectId) : q.is("project_id", null);
+  const { data, error } = await q.maybeSingle();
   if (error || !data) return null;
   return {
     workspaceId: data.workspace_id,
+    projectId: data.project_id ?? null,
     summary: data.summary ?? "",
     decisions: data.decisions ?? [],
     artifacts: data.artifacts ?? [],
