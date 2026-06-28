@@ -2907,3 +2907,367 @@
   color: var(--teal);
   font-weight: 500;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * Workspace chat (ADR-0004) — the continuous workspace conversation.
+ * A Claude.ai-style window: compact header, scrollable transcript, fixed
+ * input row. Desktop-first. Colour via the semantic theme tokens only.
+ * ════════════════════════════════════════════════════════════════════════ */
+.ws-page {
+  display: flex;
+  flex-direction: column;
+  /* Fill the shell content height (minus topbar) so the chat input pins low. */
+  min-height: calc(100vh - 59px - 64px);
+}
+
+.ws-header {
+  margin-bottom: 18px;
+}
+.ws-header-title {
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--text);
+}
+.ws-header-intent {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.ws-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+}
+.ws-header-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  max-width: 320px;
+  flex: 1;
+}
+.ws-header-progress-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ws-header-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ws-header-chip:hover {
+  filter: brightness(1.05);
+}
+
+.ws-layout {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  min-height: 0;
+}
+
+.ws-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.ws-chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ws-chat-empty {
+  margin: auto;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.ws-msg {
+  display: flex;
+  width: 100%;
+}
+.ws-msg.user {
+  justify-content: flex-end;
+}
+.ws-msg.assistant {
+  justify-content: flex-start;
+}
+
+.ws-msg-bubble {
+  max-width: 78%;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ws-msg.user .ws-msg-bubble {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.ws-msg.assistant .ws-msg-bubble {
+  background: var(--panel);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+}
+
+.ws-msg-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Assistant attribution header: green dot + "Council · model". */
+.ws-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.ws-dot-council {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex: 0 0 auto;
+}
+
+/* Tighten the editorial markdown defaults inside assistant bubbles. */
+.ws-msg.assistant .atelier-prose > :first-child {
+  margin-top: 0;
+}
+.ws-msg.assistant .atelier-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.ws-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ws-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: ws-typing-bounce 1.2s infinite ease-in-out;
+}
+.ws-typing span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.ws-typing span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes ws-typing-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.ws-chat-error {
+  margin: 0;
+  padding: 8px 24px;
+  font-size: 13px;
+  color: var(--atelier-danger, #9b3f32);
+  background: var(--panel);
+  border-top: 0.5px solid var(--border);
+}
+
+.ws-chat-foot {
+  border-top: 0.5px solid var(--border);
+  background: var(--panel-strong);
+}
+
+.ws-context-line {
+  margin: 0;
+  padding: 8px 14px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ws-chat-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ws-chat-textarea {
+  flex: 1;
+  resize: none;
+  height: 40px;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 9px 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+}
+.ws-chat-textarea:focus {
+  border-color: var(--accent);
+}
+.ws-chat-textarea:disabled {
+  opacity: 0.6;
+}
+
+/* Send: a compact up-arrow icon button. */
+.ws-send {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-btn);
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.ws-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Workspace context panel (ADR-0004 right rail) ────────────────────────── */
+.ctx-panel {
+  width: 260px;
+  flex: 0 0 260px;
+  align-self: stretch;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 20px;
+  background: var(--panel);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.ctx-section-title {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ctx-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.ctx-meta {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ctx-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.ctx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.ctx-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ctx-row-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.ctx-agent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ctx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  transform: translateY(1px);
+}
+.ctx-dot-amber {
+  background: var(--atelier-warning, #d99518);
+}
+.ctx-dot-green {
+  background: var(--teal);
+}
+.ctx-dot-neutral {
+  background: var(--text-muted);
+}
+.ctx-dot-violet {
+  background: var(--accent);
+}
+
+.ctx-bullets {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+  .ws-layout {
+    flex-direction: column;
+  }
+  .ctx-panel {
+    width: auto;
+    flex: none;
+  }
+}
