@@ -175,6 +175,28 @@ export async function getMessages(
   return (data ?? []).map(toMessage);
 }
 
+/**
+ * The single canonical (project-less) chat for a workspace — the continuous
+ * conversation (ADR-0004). Deterministically the EARLIEST created project-less
+ * chat, so the page and the send action always agree on the same chat. Returns
+ * undefined when none exists yet (the first sent message creates it).
+ */
+export async function getCanonicalChat(
+  workspaceId: string
+): Promise<WorkspaceChat | undefined> {
+  const sb = getSupabase();
+  if (!sb) return undefined;
+  const { data } = await sb
+    .from("workspace_chats")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .is("project_id", null)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data ? toChat(data) : undefined;
+}
+
 /* ── Workspace context (ADR-0004) ─────────────────────────────────────────── */
 
 export interface WorkspaceContext {
