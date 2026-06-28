@@ -68,6 +68,7 @@ export default async function MainLayout({
       label: "Ferramentas",
       items: [
         { label: "Ecossistema", href: "/ecosystem", icon: "⌘" },
+        { label: "Jobs", href: "/jobs", icon: "▦" },
         { label: "Sistema", href: "/admin/system", icon: "⚙" },
       ],
     },
