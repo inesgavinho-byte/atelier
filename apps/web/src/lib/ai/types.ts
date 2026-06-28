@@ -7,7 +7,12 @@
  * client components (it carries the provider metadata used by the chat UI).
  */
 
-export type ProviderId = "openai" | "claude" | "perplexity";
+export type ProviderId =
+  | "openai"
+  | "claude"
+  | "perplexity"
+  | "groq"
+  | "deepseek";
 
 export interface AIMessage {
   role: "user" | "assistant" | "system";
@@ -82,6 +87,18 @@ export const PROVIDER_META: ProviderMeta[] = [
     defaultModel: "sonar",
     models: ["sonar", "sonar-pro", "sonar-reasoning"],
   },
+  {
+    id: "groq",
+    name: "Groq",
+    defaultModel: "llama-3.3-70b-versatile",
+    models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    defaultModel: "deepseek-chat",
+    models: ["deepseek-chat", "deepseek-reasoner"],
+  },
 ];
 
 /** Provider labels stored on a chat. ATELIER and Manus are non-executing. */
@@ -106,6 +123,10 @@ export function providerIdFromLabel(label?: string | null): ProviderId | null {
       return "claude";
     case "perplexity":
       return "perplexity";
+    case "groq":
+      return "groq";
+    case "deepseek":
+      return "deepseek";
     default:
       return null;
   }

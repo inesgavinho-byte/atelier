@@ -195,6 +195,8 @@ const TESTERS: Record<string, () => Promise<{ ok: boolean; message: string }>> =
   openai: () => testGatewayProvider("openai"),
   claude: () => testGatewayProvider("claude"),
   perplexity: () => testGatewayProvider("perplexity"),
+  groq: () => testGatewayProvider("groq"),
+  deepseek: () => testGatewayProvider("deepseek"),
   github: testGitHub,
   netlify: testNetlify,
   supabase: testSupabase,
