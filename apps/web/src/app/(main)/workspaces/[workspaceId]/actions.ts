@@ -13,8 +13,61 @@ import {
   getWorkspaceContext,
   type WorkspaceContext,
 } from "@/lib/workspaces";
+import {
+  getRepoOverview,
+  isValidRepo,
+  type RepoOverview,
+} from "@/lib/github";
 
 const now = () => new Date().toISOString();
+
+/* ── GitHub per workspace ──────────────────────────────────────────────────── */
+
+/** Persist a workspace's associated GitHub repo ("owner/repo"). */
+export async function setWorkspaceGithubRepo(
+  workspaceId: string,
+  repo: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+
+  const clean = repo.trim();
+  if (clean && !isValidRepo(clean)) {
+    return { ok: false, message: 'Formato inválido — usa "owner/repo".' };
+  }
+
+  const { error } = await sb
+    .from("workspaces")
+    .update({ github_repo: clean || null, updated_at: now() })
+    .eq("id", workspaceId);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath(`/workspaces/${workspaceId}`);
+  return {
+    ok: true,
+    message: clean ? "Repositório ligado." : "Repositório removido.",
+  };
+}
+
+/**
+ * Live overview (PRs, commits, CI) for a workspace's configured repo. Reads the
+ * repo server-side from the workspace row, so the client cannot point our token
+ * at an arbitrary repository. Returns null when none is configured / no token.
+ */
+export async function getWorkspaceRepoOverview(
+  workspaceId: string
+): Promise<RepoOverview | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("workspaces")
+    .select("github_repo")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  const repo = data?.github_repo as string | null | undefined;
+  if (!repo) return null;
+  return getRepoOverview(repo);
+}
 
 /**
  * The Council's provider choice (ADR-0004): the user never picks a model. We
