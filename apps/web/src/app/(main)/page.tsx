@@ -1,20 +1,35 @@
 import Link from "next/link";
+import { ago } from "@/components/mission/bits";
 import { QuickActions, QuickCaptureList } from "@/components/app/HomeIslands";
+import { getActivity, getInitiatives, getRecentWork } from "@/lib/mission";
+import { getReadings } from "@/lib/readings";
+import { owner } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Atelier Home — faithful structure of the approved mockup.
+ * Atelier Home — the daily working launcher, on real data.
  *
- * Phase 1: the structure is implemented exactly as designed, with illustrative
- * placeholder content. Real data is wired in a follow-up (Phase 2): the
- * "Continuar", "Atividade", "Leituras" and "Agenda" sections will read from
- * their real sources, keeping graceful empty states where no source exists.
+ * Every section reads from its real source and degrades to a calm empty state
+ * when there is nothing (or no source, like the calendar). Data is fetched
+ * server-side in parallel; each query is isolated so one failure never blanks
+ * the page. The interactive cards (search/capture) stay as client islands.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const [recent, activityAll, readingsAll, initiatives] = await Promise.all([
+    getRecentWork(3).catch(() => []),
+    getActivity().catch(() => []),
+    getReadings().catch(() => []),
+    getInitiatives().catch(() => []),
+  ]);
+
+  const activity = activityAll.slice(0, 5);
+  const readings = readingsAll.slice(0, 4);
+  const launchers = initiatives.slice(0, 3);
+
   return (
     <div>
-      <h1 className="home-title">Bom dia, Inês.</h1>
+      <h1 className="home-title">Bom dia, {owner}.</h1>
       <p className="home-subtitle">O que queres fazer hoje?</p>
 
       <div className="home-grid">
@@ -28,18 +43,22 @@ export default function HomePage() {
                 Abrir Workspace
               </p>
               <div className="workspace-buttons">
-                {[
-                  { i: "P", n: "PAPERS" },
-                  { i: "D", n: "DECIMA" },
-                  { i: "G", n: "GAVINHO" },
-                  { i: "N", n: "NUDO" },
-                  { i: "＋", n: "Novo" },
-                ].map((w) => (
-                  <Link key={w.n} href="/workspaces" className="workspace-button">
-                    <span className="workspace-initial">{w.i}</span>
-                    <span>{w.n}</span>
+                {launchers.map((i) => (
+                  <Link
+                    key={i.id}
+                    href={`/initiatives/${i.slug}`}
+                    className="workspace-button"
+                  >
+                    <span className="workspace-initial">
+                      {i.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span>{i.name}</span>
                   </Link>
                 ))}
+                <Link href="/workspaces" className="workspace-button">
+                  <span className="workspace-initial">＋</span>
+                  <span>Novo</span>
+                </Link>
               </div>
             </div>
           </div>
@@ -49,45 +68,51 @@ export default function HomePage() {
             <section className="card">
               <div className="card-inner">
                 <p className="card-label">Continuar a partir de onde ficaste</p>
-                <div className="recent-list">
-                  {[
-                    { t: "006", dark: true, title: "Issue 006 — O futuro do trabalho", meta: "PAPERS · Chat", when: "2min atrás" },
-                    { t: "D", dark: false, title: "Manifesto ATELIER", meta: "PAPERS · Documento", when: "1h atrás" },
-                    { t: "D", dark: false, title: "Reunião Estratégica — Notas", meta: "DECIMA · Nota", when: "3h atrás" },
-                    { t: "IMG", dark: false, title: "Casa em Ourique — Decisões", meta: "GAVINHO · Decisões", when: "Ontem" },
-                  ].map((r, idx) => (
-                    <Link key={idx} href="/workspaces" className="recent-row">
-                      <span className={`recent-thumb${r.dark ? " dark" : ""}`}>
-                        {r.t}
-                      </span>
-                      <span>
-                        <span className="recent-title">{r.title}</span>
-                        <span className="recent-meta">{r.meta}</span>
-                      </span>
-                      <span className="recent-meta">{r.when} ›</span>
-                    </Link>
-                  ))}
-                </div>
+                {recent.length === 0 ? (
+                  <p className="atelier-empty">
+                    Ainda não há trabalho recente. Captura ou abre um workspace.
+                  </p>
+                ) : (
+                  <div className="recent-list">
+                    {recent.map((r) => (
+                      <Link key={`${r.type}-${r.id}`} href={r.href} className="recent-row">
+                        <span className="recent-thumb">
+                          {r.title.charAt(0).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className="recent-title">{r.title}</span>
+                          <span className="recent-meta">
+                            {[r.context, r.type === "chat" ? "Chat" : "Artefacto"]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                        <span className="recent-meta">{ago(r.updatedAt)} ›</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
 
             <section className="card">
               <div className="card-inner">
                 <p className="card-label">Atividade Recente</p>
-                {[
-                  { ic: "▤", t: "Nova leitura guardada", m: "The Design of Everyday Things", w: "7min" },
-                  { ic: "✓", t: "Decisão tomada", m: "Fornecedores — Esquadrias", w: "2h" },
-                  { ic: "▧", t: "Documento atualizado", m: "Brief — Issue 006", w: "Ontem" },
-                ].map((a, idx) => (
-                  <div key={idx} className="activity-row">
-                    <span className="activity-icon">{a.ic}</span>
-                    <span>
-                      <span className="activity-title">{a.t}</span>
-                      <span className="recent-meta">{a.m}</span>
-                    </span>
-                    <span className="activity-meta">{a.w}</span>
-                  </div>
-                ))}
+                {activity.length === 0 ? (
+                  <p className="atelier-empty">Sem atividade recente.</p>
+                ) : (
+                  activity.map((e) => (
+                    <div key={e.id} className="activity-row">
+                      <span className="activity-icon">
+                        {e.kind.charAt(0).toUpperCase()}
+                      </span>
+                      <span>
+                        <span className="activity-title">{e.title}</span>
+                      </span>
+                      <span className="activity-meta">{ago(e.at)}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           </div>
@@ -103,26 +128,39 @@ export default function HomePage() {
                   Ver tudo
                 </Link>
               </div>
-              <div className="readings-row">
-                {[
-                  { s: "W", time: "12min", title: "The creative act: A way of being", a: "Rick Rubin" },
-                  { s: "HBR", time: "8min", title: "The second-order thinker", a: "Harvard Business Review" },
-                  { s: "fs", time: "15min", title: "How to build systems that learn", a: "Farnam Street" },
-                  { s: "oe", time: "10min", title: "The cost of not deciding", a: "Observer Effect" },
-                ].map((r, idx) => (
-                  <Link key={idx} href="/readings" className="reading-card">
-                    <span className="reading-source">
-                      <b>{r.s}</b>
-                      <span>{r.time}</span>
-                    </span>
-                    <span className="reading-title">{r.title}</span>
-                    <span className="reading-author">{r.a}</span>
-                  </Link>
-                ))}
-                <Link href="/readings" className="reading-card">
-                  <span className="reading-title">Ver todas as leituras →</span>
-                </Link>
-              </div>
+              {readings.length === 0 ? (
+                <p className="atelier-empty">Ainda não guardaste leituras.</p>
+              ) : (
+                <div className="readings-row">
+                  {readings.map((r) => {
+                    const inner = (
+                      <>
+                        <span className="reading-source">
+                          <b>{r.tags[0] ?? "Leitura"}</b>
+                        </span>
+                        <span className="reading-title">
+                          {r.title || r.url || "Sem título"}
+                        </span>
+                      </>
+                    );
+                    return r.url ? (
+                      <a
+                        key={r.id}
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="reading-card"
+                      >
+                        {inner}
+                      </a>
+                    ) : (
+                      <Link key={r.id} href="/readings" className="reading-card">
+                        {inner}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -133,24 +171,10 @@ export default function HomePage() {
             <div className="rail-inner">
               <div className="rail-header">
                 <span className="rail-label">Agenda de Hoje</span>
-                <Link href="/agenda" className="rail-link">
-                  Ver agenda
-                </Link>
               </div>
-              {[
-                { time: "10:00", title: "Reunião de Projeto", meta: "PAPERS — Issue 006" },
-                { time: "14:30", title: "Call com Equipa", meta: "DECIMA" },
-                { time: "16:00", title: "Revisão de Decisões", meta: "GAVINHO" },
-              ].map((e, idx) => (
-                <div key={idx} className="agenda-row">
-                  <span className="agenda-time">{e.time}</span>
-                  <span className="agenda-dot" />
-                  <span>
-                    <span className="agenda-title">{e.title}</span>
-                    <span className="agenda-meta">{e.meta}</span>
-                  </span>
-                </div>
-              ))}
+              <p className="atelier-empty">
+                Liga um calendário em Ecossistema.
+              </p>
             </div>
           </section>
 
