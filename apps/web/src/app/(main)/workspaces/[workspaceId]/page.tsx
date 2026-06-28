@@ -54,6 +54,7 @@ export default async function WorkspaceDetailPage({
       role: m.role as "user" | "assistant",
       content: m.content,
       model: m.model,
+      taskType: m.taskType,
     }));
 
   return (

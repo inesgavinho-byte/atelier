@@ -70,6 +70,7 @@ const toMessage = (r: any): WorkspaceMessage => ({
   provider: r.provider ?? undefined,
   model: r.model ?? undefined,
   skillId: r.skill_id ?? undefined,
+  taskType: r.task_type ?? undefined,
   tokens: r.tokens ?? undefined,
   latencyMs: r.latency_ms ?? undefined,
   createdAt: r.created_at,
