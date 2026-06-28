@@ -57,6 +57,7 @@ export interface WorkspaceMessage {
   provider?: string;
   model?: string;
   skillId?: string;
+  taskType?: string;
   tokens?: number;
   latencyMs?: number;
   createdAt: string;
