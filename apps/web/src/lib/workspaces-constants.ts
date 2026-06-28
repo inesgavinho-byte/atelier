@@ -29,6 +29,10 @@ export interface WorkspaceProject {
   name: string;
   description?: string;
   status: string;
+  /** Project-specific GitHub repo, "owner/repo" (optional). */
+  githubRepo?: string;
+  /** Explicit ordering within a workspace (ascending). */
+  sort: number;
   createdAt: string;
   updatedAt: string;
 }

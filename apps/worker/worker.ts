@@ -207,12 +207,14 @@ async function contextTick(): Promise<void> {
       .from("workspace_context")
       .select("version")
       .eq("workspace_id", ws.id)
+      .is("project_id", null)
       .maybeSingle();
     const version = (existing?.version ?? 0) + 1;
 
     const { error: upErr } = await sb.from("workspace_context").upsert(
       {
         workspace_id: ws.id,
+        project_id: null,
         summary: result.summary,
         decisions: result.decisions,
         artifacts: result.artifacts,
@@ -220,7 +222,7 @@ async function contextTick(): Promise<void> {
         last_updated_at: now(),
         version,
       },
-      { onConflict: "workspace_id" }
+      { onConflict: "workspace_id,project_id" }
     );
     if (upErr) console.error(`[context] upsert falhou (${ws.name}): ${upErr.message}`);
     else console.log(`[context] ${ws.name} → contexto v${version}`);
