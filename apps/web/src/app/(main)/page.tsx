@@ -4,6 +4,7 @@ import { HomeQuickActions } from "@/components/app/HomeIslands";
 import Panel from "@/components/shell/Panel";
 import PanelHeader from "@/components/shell/PanelHeader";
 import ActivityDot from "@/components/shell/ActivityDot";
+import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
 import {
   getActivity,
   getInitiatives,
@@ -107,18 +108,7 @@ export default async function HomePage() {
                 <div key={d.id} className="home-decision">
                   <div className="home-decision-title">{d.title}</div>
                   <div className="home-decision-actions">
-                    <Link
-                      href={`/decisions/${d.id}`}
-                      className="btn-approve btn-sm"
-                    >
-                      Aprovar
-                    </Link>
-                    <Link
-                      href={`/decisions/${d.id}`}
-                      className="btn-quiet btn-sm"
-                    >
-                      Rever
-                    </Link>
+                    <HomeDecisionActions id={d.id} />
                   </div>
                 </div>
               ))}

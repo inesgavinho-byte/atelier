@@ -2900,3 +2900,10 @@
 .border-line-strong {
   border-color: var(--border) !important;
 }
+
+/* Home: resolved-decision label (after inline approve/review) */
+.home-decision-done {
+  font-size: 12px;
+  color: var(--teal);
+  font-weight: 500;
+}
