@@ -15,14 +15,20 @@ export function QuickActions() {
             Encontra qualquer coisa de imediato.
           </span>
         </span>
+        <span className="quick-chevron" aria-hidden>
+          ›
+        </span>
       </button>
       <button type="button" className="card quick-card" onClick={openCapture}>
-        <span className="quick-icon">+</span>
+        <span className="quick-icon">＋</span>
         <span>
           <span className="quick-title">Capturar</span>
           <span className="quick-copy">
             Guarda ideias, links, documentos e notas.
           </span>
+        </span>
+        <span className="quick-chevron" aria-hidden>
+          ›
         </span>
       </button>
     </>
@@ -32,20 +38,24 @@ export function QuickActions() {
 /** Quick-capture buttons in the right rail; each opens the capture overlay. */
 export function QuickCaptureList() {
   const { openCapture } = useOverlay();
-  const options = ["Nova nota", "Link", "Documento", "Imagem", "Fala"];
+  const options: { icon: string; label: string }[] = [
+    { icon: "▤", label: "Nova nota" },
+    { icon: "🔗", label: "Link" },
+    { icon: "▧", label: "Documento" },
+    { icon: "▣", label: "Imagem" },
+    { icon: "🎙", label: "Fala" },
+  ];
   return (
     <div className="capture-list">
       {options.map((o) => (
         <button
-          key={o}
+          key={o.label}
           type="button"
           className="capture-option"
           onClick={openCapture}
         >
-          <span className="workspace-initial" aria-hidden>
-            {o.charAt(0)}
-          </span>
-          <span>{o}</span>
+          <span aria-hidden>{o.icon}</span>
+          <span>{o.label}</span>
         </button>
       ))}
     </div>

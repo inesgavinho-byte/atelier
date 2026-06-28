@@ -37,9 +37,9 @@ export default async function MainLayout({
   const sections: NavSection[] = [
     {
       items: [
-        { label: "Hoje", href: "/" },
-        { label: "Capturar", action: "capture" },
-        { label: "Pesquisar", action: "search" },
+        { label: "Hoje", href: "/", icon: "⌂" },
+        { label: "Capturar", action: "capture", icon: "＋" },
+        { label: "Pesquisar", action: "search", icon: "⌕" },
       ],
     },
     {
@@ -49,23 +49,23 @@ export default async function MainLayout({
         workspace("DECIMA"),
         workspace("GAVINHO"),
         workspace("NUDO"),
-        workspace("Pessoal"),
-        { label: "Novo Workspace", href: "/workspaces" },
+        { label: "Pessoal", href: workspaceHref("Pessoal"), icon: "♙" },
+        { label: "Novo Workspace", href: "/workspaces", icon: "＋" },
       ],
     },
     {
       label: "Caixas de Entrada",
       items: [
-        { label: "Leituras", href: "/readings" },
-        { label: "Decisões", href: "/decisions" },
-        { label: "Inbox", href: "/readings" },
+        { label: "Leituras", href: "/readings", icon: "▧" },
+        { label: "Decisões", href: "/decisions", icon: "✓" },
+        { label: "Inbox", href: "/readings", icon: "⌂", badge: 12 },
       ],
     },
     {
       label: "Ferramentas",
       items: [
-        { label: "Ecossistema", href: "/ecosystem" },
-        { label: "Sistema", href: "/admin/system" },
+        { label: "Ecossistema", href: "/ecosystem", icon: "⌘" },
+        { label: "Sistema", href: "/admin/system", icon: "⚙" },
       ],
     },
   ];
