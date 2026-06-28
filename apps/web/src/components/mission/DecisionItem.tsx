@@ -58,7 +58,7 @@ export default function DecisionItem({
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 meta">
             {initiativeSlug ? (
               <Link
-                href={`/initiatives/${initiativeSlug}`}
+                href={`/workspaces/${initiativeSlug}`}
                 className="hover:text-charcoal"
               >
                 {initiativeName}

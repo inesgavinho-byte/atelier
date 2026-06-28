@@ -57,7 +57,7 @@ export default function ReadingsClient({
         url,
         title,
         note,
-        initiativeId: initiativeId || undefined,
+        workspaceId: initiativeId || undefined,
         tags,
         status,
       });
@@ -84,7 +84,7 @@ export default function ReadingsClient({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return readings.filter((r) => {
-      if (filterInitiative && r.initiativeId !== filterInitiative) return false;
+      if (filterInitiative && r.workspaceId !== filterInitiative) return false;
       if (filterTag && !r.tags.includes(filterTag)) return false;
       if (filterStatus && r.status !== filterStatus) return false;
       if (q) {
@@ -127,7 +127,7 @@ export default function ReadingsClient({
               onChange={(e) => setInitiativeId(e.target.value)}
               className={field}
             >
-              <option value="">— Iniciativa (opcional) —</option>
+              <option value="">— Workspace (opcional) —</option>
               {initiatives.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
@@ -285,9 +285,9 @@ export default function ReadingsClient({
                 <p className="mt-2 text-[14px] text-charcoal/90">{r.note}</p>
               ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                {r.initiativeId ? (
+                {r.workspaceId ? (
                   <span className="meta">
-                    {iniName.get(r.initiativeId) ?? "—"}
+                    {iniName.get(r.workspaceId) ?? "—"}
                   </span>
                 ) : null}
                 {r.tags.map((t) => (

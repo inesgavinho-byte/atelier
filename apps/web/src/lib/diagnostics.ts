@@ -29,7 +29,7 @@ export interface Probe {
 /* ── 4 — Database (live) ──────────────────────────────────────────────────── */
 
 const COUNTED_TABLES = [
-  "initiatives",
+  "workspaces",
   "agents",
   "decisions",
   "objectives",
@@ -62,7 +62,7 @@ export async function checkDatabase(): Promise<DatabaseReport> {
   // Connection + latency via a minimal select.
   try {
     const t0 = performance.now();
-    const { error } = await sb.from("initiatives").select("id").limit(1);
+    const { error } = await sb.from("workspaces").select("id").limit(1);
     latencyMs = Math.round(performance.now() - t0);
     if (error) {
       health = "offline";

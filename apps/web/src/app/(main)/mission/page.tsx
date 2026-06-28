@@ -45,7 +45,7 @@ export default async function MissionControlPage() {
   const stats: { v: string | number; label: string; href?: string }[] = [
     { v: summary.decisions, label: "decisões pendentes", href: "/decisions" },
     { v: summary.agentsActive, label: "agentes ativos", href: "/agents" },
-    { v: summary.initiatives, label: "iniciativas", href: "/initiatives" },
+    { v: summary.initiatives, label: "workspaces", href: "/workspaces" },
     {
       v: summary.publications,
       label: "publicação pronta",
@@ -129,7 +129,7 @@ export default async function MissionControlPage() {
           ) : (
             <div>
               {decisions.map((d) => {
-                const ini = iniById.get(d.initiativeId);
+                const ini = iniById.get(d.workspaceId);
                 const agent = agentById.get(d.agentId);
                 return (
                   <DecisionItem
@@ -154,7 +154,7 @@ export default async function MissionControlPage() {
             ) : (
               <ul className="space-y-5">
                 {atRisk.map((o) => {
-                  const ini = iniById.get(o.initiativeId);
+                  const ini = iniById.get(o.workspaceId);
                   return (
                     <li key={o.id}>
                       <div className="flex items-baseline justify-between gap-3">
@@ -213,12 +213,12 @@ export default async function MissionControlPage() {
       <section className="mt-20">
         <SectionHead
           aside={
-            <Link href="/initiatives" className="hover:text-charcoal">
+            <Link href="/workspaces" className="hover:text-charcoal">
               Todas →
             </Link>
           }
         >
-          Iniciativas ativas
+          Workspaces ativos
         </SectionHead>
         {initiatives.length === 0 ? (
           <p className="meta italic">Ainda não há iniciativas.</p>
@@ -227,7 +227,7 @@ export default async function MissionControlPage() {
             {initiatives.map((i) => (
               <Link
                 key={i.id}
-                href={`/initiatives/${i.slug}`}
+                href={`/workspaces/${i.slug}`}
                 className="group border-b border-r border-line bg-cream p-6 transition-colors hover:bg-surface"
               >
                 <div className="font-serif text-2xl tracking-wide">

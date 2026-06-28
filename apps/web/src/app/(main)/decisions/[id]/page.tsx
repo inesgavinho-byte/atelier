@@ -24,7 +24,7 @@ export default async function DecisionDetailPage({
   if (!decision) notFound();
 
   const [ini, agent] = await Promise.all([
-    getInitiativeById(decision.initiativeId),
+    getInitiativeById(decision.workspaceId),
     getAgent(decision.agentId),
   ]);
 

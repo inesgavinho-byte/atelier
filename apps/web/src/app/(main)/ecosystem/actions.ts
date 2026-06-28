@@ -73,7 +73,7 @@ export async function runOpenAIPrompt(
 export async function saveOpenAICapture(input: {
   prompt: string;
   response: string;
-  initiativeId?: string;
+  workspaceId?: string;
 }): Promise<{ ok: boolean; message: string }> {
   const sb = getSupabase();
   if (!sb) {
@@ -81,9 +81,9 @@ export async function saveOpenAICapture(input: {
   }
 
   let initiativeName: string | undefined;
-  if (input.initiativeId) {
+  if (input.workspaceId) {
     const initiatives = await getInitiatives();
-    initiativeName = initiatives.find((i) => i.id === input.initiativeId)?.name;
+    initiativeName = initiatives.find((i) => i.id === input.workspaceId)?.name;
   }
 
   const header = [

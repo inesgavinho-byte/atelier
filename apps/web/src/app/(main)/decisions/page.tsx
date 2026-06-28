@@ -27,7 +27,7 @@ export default async function DecisionsPage() {
       ) : (
         <div>
           {decisions.map((d) => {
-            const ini = iniById.get(d.initiativeId);
+            const ini = iniById.get(d.workspaceId);
             const agent = agentById.get(d.agentId);
             return (
               <DecisionItem
