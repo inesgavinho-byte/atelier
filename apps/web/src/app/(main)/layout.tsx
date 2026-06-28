@@ -1,5 +1,6 @@
 import AppShell, { type NavSection } from "@/components/app/AppShell";
 import { getInitiatives, getSearchCorpus } from "@/lib/mission";
+import { countUnreadReadings } from "@/lib/readings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,10 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives] = await Promise.all([
+  const [corpus, initiatives, unread] = await Promise.all([
     getSearchCorpus(),
     getInitiatives(),
+    countUnreadReadings(),
   ]);
 
   const workspaceHref = (name: string): string => {
@@ -58,7 +60,7 @@ export default async function MainLayout({
       items: [
         { label: "Leituras", href: "/readings", icon: "▧" },
         { label: "Decisões", href: "/decisions", icon: "✓" },
-        { label: "Inbox", href: "/readings", icon: "⌂", badge: 12 },
+        { label: "Inbox", href: "/readings", icon: "⌂", badge: unread || undefined },
       ],
     },
     {

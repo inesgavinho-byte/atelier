@@ -287,6 +287,62 @@ export async function getNextAction(): Promise<{
   };
 }
 
+export interface RecentWorkItem {
+  id: string;
+  title: string;
+  type: "artifact" | "chat";
+  /** Initiative (for artifacts) or workspace (for chats) name, if known. */
+  context?: string;
+  updatedAt: string;
+  href: string;
+}
+
+/**
+ * The most recent things worked on — artifacts and workspace chats merged and
+ * sorted by last update. Each source is isolated so one failing never blanks
+ * the whole section.
+ */
+export async function getRecentWork(limit = 3): Promise<RecentWorkItem[]> {
+  const [artifacts, chats, initiatives, workspaces] = await Promise.all([
+    getArtifacts().catch(() => []),
+    getAllChats().catch(() => []),
+    getInitiatives().catch(() => []),
+    getWorkspaces().catch(() => []),
+  ]);
+  const iniById = new Map(initiatives.map((i) => [i.id, i]));
+  const wsById = new Map(workspaces.map((w) => [w.id, w]));
+
+  const items: RecentWorkItem[] = [];
+  for (const a of artifacts.slice(0, limit)) {
+    const ini = iniById.get(a.initiativeId);
+    items.push({
+      id: a.id,
+      title: a.title,
+      type: "artifact",
+      context: ini?.name,
+      updatedAt: a.updatedAt,
+      href: ini ? `/initiatives/${ini.slug}` : "/initiatives",
+    });
+  }
+  for (const c of chats.slice(0, limit)) {
+    const base = c.projectId
+      ? `/workspaces/${c.workspaceId}/projects/${c.projectId}`
+      : `/workspaces/${c.workspaceId}`;
+    items.push({
+      id: c.id,
+      title: c.title,
+      type: "chat",
+      context: wsById.get(c.workspaceId)?.name,
+      updatedAt: c.updatedAt,
+      href: `${base}/chats/${c.id}`,
+    });
+  }
+
+  return items
+    .sort((x, y) => (y.updatedAt ?? "").localeCompare(x.updatedAt ?? ""))
+    .slice(0, limit);
+}
+
 /** Today's date as a capitalised European-Portuguese label (no fixed date). */
 export function getTodayLabel(): string {
   const s = new Intl.DateTimeFormat("pt-PT", {
