@@ -28,6 +28,12 @@ const toReading = (r: any): Reading => ({
   status: r.status,
   sourceType: r.source_type ?? undefined,
   usedInArtifactId: r.used_in_artifact_id ?? undefined,
+  content: r.content ?? undefined,
+  excerpt: r.excerpt ?? undefined,
+  thumbnail: r.thumbnail ?? undefined,
+  readTimeMinutes: r.read_time_minutes ?? undefined,
+  author: r.author ?? undefined,
+  siteName: r.site_name ?? undefined,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -40,6 +46,14 @@ export async function getReadings(): Promise<Reading[]> {
     .select("*")
     .order("created_at", { ascending: false });
   return (data ?? []).map(toReading);
+}
+
+/** A single reading by id, or null when missing / Supabase unconfigured. */
+export async function getReading(id: string): Promise<Reading | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb.from("readings").select("*").eq("id", id).maybeSingle();
+  return data ? toReading(data) : null;
 }
 
 /** Count of readings still to read — used by the desk inbox. */

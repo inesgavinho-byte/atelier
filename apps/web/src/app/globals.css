@@ -3377,3 +3377,245 @@
     flex: none;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Leituras — integrated reader (/readings/[id]).
+ *
+ * A narrow, centred reading column with serif body type, on a slightly warmer
+ * neutral than the app background. Theme-aware: every colour is a semantic
+ * token (--text, --border, --accent…) so dark and light both work. Inspiration:
+ * Instapaper. Scoped under .reader so it never leaks elsewhere.
+ * ────────────────────────────────────────────────────────────────────────── */
+.reader {
+  --reader-serif: var(--font-serif), "Cormorant Garamond", Georgia, serif;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 8px 4px 96px;
+}
+
+.reader-back {
+  display: inline-block;
+  margin-bottom: 28px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.reader-back:hover {
+  color: var(--text);
+}
+
+.reader-title {
+  font-family: var(--reader-serif);
+  font-size: clamp(30px, 4.5vw, 44px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.reader-meta {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+.reader-meta a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.reader-meta a:hover {
+  color: var(--accent);
+}
+.reader-meta-dot {
+  opacity: 0.5;
+}
+
+.reader-actions {
+  margin-top: 24px;
+  padding: 14px 0;
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.reader-action-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.reader-action-label {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.reader-action-field select {
+  height: 32px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.reader-action-btn {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.reader-action-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.reader-action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.reader-body {
+  margin-top: 36px;
+}
+
+/* The extracted article. Generous serif typography. */
+.reader-content {
+  font-family: var(--reader-serif);
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--text);
+}
+.reader-content p {
+  margin: 0 0 1.4em;
+}
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4 {
+  font-family: var(--reader-serif);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 1.8em 0 0.6em;
+  color: var(--text);
+}
+.reader-content h2 { font-size: 26px; }
+.reader-content h3 { font-size: 22px; }
+.reader-content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.reader-content a:hover {
+  text-decoration: underline;
+}
+.reader-content img,
+.reader-content figure img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1.2em 0;
+}
+.reader-content figure {
+  margin: 1.4em 0;
+}
+.reader-content figcaption {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+.reader-content blockquote {
+  margin: 1.4em 0;
+  padding-left: 18px;
+  border-left: 2px solid var(--border);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.reader-content ul,
+.reader-content ol {
+  margin: 0 0 1.4em 1.4em;
+}
+.reader-content li {
+  margin-bottom: 0.5em;
+}
+.reader-content pre {
+  background: var(--panel);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.reader-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+.reader-content hr {
+  border: 0;
+  border-top: 0.5px solid var(--border);
+  margin: 2em 0;
+}
+
+.reader-empty {
+  font-family: var(--reader-serif);
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.reader-lede {
+  color: var(--text);
+  margin-bottom: 1em;
+}
+.reader-empty-note {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 1em 0;
+}
+
+.reader-note {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reader-note textarea {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: var(--font-display);
+}
+.reader-note textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.reader-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.reader-saved {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
