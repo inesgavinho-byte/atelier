@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
-import { gateway } from "@/lib/ai/gateway";
-import type { AIMessage, ProviderId } from "@/lib/ai/types";
+import type { AIMessage } from "@/lib/ai/types";
 import { runtime } from "@/lib/ai-runtime/runtime";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import { getArtifactsForInitiative, getDecisions } from "@/lib/mission";
@@ -16,18 +15,6 @@ import {
 } from "@/lib/workspaces";
 
 const now = () => new Date().toISOString();
-
-/**
- * The Council's provider choice (ADR-0004): the user never picks a model. We
- * take the first available provider in a fixed preference order — provider-
- * agnostic, decided server-side. A richer cost/task scoring is future work.
- */
-const COUNCIL_ORDER: ProviderId[] = ["claude", "openai", "perplexity"];
-function chooseProvider(): ProviderId | null {
-  const avail = new Map(gateway.availability().map((a) => [a.id, a.available]));
-  for (const id of COUNCIL_ORDER) if (avail.get(id)) return id;
-  return null;
-}
 
 /**
  * The single canonical chat for a workspace (compat shim while workspace_chats
@@ -115,6 +102,7 @@ export async function sendWorkspaceMessage(
   content?: string;
   model?: string;
   provider?: string;
+  taskType?: string;
   error?: string;
 }> {
   const trimmed = content.trim();
@@ -124,13 +112,6 @@ export async function sendWorkspaceMessage(
   if (!sb) return { ok: false, error: "Supabase não configurado." };
 
   await hydrateCredentialOverrides();
-  const provider = chooseProvider();
-  if (!provider) {
-    return {
-      ok: false,
-      error: "Nenhum provider disponível. Configura uma chave em Ecossistema.",
-    };
-  }
 
   const ws = await getWorkspace(workspaceId);
   const chatId = await ensureCanonicalChat(sb, workspaceId, ws?.name);
@@ -179,7 +160,6 @@ export async function sendWorkspaceMessage(
   ];
 
   const result = await runtime.run({
-    provider,
     workspaceName: ws?.name,
     messages,
   });
@@ -195,6 +175,7 @@ export async function sendWorkspaceMessage(
     content: result.text ?? "",
     provider: result.provider,
     model: result.model,
+    task_type: result.taskType,
     tokens: result.tokens ?? null,
     latency_ms: result.latencyMs,
     context_version: ctxVersion,
@@ -208,5 +189,6 @@ export async function sendWorkspaceMessage(
     content: result.text,
     model: result.model,
     provider: result.provider,
+    taskType: result.taskType,
   };
 }

@@ -20,6 +20,18 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   model?: string;
+  taskType?: string;
+};
+
+/** pt-PT labels for each task type (routing is otherwise invisible). */
+const TASK_LABELS: Record<string, string> = {
+  search: "pesquisa",
+  code: "código",
+  writing: "escrita",
+  planning: "planeamento",
+  summary: "resumo",
+  reasoning: "análise",
+  general: "geral",
 };
 
 export default function WorkspaceChat({
@@ -82,6 +94,8 @@ export default function WorkspaceChat({
             id: `assistant-${Date.now()}`,
             role: "assistant",
             content: result.text ?? "",
+            model: result.model,
+            taskType: result.taskType,
           },
         ]);
       } else {
@@ -120,7 +134,12 @@ export default function WorkspaceChat({
                   <>
                     <div className="ws-msg-head">
                       <span className="ws-dot-council" />
-                      <span>Council{m.model ? ` · ${m.model}` : ""}</span>
+                      <span>
+                        Council{m.model ? ` · ${m.model}` : ""}
+                        {m.taskType && TASK_LABELS[m.taskType]
+                          ? ` · ${TASK_LABELS[m.taskType]}`
+                          : ""}
+                      </span>
                     </div>
                     <Markdown content={m.content} />
                   </>
