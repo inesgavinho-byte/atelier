@@ -13,9 +13,9 @@ import {
   getNextAction,
   getObjectivesAtRisk,
   getPendingDecisions,
+  getTodayLabel,
   getTodaySummary,
 } from "@/lib/mission";
-import { todayLabel } from "@/data/mission";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
  * activity. Metrics live here, deliberately, not on the desk.
  */
 export default async function MissionControlPage() {
-  const [summary, decisions, agents, atRisk, initiatives, activityAll] =
+  const [summary, decisions, agents, atRisk, initiatives, activityAll, next] =
     await Promise.all([
       getTodaySummary(),
       getPendingDecisions(),
@@ -35,8 +35,8 @@ export default async function MissionControlPage() {
       getObjectivesAtRisk(),
       getInitiatives(),
       getActivity(),
+      getNextAction(),
     ]);
-  const next = getNextAction();
   const running = agents.filter((a) => a.state === "em execução");
   const activity = activityAll.slice(0, 6);
   const iniById = new Map(initiatives.map((i) => [i.id, i]));
@@ -49,7 +49,7 @@ export default async function MissionControlPage() {
     {
       v: summary.publications,
       label: "publicação pronta",
-      href: `/decisions/${next.decisionId}`,
+      href: next ? `/decisions/${next.decisionId}` : "/decisions",
     },
     { v: summary.sync, label: "sincronização" },
   ];
@@ -58,7 +58,7 @@ export default async function MissionControlPage() {
     <div>
       {/* Supervision header */}
       <section className="mb-12">
-        <div className="eyebrow mb-3">{todayLabel}</div>
+        <div className="eyebrow mb-3">{getTodayLabel()}</div>
         <h1 className="font-serif text-4xl md:text-5xl">Mission Control</h1>
         <p className="meta mt-3 max-w-2xl">
           Vista de supervisão — o estado do sistema num relance.
@@ -92,13 +92,24 @@ export default async function MissionControlPage() {
       {/* Próxima ação — surfaced high: it orients the whole day */}
       <section className="mb-16 border-l-2 border-charcoal pl-5">
         <div className="eyebrow mb-2">Próxima ação</div>
-        <p className="max-w-2xl font-serif text-2xl leading-snug text-charcoal">
-          {next.label}
-        </p>
-        <p className="meta mt-2 max-w-2xl">{next.rationale}</p>
-        <Link href={`/decisions/${next.decisionId}`} className="action mt-5">
-          Continuar
-        </Link>
+        {next ? (
+          <>
+            <p className="max-w-2xl font-serif text-2xl leading-snug text-charcoal">
+              {next.label}
+            </p>
+            <p className="meta mt-2 max-w-2xl">{next.rationale}</p>
+            <Link
+              href={`/decisions/${next.decisionId}`}
+              className="action mt-5"
+            >
+              Continuar
+            </Link>
+          </>
+        ) : (
+          <p className="max-w-2xl font-serif text-2xl leading-snug text-muted">
+            Nada requer decisão agora.
+          </p>
+        )}
       </section>
 
       {/* Decisões (primary) with a risk / running rail */}

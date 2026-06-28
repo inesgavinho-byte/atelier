@@ -9,8 +9,8 @@ const PRIORITIES = ["Normal", "Alta", "Baixa"] as const;
 
 /**
  * Supervision controls for an agent (EPIC-001 §3): interrupt, delegate, change
- * priority. Mocked via local state — every control produces a visible effect,
- * never a dead button.
+ * priority. DEMONSTRATION ONLY — state is local and does not persist. Real
+ * persistence (server actions + activity log) is planned for a later phase.
  */
 export default function AgentControls({ state }: { state: AgentState }) {
   const [action, setAction] = useState<Action>(null);
@@ -55,6 +55,7 @@ export default function AgentControls({ state }: { state: AgentState }) {
         <button type="button" className="action-quiet" onClick={cyclePriority}>
           Prioridade: {priority}
         </button>
+        <span className="meta italic">demonstração — não persiste</span>
       </div>
 
       {action ? (

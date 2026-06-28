@@ -12,8 +12,6 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
 import {
-  nextAction,
-  syncStatus,
   type ActivityEvent,
   type Agent,
   type Artifact,
@@ -266,8 +264,37 @@ export async function getArtifactsForInitiative(
 
 /* ── Derived figures + config ────────────────────────────────────────────── */
 
-export function getNextAction() {
-  return nextAction;
+/**
+ * The highest-impact pending decision to act on next, derived from real data:
+ * a pending publication first, otherwise the highest-priority pending decision.
+ * Returns null when nothing is pending.
+ */
+export async function getNextAction(): Promise<{
+  label: string;
+  rationale: string;
+  decisionId: string;
+} | null> {
+  const pending = await getPendingDecisions();
+  if (!pending.length) return null;
+  const pick = pending.find((d) => d.kind === "publicação") ?? pending[0];
+  return {
+    label: pick.title,
+    rationale:
+      pick.recommendation ||
+      pick.impact ||
+      "Decisão pendente de maior prioridade.",
+    decisionId: pick.id,
+  };
+}
+
+/** Today's date as a capitalised European-Portuguese label (no fixed date). */
+export function getTodayLabel(): string {
+  const s = new Intl.DateTimeFormat("pt-PT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export async function getTodaySummary() {
@@ -285,7 +312,7 @@ export async function getTodaySummary() {
       (d) => d.kind === "publicação" && d.status === "pendente"
     ).length,
     objectivesAtRisk: objectives.filter((o) => o.status === "em risco").length,
-    sync: syncStatus,
+    sync: getSupabase() ? "Ligado" : "Local",
   };
 }
 
