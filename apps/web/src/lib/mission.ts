@@ -51,6 +51,7 @@ const toAgent = (r: any): Agent => ({
   state: r.state,
   mission: r.mission,
   currentTask: r.current_task,
+  priority: r.priority ?? "média",
   autonomy: r.autonomy,
   progress: r.progress,
   lastEvent: r.last_event,
