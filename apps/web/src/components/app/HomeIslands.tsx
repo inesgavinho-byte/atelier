@@ -2,6 +2,29 @@
 
 import { useOverlay } from "@/components/app/overlay";
 
+/** Redesigned home quick-action cards that open the search/capture overlays. */
+export function HomeQuickActions() {
+  const { openSearch, openCapture } = useOverlay();
+  return (
+    <>
+      <button type="button" className="home-quick-card" onClick={openSearch}>
+        <span className="home-quick-glyph" aria-hidden>
+          ⌕
+        </span>
+        <span className="home-quick-title">Pesquisar</span>
+        <span className="home-quick-copy">Encontra qualquer coisa.</span>
+      </button>
+      <button type="button" className="home-quick-card" onClick={openCapture}>
+        <span className="home-quick-glyph" aria-hidden>
+          ＋
+        </span>
+        <span className="home-quick-title">Capturar</span>
+        <span className="home-quick-copy">Guarda ideias, links e notas.</span>
+      </button>
+    </>
+  );
+}
+
 /** The two quick-action cards (Pesquisar / Capturar) that open overlays. */
 export function QuickActions() {
   const { openSearch, openCapture } = useOverlay();
