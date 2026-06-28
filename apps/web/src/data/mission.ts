@@ -100,6 +100,8 @@ export interface Agent {
   office: string;
   provider: string;
   state: AgentState;
+  /** the agent's "home" workspace (direct link); agents can serve several */
+  workspaceId?: string;
   /** the agent's permanent mission (distinct from the current task) */
   mission: string;
   currentTask: string;
