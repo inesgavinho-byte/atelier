@@ -6,9 +6,11 @@ import type { ConnectorStatus, ConnectorView } from "@/lib/connectors";
 import { PROVIDER_META, type ProviderId } from "@/lib/ai/types";
 import { saveConnectorCredential } from "@/app/(main)/ecosystem/actions";
 import StatusBadge from "@/components/ecosystem/StatusBadge";
+import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
 
-function monogram(name: string): string {
-  return name.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim().slice(0, 2).toUpperCase() || "·";
+/** URL-style credentials (e.g. ICS feeds) are not secret — show them as text. */
+function isUrlKey(envKey: string): boolean {
+  return /URL$/i.test(envKey) || /_URL/i.test(envKey);
 }
 
 /**
@@ -22,6 +24,7 @@ export default function ConnectorDrawer({
   message,
   lastChecked,
   manageable,
+  encrypted,
   testing,
   onClose,
   onTest,
@@ -33,6 +36,7 @@ export default function ConnectorDrawer({
   message?: string;
   lastChecked?: string;
   manageable: boolean;
+  encrypted: boolean;
   testing: boolean;
   onClose: () => void;
   onTest: () => void;
@@ -44,6 +48,13 @@ export default function ConnectorDrawer({
   const [saving, startSave] = useTransition();
 
   const meta = PROVIDER_META.find((m) => m.id === (connector.id as ProviderId));
+
+  // A live test only makes sense for testable connectors whose credentials are
+  // present. Otherwise the button is disabled (with a reason in its tooltip).
+  const canTest =
+    connector.testable &&
+    status !== "Credenciais em falta" &&
+    status !== "Não ligado";
 
   const save = () => {
     setSaveMsg(null);
@@ -68,7 +79,13 @@ export default function ConnectorDrawer({
         <header className="connector-drawer-header">
           <div className="connector-drawer-title-row">
             <div className="flex items-start gap-4">
-              <span className="connector-logo">{monogram(connector.name)}</span>
+              <span className="connector-logo connector-logo-lg">
+                <ConnectorIcon
+                  connectorId={connector.id}
+                  name={connector.name}
+                  size={48}
+                />
+              </span>
               <div>
                 <h2 className="connector-drawer-title">{connector.name}</h2>
                 <div className="mt-3">
@@ -95,26 +112,44 @@ export default function ConnectorDrawer({
               </p>
             ) : (
               <>
+                {!encrypted ? (
+                  <p className="meta drawer-warn mb-3">
+                    ATELIER_CRED_KEY não está definida — as credenciais serão
+                    guardadas em texto simples. Define-a no ambiente para as
+                    encriptar em repouso.
+                  </p>
+                ) : null}
                 {connector.env
                   .filter((e) => e.required)
-                  .map((e) => (
-                    <div key={e.name} className="drawer-field">
-                      <label htmlFor={`d-${e.name}`} className="drawer-label">
-                        {e.name}
-                        {e.present ? " · configurada" : " · em falta"}
-                      </label>
-                      <input
-                        id={`d-${e.name}`}
-                        type="password"
-                        autoComplete="off"
-                        value={values[e.name] ?? ""}
-                        placeholder={e.present ? "•••• (substituir)" : "Colar valor"}
-                        onChange={(ev) =>
-                          setValues((p) => ({ ...p, [e.name]: ev.target.value }))
-                        }
-                      />
-                    </div>
-                  ))}
+                  .map((e) => {
+                    const url = isUrlKey(e.name);
+                    return (
+                      <div key={e.name} className="drawer-field">
+                        <label htmlFor={`d-${e.name}`} className="drawer-label">
+                          {e.name}
+                          {e.present ? " · configurada" : " · em falta"}
+                        </label>
+                        <input
+                          id={`d-${e.name}`}
+                          type={url ? "url" : "password"}
+                          autoComplete="off"
+                          value={values[e.name] ?? ""}
+                          placeholder={
+                            url
+                              ? e.present
+                                ? "https://… (substituir)"
+                                : "https://exemplo.com/calendario.ics"
+                              : e.present
+                                ? "•••• (substituir)"
+                                : "Colar valor"
+                          }
+                          onChange={(ev) =>
+                            setValues((p) => ({ ...p, [e.name]: ev.target.value }))
+                          }
+                        />
+                      </div>
+                    );
+                  })}
                 {saveMsg ? <p className="meta mt-2">{saveMsg}</p> : null}
               </>
             )}
@@ -205,7 +240,14 @@ export default function ConnectorDrawer({
             type="button"
             className="connector-button"
             onClick={onTest}
-            disabled={testing}
+            disabled={testing || !canTest}
+            title={
+              !connector.testable
+                ? "Sem teste activo para este conector."
+                : status === "Credenciais em falta"
+                  ? "Configura as credenciais primeiro."
+                  : undefined
+            }
           >
             {testing ? "A testar…" : "Testar ligação"}
           </button>

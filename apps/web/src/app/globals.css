@@ -1762,6 +1762,33 @@
   color: var(--eco-ink);
 }
 
+/* Larger logo box used in the connector drawer header. */
+.connector-logo-lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+}
+
+/* Real brand icon (Simple Icons) + initials fallback. */
+.connector-icon {
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+.connector-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.connector-icon-fallback {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  line-height: 1;
+}
+
 .connector-name {
   margin-top: 16px;
   font-family: var(--font-serif);
@@ -2065,6 +2092,85 @@
 .drawer-danger {
   color: var(--eco-red);
   border-color: rgba(155,63,50,0.28);
+}
+
+.drawer-warn {
+  border-left: 3px solid var(--eco-amber);
+  padding: 8px 0 8px 12px;
+  color: var(--eco-ink);
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────────
+ * The page is otherwise self-contained (its own --eco-* tokens), so dark mode
+ * re-maps those tokens and overrides the few hardcoded light surfaces. */
+[data-theme="dark"] .ecosystem-page {
+  --eco-bg: #0a0a0f;
+  --eco-surface: #15151d;
+  --eco-surface-soft: rgba(255,255,255,0.06);
+  --eco-ink: rgba(255,255,255,0.92);
+  --eco-muted: rgba(255,255,255,0.52);
+  --eco-line: rgba(255,255,255,0.10);
+  --eco-line-strong: rgba(255,255,255,0.20);
+  --eco-dark: rgba(120,100,255,1);
+  --eco-green: #5ac8be;
+  --eco-amber: #e0b84a;
+  --eco-red: #e08a7d;
+  --eco-blue: #8aa9d8;
+}
+
+[data-theme="dark"] .ecosystem-page .connector-card {
+  background: var(--eco-surface);
+  border-color: var(--eco-line);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"] .ecosystem-page .connector-card:hover {
+  border-color: var(--eco-line-strong);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+}
+
+[data-theme="dark"] .ecosystem-page .ecosystem-search,
+[data-theme="dark"] .ecosystem-page .connector-button,
+[data-theme="dark"] .ecosystem-page .drawer-field input,
+[data-theme="dark"] .ecosystem-page .drawer-chip {
+  background: rgba(255,255,255,0.05);
+  color: var(--eco-ink);
+}
+
+[data-theme="dark"] .ecosystem-page .connector-button.primary {
+  background: var(--eco-dark);
+  border-color: var(--eco-dark);
+  color: #fff;
+}
+
+[data-theme="dark"] .ecosystem-page .connector-add-card {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.16);
+}
+
+[data-theme="dark"] .ecosystem-page .ecosystem-tab.active {
+  color: #fff;
+}
+
+[data-theme="dark"] .connector-drawer {
+  background: #101017;
+}
+
+[data-theme="dark"] .connector-drawer .connector-button {
+  background: rgba(255,255,255,0.05);
+  color: var(--eco-ink, rgba(255,255,255,0.92));
+}
+
+/* Near-black brand marks (GitHub, OpenAI…) would vanish on a dark surface —
+ * back them with a translucent white circle so they stay recognisable. */
+[data-theme="dark"] .connector-icon {
+  background: rgba(255,255,255,0.2);
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .connector-icon-fallback {
+  background: rgba(255,255,255,0.12);
 }
 
 /* Responsive */

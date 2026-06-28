@@ -14,12 +14,9 @@ import {
 } from "@/app/(main)/ecosystem/actions";
 import StatusBadge from "@/components/ecosystem/StatusBadge";
 import ConnectorDrawer from "@/components/ecosystem/ConnectorDrawer";
+import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
 
 const SESSION_PROVIDERS = new Set(["openai", "claude", "perplexity"]);
-
-function monogram(name: string): string {
-  return name.replace(/[^A-Za-zÀ-ÿ ]/g, "").trim().slice(0, 2).toUpperCase() || "·";
-}
 
 interface Runtime {
   status: ConnectorStatus;
@@ -31,9 +28,11 @@ interface Runtime {
 export default function EcosystemBoard({
   connectors,
   manageable,
+  encrypted,
 }: {
   connectors: ConnectorView[];
   manageable: boolean;
+  encrypted: boolean;
 }) {
   const [runtime, setRuntime] = useState<Record<string, Runtime>>(() =>
     Object.fromEntries(
@@ -122,7 +121,9 @@ export default function EcosystemBoard({
       <div key={c.id} className="connector-card">
         <div>
           <div className="connector-card-top">
-            <span className="connector-logo">{monogram(c.name)}</span>
+            <span className="connector-logo">
+              <ConnectorIcon connectorId={c.id} name={c.name} size={32} />
+            </span>
             <StatusBadge status={rt.status} />
           </div>
           <h3 className="connector-name">{c.name}</h3>
@@ -249,6 +250,7 @@ export default function EcosystemBoard({
           lastChecked={runtime[drawer.id].lastChecked}
           testing={runtime[drawer.id].testing}
           manageable={manageable}
+          encrypted={encrypted}
           onClose={() => setDrawerId(null)}
           onTest={() => runTest(drawer.id)}
           onDisconnect={() => runDisconnect(drawer.id)}
