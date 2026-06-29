@@ -17,27 +17,34 @@ import { useState } from "react";
  * (`.connector-icon` under `[data-theme="dark"]`).
  */
 
-/** connectorId → Simple Icons slug. `null` ⇒ no brand mark, use initials. */
+/**
+ * connectorId → Simple Icons slug. `null` ⇒ no brand mark, use branded initials.
+ *
+ * The Microsoft 365 marks (Outlook, Teams, SharePoint, OneDrive), LinkedIn and
+ * Groq are intentionally null: Simple Icons removed those brands (and never had
+ * Groq), so the CDN returns a non-image response that doesn't trigger `onError`
+ * — it rendered as a broken image. Branded initials are used for them instead.
+ */
 const SLUGS: Record<string, string | null> = {
   openai: "openai",
   claude: "claude",
   perplexity: "perplexity",
-  groq: "groq",
+  groq: null,
   deepseek: "deepseek",
   manus: null,
   gmail: "gmail",
-  "outlook-email": "microsoftoutlook",
-  teams: "microsoftteams",
+  "outlook-email": null,
+  teams: null,
   "ics-calendar": null,
   "google-calendar": "googlecalendar",
-  "outlook-calendar": "microsoftoutlook",
+  "outlook-calendar": null,
   "google-drive": "googledrive",
-  sharepoint: "microsoftsharepoint",
-  onedrive: "microsoftonedrive",
+  sharepoint: null,
+  onedrive: null,
   github: "github",
   netlify: "netlify",
   supabase: "supabase",
-  linkedin: "linkedin",
+  linkedin: null,
   instagram: "instagram",
 };
 
@@ -118,6 +125,12 @@ export default function ConnectorIcon({
         height={size}
         loading="lazy"
         onError={() => setFailed(true)}
+        // The CDN sometimes answers an unknown slug with a non-erroring bad
+        // body (no `error` event) → the image loads with zero intrinsic size.
+        // Detect that and fall back to initials so a broken glyph never shows.
+        onLoad={(e) => {
+          if (e.currentTarget.naturalWidth === 0) setFailed(true);
+        }}
       />
     </span>
   );

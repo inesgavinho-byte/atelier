@@ -143,7 +143,7 @@ export default function EcosystemBoard({
     const inner = (
       <>
         <span className="eco-row-icon">
-          <ConnectorIcon connectorId={c.id} name={c.name} size={28} />
+          <ConnectorIcon connectorId={c.id} name={c.name} size={36} />
         </span>
         <span className="eco-row-body">
           <span className="eco-row-name">{c.name}</span>
