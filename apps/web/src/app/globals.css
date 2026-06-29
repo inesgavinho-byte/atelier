@@ -3061,6 +3061,67 @@
   font-size: 14px;
   color: var(--text-secondary);
 }
+
+/* Inline rename of the workspace title */
+.ws-title-edit {
+  margin-left: 12px;
+  padding: 2px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.ws-title-block:hover .ws-title-edit,
+.ws-title-edit:focus-visible {
+  opacity: 1;
+}
+.ws-title-edit:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ws-title-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+}
+.ws-title-input,
+.ws-intent-input {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 6px 10px;
+}
+.ws-title-input {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+}
+.ws-intent-input {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.ws-title-input:focus,
+.ws-intent-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.ws-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ws-title-err {
+  font-size: 12px;
+  color: var(--danger, #c0392b);
+}
 .ws-header-meta {
   display: flex;
   align-items: center;
