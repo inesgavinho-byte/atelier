@@ -10,6 +10,7 @@ import {
   searchDocumentChunks,
   type ChunkHit,
 } from "@/lib/documents";
+import { embedTexts } from "@/lib/ai/embeddings";
 import { recordTimelineEvent } from "@/lib/timeline";
 
 /**
@@ -72,11 +73,15 @@ export async function addDocument(input: {
   if (markdown) {
     const parts = chunkMarkdown(markdown);
     if (parts.length) {
+      // Embed each chunk for semantic retrieval (RAG v2). Degrades to null —
+      // chunks then store no vector and fall back to keyword search.
+      const vectors = await embedTexts(parts);
       const rows = parts.map((content, idx) => ({
         document_id: documentId,
         workspace_id: input.workspaceId,
         idx,
         content,
+        embedding: vectors ? vectors[idx] : null,
       }));
       const { error: chunkErr } = await sb.from("document_chunks").insert(rows);
       if (!chunkErr) chunks = rows.length;
