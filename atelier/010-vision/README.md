@@ -19,6 +19,13 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
   ficheiros descartáveis, mantém **Living Artifacts** (objectos permanentes que
   evoluem por revisões), com integração Google Workspace, *templates*,
   *canonical Markdown* e o pipeline de ingestão.
+- [`DECIMA-PERSONAL-DECIMIN.md`](DECIMA-PERSONAL-DECIMIN.md) — **Personal Decimin
+  & Conversation Watch**. O companheiro cognitivo pessoal: organiza, pensa,
+  prepara, acompanha e faz *follow-up*, garantindo que nada de importante
+  desaparece entre conversas, grupos e canais. O **Conversation Watch** (grupos
+  de Telegram como primeiro canal) detecta pedidos, compromissos, ficheiros
+  prometidos e perguntas sem resposta, e encaminha sinais para o Space certo.
+  Formalizado em [`../060-decisions/ADR-0006-personal-decimin-conversation-watch.md`](../060-decisions/ADR-0006-personal-decimin-conversation-watch.md).
 
 A **v2** é a visão fundacional actual.
 
