@@ -58,6 +58,45 @@ export function convertToMarkdown(text: string): string {
   return text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/**
+ * Convert a binary document (PDF/Office/image) to Markdown via the MarkItDown
+ * service (apps/markitdown on Railway). Returns null when the service isn't
+ * configured (MARKITDOWN_URL unset) or the call fails — the caller then keeps
+ * the document as `pending_conversion`, so the whole feature degrades
+ * gracefully without the service.
+ */
+export async function convertBinaryToMarkdown(
+  bytes: Buffer,
+  sourceName: string,
+  mime?: string
+): Promise<{ markdown: string } | null> {
+  const base = process.env.MARKITDOWN_URL?.replace(/\/$/, "");
+  if (!base) return null;
+  const token = process.env.MARKITDOWN_TOKEN;
+  try {
+    const form = new FormData();
+    const blob = new Blob([bytes], {
+      type: mime || "application/octet-stream",
+    });
+    form.append("file", blob, sourceName);
+    const res = await fetch(`${base}/convert`, {
+      method: "POST",
+      headers: token ? { authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
+    if (!res.ok) {
+      console.error(`[markitdown] HTTP ${res.status} para ${sourceName}`);
+      return null;
+    }
+    const data = (await res.json()) as { markdown?: string };
+    const markdown = (data.markdown ?? "").trim();
+    return markdown ? { markdown } : null;
+  } catch (e) {
+    console.error("[markitdown] chamada falhou:", e);
+    return null;
+  }
+}
+
 /** Split Markdown into ~800-char chunks on paragraph boundaries. */
 export function chunkMarkdown(markdown: string, target = 800): string[] {
   const paras = markdown.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
