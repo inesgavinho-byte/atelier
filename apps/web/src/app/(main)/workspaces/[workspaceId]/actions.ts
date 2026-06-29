@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
 import { runtime } from "@/lib/ai-runtime/runtime";
 import { runDebate, type Perspective } from "@/lib/ai-runtime/debate";
+import type { DocSource } from "@/lib/documents";
 import {
   prepareWorkspaceTurn,
   persistAssistantTurn,
@@ -134,6 +135,7 @@ export async function sendWorkspaceMessage(
     tokens: result.tokens ?? null,
     latencyMs: result.latencyMs,
     ctxVersion: prepared.ctxVersion,
+    metadata: prepared.sources?.length ? { sources: prepared.sources } : undefined,
   });
 
   revalidate();
@@ -162,6 +164,7 @@ export async function sendCouncilDebate(
   ok: boolean;
   synthesis?: string;
   perspectives?: Perspective[];
+  sources?: DocSource[];
   model?: string;
   error?: string;
 }> {
@@ -183,13 +186,17 @@ export async function sendCouncilDebate(
     return { ok: false, error: debate.error ?? "Falha no debate." };
   }
 
+  const sources = prepared.sources ?? [];
   await persistAssistantTurn(prepared.chatId, {
     text: debate.synthesis,
     provider: "council",
     model: debate.synthModel ?? "council",
     taskType: "complex",
     ctxVersion: prepared.ctxVersion,
-    metadata: { debate: debate.perspectives },
+    metadata: {
+      debate: debate.perspectives,
+      ...(sources.length ? { sources } : {}),
+    },
   });
 
   revalidate();
@@ -197,6 +204,7 @@ export async function sendCouncilDebate(
     ok: true,
     synthesis: debate.synthesis,
     perspectives: debate.perspectives,
+    sources,
     model: debate.synthModel,
   };
 }

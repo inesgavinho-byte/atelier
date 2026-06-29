@@ -29,6 +29,12 @@ export interface ChunkHit {
   content: string;
 }
 
+/** A document a grounded answer drew on (shown to the user as a source). */
+export interface DocSource {
+  documentId: string;
+  documentTitle: string;
+}
+
 const toDoc = (r: any): WorkspaceDocument => ({
   id: r.id,
   workspaceId: r.workspace_id,
@@ -130,6 +136,73 @@ export async function getDocuments(
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
   return (data ?? []).map(toDoc);
+}
+
+// Common pt-PT / en stopwords; combined with a length filter to keep only
+// content-bearing terms for retrieval.
+const STOPWORDS = new Set([
+  "para", "como", "porque", "sobre", "quais", "qual", "entre", "este", "esta",
+  "isto", "esse", "essa", "aquele", "aquela", "com", "sem", "dos", "das", "uma",
+  "umas", "uns", "pelo", "pela", "mais", "menos", "onde", "quando", "então",
+  "também", "ser", "estar", "que", "não", "sim", "the", "this", "that", "with",
+  "from", "what", "which", "have", "your", "você", "quero", "podes", "fazer",
+  "muito", "pouco", "sou", "são", "tem", "têm", "foi", "será",
+]);
+
+/** Extract distinct content-bearing terms from a natural-language query. */
+function queryTerms(query: string, max = 8): string[] {
+  const seen = new Set<string>();
+  // Keep latin letters (incl. pt accents à-ÿ), digits and spaces; drop the rest.
+  for (const raw of query.toLowerCase().replace(/[^a-z0-9à-ÿ\s]/g, " ").split(/\s+/)) {
+    if (raw.length >= 4 && !STOPWORDS.has(raw)) seen.add(raw);
+    if (seen.size >= max) break;
+  }
+  return Array.from(seen);
+}
+
+/**
+ * Retrieve the document chunks most relevant to a question (v1 RAG — lexical,
+ * no embeddings yet). Candidate chunks are those containing any query term;
+ * they are scored by how many distinct terms they contain and the top K are
+ * returned. Used to ground the Council's answers in the workspace's own
+ * documents (item 19). Returns [] when nothing matches.
+ */
+export async function retrieveRelevantChunks(
+  workspaceId: string,
+  query: string,
+  k = 5
+): Promise<ChunkHit[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const terms = queryTerms(query);
+  if (!terms.length) return [];
+  const orFilter = terms.map((t) => `content.ilike.%${t}%`).join(",");
+  const { data } = await sb
+    .from("document_chunks")
+    .select("document_id, idx, content, documents(title)")
+    .eq("workspace_id", workspaceId)
+    .or(orFilter)
+    .limit(40);
+  return (data ?? [])
+    .map((r: any) => {
+      const c = String(r.content).toLowerCase();
+      const score = terms.reduce((n, t) => n + (c.includes(t) ? 1 : 0), 0);
+      return {
+        documentId: r.document_id,
+        documentTitle: r.documents?.title ?? "(documento)",
+        idx: r.idx,
+        content: r.content as string,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k)
+    .map(({ documentId, documentTitle, idx, content }) => ({
+      documentId,
+      documentTitle,
+      idx,
+      content,
+    }));
 }
 
 /** Keyword search over a workspace's document chunks (ILIKE; v1). */

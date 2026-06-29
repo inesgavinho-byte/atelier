@@ -4,6 +4,7 @@ import { getSupabase } from "@/lib/supabase";
 import type { AIMessage } from "@/lib/ai/types";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import { getArtifactsForInitiative, getDecisions } from "@/lib/mission";
+import { retrieveRelevantChunks, type DocSource } from "@/lib/documents";
 import {
   getCanonicalChat,
   getMessages,
@@ -100,6 +101,8 @@ export interface PreparedTurn {
   /** Council system message + a sliding window of recent turns. */
   messages?: AIMessage[];
   ctxVersion?: number | null;
+  /** Documents the answer was grounded in (item 19) — shown as sources. */
+  sources?: DocSource[];
 }
 
 /**
@@ -126,11 +129,12 @@ export async function prepareWorkspaceTurn(
   const chatId = await ensureCanonicalChat(sb, workspaceId, chatTitle, projectId);
   if (!chatId) return { ok: false, error: "Não foi possível abrir a conversa." };
 
-  const [ctx, projectCtx, allDecisions, artifacts] = await Promise.all([
+  const [ctx, projectCtx, allDecisions, artifacts, hits] = await Promise.all([
     getWorkspaceContext(workspaceId),
     projectId ? getWorkspaceContext(workspaceId, projectId) : Promise.resolve(null),
     getDecisions().catch(() => []),
     getArtifactsForInitiative(workspaceId).catch(() => []),
+    retrieveRelevantChunks(workspaceId, trimmed, 5).catch(() => []),
   ]);
   const ctxVersion = (project ? projectCtx?.version : ctx?.version) ?? null;
   const activeDecisions = allDecisions
@@ -156,13 +160,34 @@ export async function prepareWorkspaceTurn(
     .slice(-30)
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
-  const system = councilSystemMessage(
+  let system = councilSystemMessage(
     ws?.name,
     ctx,
     activeDecisions,
     artifactList,
     project ? { name: project.name, ctx: projectCtx } : undefined
   );
+
+  // RAG (item 19): ground the answer in the workspace's own documents. We pass
+  // the most relevant excerpts in the system prompt and surface their source
+  // documents so the answer can cite them. Only when something matched.
+  const sources: DocSource[] = [];
+  if (hits.length) {
+    const seen = new Set<string>();
+    for (const h of hits) {
+      if (!seen.has(h.documentId)) {
+        seen.add(h.documentId);
+        sources.push({ documentId: h.documentId, documentTitle: h.documentTitle });
+      }
+    }
+    system +=
+      "\n\n## Documentos do workspace (excertos relevantes)\n" +
+      "Usa estes excertos quando ajudarem a responder e refere o documento pelo " +
+      "título. Se não forem relevantes para a pergunta, ignora-os.\n\n" +
+      hits
+        .map((h) => `### ${h.documentTitle}\n${h.content.slice(0, 1200)}`)
+        .join("\n\n");
+  }
 
   return {
     ok: true,
@@ -171,6 +196,7 @@ export async function prepareWorkspaceTurn(
     projectName: project?.name,
     messages: [{ role: "system", content: system }, ...thread],
     ctxVersion,
+    sources,
   };
 }
 

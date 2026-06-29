@@ -19,6 +19,7 @@ import { sendCouncilDebate } from "@/app/(main)/workspaces/[workspaceId]/actions
 
 type NextStep = { action: string; why: string; effort: "S" | "M" | "L" };
 type Perspective = { provider: string; label: string; model: string; text: string };
+type DocSource = { documentId: string; documentTitle: string };
 
 type ChatMessage = {
   id: string;
@@ -28,6 +29,7 @@ type ChatMessage = {
   taskType?: string;
   tokens?: number | null;
   citations?: string[];
+  sources?: DocSource[];
   steps?: NextStep[];
   debate?: Perspective[];
 };
@@ -152,6 +154,7 @@ export default function WorkspaceChat({
             model?: string;
             taskType?: string;
             citations?: string[];
+            sources?: DocSource[];
             steps?: NextStep[];
           };
           setMessages((prev) =>
@@ -164,6 +167,7 @@ export default function WorkspaceChat({
                     model: meta.model ?? m.model,
                     taskType: meta.taskType ?? m.taskType,
                     citations: meta.citations ?? [],
+                    sources: meta.sources ?? [],
                     steps: meta.steps ?? [],
                   }
                 : m
@@ -207,6 +211,7 @@ export default function WorkspaceChat({
             model: r.model,
             taskType: "complex",
             debate: r.perspectives ?? [],
+            sources: r.sources ?? [],
           },
         ]);
       } else {
@@ -292,6 +297,23 @@ export default function WorkspaceChat({
                                   </span>
                                   <span className="ws-source-url">{url}</span>
                                 </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+
+                      {m.sources && m.sources.length > 0 ? (
+                        <details className="ws-sources ws-docsources">
+                          <summary>
+                            Documentos consultados ({m.sources.length})
+                          </summary>
+                          <ul>
+                            {m.sources.map((s) => (
+                              <li key={s.documentId}>
+                                <span className="ws-source-host">
+                                  {s.documentTitle}
+                                </span>
                               </li>
                             ))}
                           </ul>
