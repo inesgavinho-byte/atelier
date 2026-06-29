@@ -1,124 +1,160 @@
-# ATELIER
+# ATELIER — Plataforma Cognitiva de Trabalho
 
 **Onde o pensamento se torna trabalho.**
 
-O ATELIER é a camada operativa para os projectos intelectuais, editoriais e estratégicos de Inês Gavinho. Não é um gestor de tarefas, nem um *dashboard*, nem um CRM, nem uma aplicação de conversação — é um espaço de trabalho digital onde as ideias se tornam trabalho.
+O ATELIER não é um chat. Não é um *dashboard*. É um **sistema operativo
+cognitivo** para trabalho intelectual: o lugar onde observação, investigação,
+decisão e execução vivem como partes do mesmo processo — e onde nada do que se
+aprende se perde.
 
-Este repositório é o **Repositório Fundacional do ATELIER**: a fonte de verdade tanto para o **código do produto** como para a **filosofia do produto**.
-
----
-
-## O que é o ATELIER
-
-O princípio é simples:
-
-> Os agentes trabalham. A Inês julga. A interface mostra apenas o que exige atenção, decisão ou direcção.
-
-PAPERS é o primeiro espaço de trabalho-piloto; o ATELIER é uma camada operativa geral, concebida para coordenar vários projectos (PAPERS, DECIMA, GAVINHO, NUDO, Pessoal) e, eventualmente, vários agentes de IA.
+Este repositório é o **Repositório Fundacional do ATELIER**: a fonte de verdade
+tanto para o **código do produto** (`apps/`) como para a **filosofia do
+produto** (`atelier/`).
 
 ---
 
-## Estrutura do repositório
+## Princípio central
+
+> **O contexto pertence ao ATELIER, não às ferramentas.**
+
+As LLMs (Claude, OpenAI, Perplexity, Groq, DeepSeek) são motores de execução
+substituíveis. A conversa, a memória, as decisões e o conhecimento pertencem à
+plataforma — não ao fornecedor que, num dado momento, executa um pedido. Trocar
+de modelo nunca apaga o trabalho.
+
+A visão completa está em [`atelier/VISION.md`](atelier/VISION.md); os princípios
+fundamentais em [`atelier/PRINCIPLES.md`](atelier/PRINCIPLES.md); o manifesto
+fundador (aprovado) em
+[`atelier/010-philosophy/AT-0001-manifesto.md`](atelier/010-philosophy/AT-0001-manifesto.md).
+
+---
+
+## Arquitectura, em uma linha
 
 ```
-ATELIER/
-├── README.md              Este documento
-├── package.json           Raiz do monorepo (workspaces + scripts delegados)
-├── apps/
-│   └── web/               Aplicação Next.js (o produto)
-├── packages/              Pacotes partilhados (vazio por agora)
-├── atelier/               Fundação intelectual (filosofia, decisões, ontologia)
-│   ├── 000-canon/
-│   ├── 010-philosophy/
-│   ├── 020-operating-system/
-│   ├── 030-organisation/
-│   ├── 040-product/
-│   ├── 050-agent-architecture/
-│   ├── 060-decisions/
-│   ├── 070-research/
-│   ├── 080-roadmap/
-│   ├── 090-goals/
-│   └── 100-ontology/
-├── assets/                Recursos partilhados (vazio por agora)
-└── scripts/               Scripts de automação (vazio por agora)
+Humano
+  │
+  ▼
+DECIMA Workspace ── a plataforma cognitiva (o ambiente de trabalho)
+  │
+  ├─ Spaces ───────── domínios de trabalho (PAPERS, GAVINHO, NUDO, Pessoal…)
+  │    │
+  │    ├─ Projects ── unidades de trabalho dentro de um Space
+  │    │    │
+  │    │    └─ Sessions ── conversas com intenção (chat contínuo do Council)
+  │    │
+  │    └─ Documents · Readings · Captures ── matéria-prima
+  │
+  ▼
+Processing Pipeline ── OCR → MarkItDown → chunks → Knowledge  (planeado)
+  │
+  ▼
+DECIMA ──────────── memória e conhecimento preservados
+  │
+  ▼
+DECIM001 ────────── Cognitive Engine permanente (visão futura)
 ```
 
-### Diferença entre `/apps/web` e `/atelier`
-
-- **`/apps/web`** — o **código** do produto. A aplicação Next.js que se constrói, testa e implementa.
-- **`/atelier`** — o **pensamento** do produto. A fundação intelectual: filosofia, organização, decisões arquitecturais, roteiro, objectivos e ontologia.
-
-Esta separação é intencional: o ATELIER não deve evoluir como uma colecção de ecrãs desconexos. O código e a filosofia evoluem lado a lado, com a mesma durabilidade.
+> Nota honesta: "Spaces", o "Processing Pipeline" e o "DECIM001" são a **visão**.
+> O que está **implementado hoje** são Workspaces, Projectos, o chat contínuo do
+> Council, Minions, importação de contexto e a memória comprimida por workspace.
+> Ver [`atelier/ARCHITECTURE.md`](atelier/ARCHITECTURE.md) (real vs planeado) e
+> [`atelier/ROADMAP.md`](atelier/ROADMAP.md).
 
 ---
 
-## Como executar a aplicação web
+## Stack técnica
 
-O repositório está organizado como um monorepo com *workspaces* npm. Os scripts da raiz delegam no *workspace* `@atelier/web`, pelo que **todos os comandos podem ser executados a partir da raiz**:
+- **Monorepo** npm workspaces.
+  - `apps/web` (`@atelier/web`) — Next.js 14 (App Router), React 18, TypeScript,
+    Tailwind. Deploy no **Netlify**.
+  - `apps/worker` (`@atelier/worker`) — worker Node em *polling*. Deploy no
+    **Railway**. Corre os *jobs*, o agente de contexto e os Minions.
+- **Supabase** (Postgres + RLS) — dados, credenciais de conectores (RLS-locked
+  ao service role), memória de workspace.
+- **AI Gateway** — abstracção sobre os fornecedores; o Council faz *routing* por
+  tipo de tarefa. Streaming de respostas via SSE.
+
+---
+
+## Como correr localmente
+
+Monorepo com *workspaces* npm — os comandos da raiz delegam em `@atelier/web`:
 
 ```bash
 npm install      # instala dependências de todos os workspaces
-npm run dev      # arranca o servidor de desenvolvimento (http://localhost:3000)
+npm run dev      # servidor de desenvolvimento (http://localhost:3000)
 npm run build    # build de produção
-npm run start    # serve o build de produção
+npm run start    # serve o build
 npm run typecheck
 npm run lint
 ```
 
-Em alternativa, é possível executar directamente dentro de `apps/web` (ver `apps/web/README.md`).
+O worker corre à parte:
 
----
-
-## Como os documentos são identificados
-
-Toda a documentação vive em `atelier/`, organizada por gabinetes numerados. Cada documento começa com um bloco de metadados e usa um identificador estável:
-
-- **AT-000X** — documentos da fundação (ex.: `AT-0001` Manifesto, `AT-0009` Ontologia).
-- **ADR-000X** — Registos de Decisões Arquitecturais.
-- **GOAL-000X** — Objectivos.
-
-Bloco de metadados padrão no topo de cada documento:
-
-```
----
-id: AT-000X
-title: Título do Documento
-version: v0.1
-status: Draft
-owner: Inês Gavinho
-created: 2026-06-26
-updated: 2026-06-26
-depends_on: []
-impacts: []
----
+```bash
+npm run --workspace @atelier/worker dev    # (ou build/start)
 ```
 
-Seguido das secções: **Propósito**, **Âmbito**, **Estado** e **Registo de alterações**.
+---
 
-### Como funcionam os ADR
+## Variáveis de ambiente
 
-Um ADR (*Architecture Decision Record*) documenta uma decisão arquitectural significativa. Para criar um:
+Nada é obrigatório para fazer *build* — valores em falta degradam de forma
+graciosa. A referência completa, comentada, está em
+[`apps/web/.env.example`](apps/web/.env.example). As principais:
 
-1. Copiar `atelier/060-decisions/ADR-0001-template.md`.
-2. Atribuir um `id` sequencial (`ADR-0002`, `ADR-0003`, …) e um título.
-3. Preencher: **Status**, **Context**, **Decision**, **Consequences**, **Alternatives Considered**, **Related Documents**, **Changelog**.
-4. Actualizar o `status`: Proposed → Accepted / Rejected / Superseded.
+| Variável | Para quê |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Dados reais |
+| `SUPABASE_SERVICE_ROLE_KEY` | Credenciais de conectores, jobs, Minions, contexto (tabelas RLS-locked) |
+| `SUPABASE_ACCESS_TOKEN` | Info por workspace (tabelas, contagens) + SQL read-only do Council |
+| `ANTHROPIC_API_KEY` · `OPENAI_API_KEY` · `PERPLEXITY_API_KEY` · `GROQ_API_KEY` · `DEEPSEEK_API_KEY` | Fornecedores de IA (chat, importação, Minions) |
+| `ATELIER_ACCESS_PASSWORD` | Porta de acesso opcional (um `/login` partilhado) |
+| `ATELIER_CRED_KEY` | Encripta credenciais de conectores em repouso (AES-256-GCM) |
+| `ICS_CALENDAR_URL` · `ATELIER_TIMEZONE` | Agenda de hoje (feed ICS) |
+| `GITHUB_TOKEN` · `NETLIFY_*` | Conectores de *developer* / *deploy* |
 
-### Como funcionam os objectivos
-
-Um objectivo (*goal*) define uma intenção com critérios de sucesso. Vivem em `atelier/090-goals/`, com `id` sequencial (`GOAL-0001`, …) e um campo `impacts` que lista os documentos afectados. O `status` indica o estado: Active, Done, Paused ou Dropped.
+> O worker (Railway) precisa de `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` e,
+> para o agente de contexto / Minions, de `ANTHROPIC_API_KEY`.
 
 ---
 
-## Estado de desenvolvimento actual
+## Decisões arquitecturais (ADR)
 
-- **Sprint 001** — MVP da camada operativa (rotas, interface editorial, dados *mock* tipados, arquitectura pronta para Supabase). Concluído.
-- **Sprint A001** — Reestruturação fundacional do repositório (este trabalho): aplicação movida para `apps/web`, fundação intelectual criada em `atelier/`. Em curso.
+Em [`atelier/060-decisions/`](atelier/060-decisions/):
 
-O objectivo activo é o `GOAL-0001 — Construir a Fundação ATELIER`.
+- **ADR-0002** — Runtime de execução: Council + Claude Code CLI
+- **ADR-0003** — Interface Telegram (ATELIER Mobile)
+- **ADR-0004** — Chat contínuo por workspace com agente de contexto
+- **ADR-0005** — Sessões, Timeline e Chat como Interface
 
 ---
+
+## Roadmap, em alto nível
+
+1. **Consolidação** (em curso) — chat contínuo, Council com *routing* + streaming,
+   GitHub por workspace, importação de contexto, Minions, projectos.
+2. **Pipeline de conhecimento** — documentos (OCR → MarkItDown → chunks → índice),
+   biblioteca por Space, extracção automática.
+3. **Timeline** — ADR-0005 Fatia 2: sessões com intenção + todos os eventos
+   agregados cronologicamente.
+4. **DECIM001** — Cognitive Engine permanente, *knowledge graph*, memória
+   partilhada entre Spaces.
+
+Detalhe (com o que fica **fora** de âmbito) em
+[`atelier/ROADMAP.md`](atelier/ROADMAP.md).
+
+---
+
+## Como navegar a documentação
+
+- [`atelier/`](atelier/) — fundação intelectual (manifesto, ontologia, decisões,
+  conhecimento). Ver [`atelier/README.md`](atelier/README.md) para o índice.
+- Documentos consolidados na raiz de `atelier/`: **VISION**, **ARCHITECTURE**,
+  **ROADMAP**, **PRINCIPLES**.
 
 ## Língua
 
-Toda a documentação está em **Português Europeu**. A interface da aplicação será eventualmente traduzida para português, mas essa tradução não faz parte deste sprint.
+Toda a documentação está em **Português Europeu** — a língua da utilizadora e do
+projecto.

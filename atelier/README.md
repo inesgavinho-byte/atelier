@@ -2,6 +2,15 @@
 
 Esta pasta é a fonte de verdade da filosofia, organização, decisões e ontologia do ATELIER. Está separada do código da aplicação (`apps/web`), de modo a que o pensamento e o produto evoluam com a mesma durabilidade.
 
+## Documentos consolidados
+
+Leitura de entrada, transversal aos gabinetes:
+
+- [`VISION.md`](VISION.md) — a visão completa da plataforma (DECIMA, DECIM001, Spaces, Council, Minions, pipeline).
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — arquitectura técnica (stack, modelo de dados, IA, worker, deploy) — real vs planeado.
+- [`ROADMAP.md`](ROADMAP.md) — roadmap de execução por fases (e o que fica fora de âmbito).
+- [`PRINCIPLES.md`](PRINCIPLES.md) — os sete princípios fundamentais.
+
 ## Gabinetes
 
 | Pasta | Tema |
@@ -14,9 +23,11 @@ Esta pasta é a fonte de verdade da filosofia, organização, decisões e ontolo
 | `050-agent-architecture/` | Arquitectura de agentes |
 | `060-decisions/` | Registos de Decisões Arquitecturais (ADR) |
 | `070-research/` | Investigação e fontes |
-| `080-roadmap/` | Roteiro faseado |
+| `080-roadmap/` | Roteiro faseado (conceptual) |
 | `090-goals/` | Objectivos |
 | `100-ontology/` | Entidades centrais e relações |
+| `200-product/` | Épicos, funcionalidades, histórias e tarefas |
+| `300-knowledge/` | Biblioteca de pensamento: princípios, modelos mentais, skills |
 
 ## Identificação de documentos
 
