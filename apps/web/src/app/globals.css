@@ -3537,6 +3537,74 @@
   color: var(--accent);
 }
 
+/* Council completo — debate panel */
+.ws-debate {
+  margin: 4px 0 10px;
+}
+.ws-debate > summary {
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ws-debate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.ws-debate-card {
+  padding: 10px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-card, var(--panel));
+  font-size: 13px;
+}
+.ws-debate-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ws-debate-synth-label {
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ws-debate-btn {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ws-debate-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ws-debate-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ws-debate-btn.suggest {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.ws-debate-hint {
+  margin: 6px 2px 0;
+  font-size: 11px;
+  color: var(--accent);
+}
+
 .ws-typing {
   display: inline-flex;
   align-items: center;

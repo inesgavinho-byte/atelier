@@ -132,3 +132,35 @@ export function classifyMessage(content: string): TaskType {
   }
   return "general";
 }
+
+/** Cues that a question has multiple angles and benefits from a full debate. */
+const COMPLEX_CUES = [
+  "prós e contras",
+  "pros e contras",
+  "vantagens e desvantagens",
+  "trade-off",
+  "tradeoff",
+  "compara",
+  "comparar",
+  "vale a pena",
+  "devo ",
+  "deve-se",
+  "qual é melhor",
+  "qual a melhor",
+  "perspectivas",
+  "perspetivas",
+  "abordagens",
+  " ou ", // "X ou Y?"
+];
+
+/**
+ * Heuristic: is this a complex, multi-angle question worth a full Council
+ * debate? Pure rules — used only to *suggest* the debate, never to force it.
+ */
+export function isComplexQuestion(content: string): boolean {
+  const text = content.toLowerCase().trim();
+  if (text.length < 40) return false;
+  const hasCue = COMPLEX_CUES.some((c) => text.includes(c));
+  const isQuestion = text.includes("?");
+  return hasCue && (isQuestion || text.length > 140);
+}

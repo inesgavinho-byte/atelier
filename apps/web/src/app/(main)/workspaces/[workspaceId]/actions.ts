@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
 import { runtime } from "@/lib/ai-runtime/runtime";
+import { runDebate, type Perspective } from "@/lib/ai-runtime/debate";
 import {
   prepareWorkspaceTurn,
   persistAssistantTurn,
@@ -143,5 +144,59 @@ export async function sendWorkspaceMessage(
     model: result.model,
     provider: result.provider,
     taskType: result.taskType,
+  };
+}
+
+/**
+ * Run the full Council (LLM debate) for a complex question: several models
+ * answer in parallel, then one synthesises. Persists the synthesis as the
+ * assistant turn, with the panel perspectives in metadata. Falls back to an
+ * error when fewer than two panellists are available — the UI then suggests a
+ * normal message.
+ */
+export async function sendCouncilDebate(
+  workspaceId: string,
+  content: string,
+  projectId?: string
+): Promise<{
+  ok: boolean;
+  synthesis?: string;
+  perspectives?: Perspective[];
+  model?: string;
+  error?: string;
+}> {
+  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId);
+
+  const revalidate = () => {
+    revalidatePath(`/workspaces/${workspaceId}`);
+    if (projectId)
+      revalidatePath(`/workspaces/${workspaceId}/projects/${projectId}`);
+  };
+
+  if (!prepared.ok || !prepared.chatId || !prepared.messages) {
+    return { ok: false, error: prepared.error ?? "Falha ao preparar a conversa." };
+  }
+
+  const debate = await runDebate(prepared.messages);
+  if (!debate.ok) {
+    revalidate();
+    return { ok: false, error: debate.error ?? "Falha no debate." };
+  }
+
+  await persistAssistantTurn(prepared.chatId, {
+    text: debate.synthesis,
+    provider: "council",
+    model: debate.synthModel ?? "council",
+    taskType: "complex",
+    ctxVersion: prepared.ctxVersion,
+    metadata: { debate: debate.perspectives },
+  });
+
+  revalidate();
+  return {
+    ok: true,
+    synthesis: debate.synthesis,
+    perspectives: debate.perspectives,
+    model: debate.synthModel,
   };
 }

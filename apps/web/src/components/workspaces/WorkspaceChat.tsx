@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Markdown from "@/components/Markdown";
 import { ago } from "@/components/mission/bits";
 import { estimateCostUSD, formatCostUSD } from "@/lib/ai/cost";
+import { isComplexQuestion } from "@/lib/ai-runtime/classifier";
+import { sendCouncilDebate } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 /**
  * WorkspaceChat — the continuous workspace conversation (ADR-0004).
@@ -16,6 +18,7 @@ import { estimateCostUSD, formatCostUSD } from "@/lib/ai/cost";
  */
 
 type NextStep = { action: string; why: string; effort: "S" | "M" | "L" };
+type Perspective = { provider: string; label: string; model: string; text: string };
 
 type ChatMessage = {
   id: string;
@@ -26,6 +29,7 @@ type ChatMessage = {
   tokens?: number | null;
   citations?: string[];
   steps?: NextStep[];
+  debate?: Perspective[];
 };
 
 /** Separates the streamed text from the trailing JSON metadata line. */
@@ -41,6 +45,7 @@ const TASK_LABELS: Record<string, string> = {
   summary: "resumo",
   reasoning: "análise",
   general: "geral",
+  complex: "debate",
 };
 
 function hostOf(url: string): string {
@@ -176,6 +181,45 @@ export default function WorkspaceChat({
     }
   }
 
+  /** Run the full Council (parallel panel + synthesis). Non-streaming. */
+  async function debate() {
+    const content = input.trim();
+    if (!content || pending) return;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: "user", content },
+    ]);
+    setInput("");
+    setError(null);
+    setPending(true);
+    requestAnimationFrame(resizeTextarea);
+
+    try {
+      const r = await sendCouncilDebate(workspaceId, content, projectId);
+      if (r.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: r.synthesis ?? "",
+            model: r.model,
+            taskType: "complex",
+            debate: r.perspectives ?? [],
+          },
+        ]);
+      } else {
+        setError(r.error ?? "Falha no Council completo.");
+      }
+    } catch {
+      setError("Falha no Council completo.");
+    } finally {
+      setPending(false);
+      router.refresh();
+    }
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -185,6 +229,7 @@ export default function WorkspaceChat({
 
   const canSend = input.trim().length > 0 && !pending;
   const showContextLine = typeof contextVersion === "number";
+  const suggestDebate = isComplexQuestion(input);
 
   return (
     <div className="ws-chat">
@@ -215,6 +260,24 @@ export default function WorkspaceChat({
                           {cost ? ` · ${cost}` : ""}
                         </span>
                       </div>
+
+                      {m.debate && m.debate.length > 0 ? (
+                        <details className="ws-debate" open>
+                          <summary>
+                            Perspectivas do painel ({m.debate.length})
+                          </summary>
+                          <div className="ws-debate-grid">
+                            {m.debate.map((p, i) => (
+                              <div key={i} className="ws-debate-card">
+                                <p className="ws-debate-label">{p.label}</p>
+                                <Markdown content={p.text} />
+                              </div>
+                            ))}
+                          </div>
+                          <p className="ws-debate-synth-label">Síntese</p>
+                        </details>
+                      ) : null}
+
                       <Markdown content={m.content} />
 
                       {m.citations && m.citations.length > 0 ? (
@@ -310,6 +373,15 @@ export default function WorkspaceChat({
           />
           <button
             type="button"
+            className={`ws-debate-btn${suggestDebate ? " suggest" : ""}`}
+            onClick={() => void debate()}
+            disabled={!canSend}
+            title="Council completo — várias IAs debatem e sintetizam"
+          >
+            ⚖︎ Council completo
+          </button>
+          <button
+            type="button"
             className="btn-primary ws-send"
             onClick={() => void send()}
             disabled={!canSend}
@@ -318,6 +390,11 @@ export default function WorkspaceChat({
             ↑
           </button>
         </div>
+        {suggestDebate ? (
+          <p className="ws-debate-hint">
+            Pergunta com vários ângulos — experimenta o Council completo.
+          </p>
+        ) : null}
       </div>
     </div>
   );
