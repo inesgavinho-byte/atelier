@@ -76,9 +76,7 @@ export default function DatabasePanel({
   };
 
   return (
-    <section className="ctx-section">
-      <h2 className="ctx-section-title">Base de dados</h2>
-
+    <>
       {!configured && !editing ? (
         <button
           type="button"
@@ -205,6 +203,6 @@ export default function DatabasePanel({
           )}
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -286,6 +286,7 @@
   --bg-sidebar: rgba(255, 255, 255, 0.85);
   --panel: rgba(255, 255, 255, 0.7);
   --panel-strong: rgba(255, 255, 255, 0.85);
+  --surface-card: rgba(10, 10, 15, 0.035);
   --text: rgba(10, 10, 15, 0.92);
   --text-secondary: rgba(10, 10, 15, 0.5);
   --text-muted: rgba(10, 10, 15, 0.35);
@@ -308,6 +309,7 @@
   --atelier-bg-soft: var(--panel);
   --atelier-surface: var(--panel);
   --atelier-surface-strong: var(--panel-strong);
+  --atelier-surface-card: var(--surface-card);
   --atelier-ink: var(--text);
   --atelier-muted: var(--text-secondary);
   --atelier-muted-light: var(--text-muted);
@@ -336,6 +338,7 @@
   --bg-sidebar: rgba(18, 18, 28, 0.92);
   --panel: rgba(255, 255, 255, 0.04);
   --panel-strong: rgba(255, 255, 255, 0.06);
+  --surface-card: rgba(255, 255, 255, 0.055);
   --text: rgba(255, 255, 255, 0.92);
   --text-secondary: rgba(255, 255, 255, 0.5);
   --text-muted: rgba(255, 255, 255, 0.3);
@@ -3487,17 +3490,165 @@
 
 /* ── Workspace context panel (ADR-0004 right rail) ────────────────────────── */
 .ctx-panel {
-  width: 260px;
-  flex: 0 0 260px;
+  width: 300px;
+  flex: 0 0 300px;
   align-self: stretch;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 20px;
+  gap: 14px;
+  padding: 18px;
   background: var(--panel);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-card);
+}
+
+/* Collapsible section header */
+.ctx-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.ctx-section-header .ctx-section-title {
+  margin: 0;
+  flex: 1;
+}
+.ctx-section-chevron {
+  width: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+.ctx-section-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ctx-section-body {
+  margin-top: 10px;
+}
+
+/* Requer acção — consolidated, always visible */
+.ctx-action {
+  padding: 12px;
+  border: 0.5px solid rgba(255, 180, 50, 0.45);
+  border-radius: var(--radius-card);
+  background: rgba(255, 180, 50, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ctx-action-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ctx-action-head .ctx-section-title {
+  margin: 0;
+  flex: 1;
+  color: var(--text-secondary);
+}
+.ctx-action-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  background: rgba(255, 180, 50, 0.9);
+  color: #1a1205;
+}
+
+/* Microcards */
+.ctx-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ctx-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-card);
+  text-decoration: none;
+}
+a.ctx-card:hover {
+  border-color: var(--text-muted);
+}
+.ctx-card-amber {
+  border-left: 2px solid rgba(255, 180, 50, 0.8);
+}
+.ctx-card-violet,
+.ctx-card-pr {
+  border-left: 2px solid rgba(120, 100, 255, 0.6);
+}
+.ctx-card-red {
+  border-left: 2px solid rgba(220, 50, 50, 0.7);
+}
+.ctx-card-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ctx-card-title {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.ctx-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ctx-sha {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.ctx-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.ctx-card-flag {
+  align-self: flex-start;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.ctx-flag-amber {
+  background: rgba(255, 180, 50, 0.16);
+  color: var(--atelier-warning);
+}
+.ctx-flag-violet {
+  background: rgba(120, 100, 255, 0.16);
+  color: var(--accent);
+}
+.ctx-flag-red {
+  background: rgba(220, 50, 50, 0.16);
+  color: var(--atelier-danger);
+}
+.ctx-ci-card .ctx-ci-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .ctx-section-title {
