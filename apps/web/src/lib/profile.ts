@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { initialsFrom } from "@/lib/profile-colors";
 
@@ -103,7 +104,8 @@ function mapWorkspaceIdentity(r: Row): WorkspaceIdentity {
 }
 
 /** The current operator's profile (singleton). Degrades to a sensible default. */
-export async function getProfile(): Promise<UserProfile> {
+export const getProfile = cache(getProfileUncached);
+async function getProfileUncached(): Promise<UserProfile> {
   const sb = getSupabase();
   if (!sb) return FALLBACK;
   const { data } = await sb
