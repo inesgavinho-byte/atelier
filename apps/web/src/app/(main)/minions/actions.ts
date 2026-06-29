@@ -76,6 +76,25 @@ export async function setGroupWorkspace(
   return { ok: true, message: workspaceId ? "Grupo ligado." : "Grupo desligado." };
 }
 
+/** Set a group's Conversation Watch autonomy level (0–5). */
+export async function setGroupAutonomy(
+  groupId: string,
+  level: number
+): Promise<{ ok: boolean; message: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false, message: "Service role não configurado." };
+  const clamped = Math.max(0, Math.min(5, Math.round(level)));
+  // Level 0 turns the group off entirely; ≥1 keeps it active (the worker only
+  // analyses messages at level ≥ 2).
+  const { error } = await admin
+    .from("telegram_groups")
+    .update({ autonomy_level: clamped, active: clamped > 0 })
+    .eq("id", groupId);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/minions");
+  return { ok: true, message: `Autonomia: nível ${clamped}.` };
+}
+
 /** Resolve / dismiss a pending item from the dashboard. */
 export async function setPendingItemStatus(
   id: string,
