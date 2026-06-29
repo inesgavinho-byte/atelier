@@ -1727,8 +1727,10 @@
 
 .connector-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 6px;
+  /* auto-fit (not auto-fill) so columns stretch to fill the row width instead
+     of leaving empty tracks on wide screens; ~30% wider min track. */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
 }
 
 /* Compact connector row (replaces the old large card). The whole row is the
@@ -1737,10 +1739,10 @@
 .connector-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 13px;
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
+  padding: 13px 16px;
   background: var(--eco-surface);
   border: 1px solid var(--eco-line);
   border-radius: var(--radius-md, 12px);
@@ -1755,11 +1757,11 @@
 
 .eco-row-icon {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--eco-surface-soft);
   overflow: hidden;
 }
@@ -1769,11 +1771,11 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .eco-row-name {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--eco-ink);
   white-space: nowrap;
   overflow: hidden;
@@ -1781,7 +1783,7 @@
 }
 
 .eco-row-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--eco-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1790,8 +1792,8 @@
 
 .eco-dot {
   flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--eco-line-strong);
 }
@@ -2259,6 +2261,12 @@
 
 [data-theme="dark"] .connector-icon-fallback {
   background: rgba(255,255,255,0.12);
+}
+
+/* Brand tiles are already coloured — no white backing circle/padding. */
+[data-theme="dark"] .connector-icon-tile {
+  background: transparent;
+  padding: 0;
 }
 
 /* Responsive */
