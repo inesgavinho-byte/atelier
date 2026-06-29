@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
-  IconCheck,
-  IconFiles,
+  IconBrain,
   IconBrandGithub,
   IconDatabase,
-  IconBrain,
+  IconCheck,
   IconBox,
   IconBulb,
   IconRobot,
-  IconChevronLeft,
+  IconFolders,
+  IconFiles,
   IconChevronRight,
   IconChevronDown,
+  IconX,
+  IconMenu2,
+  IconPlus,
+  IconUpload,
   type Icon,
 } from "@tabler/icons-react";
 import { StateTag, ago } from "@/components/mission/bits";
@@ -20,31 +25,33 @@ import RepoPanel from "@/components/workspaces/RepoPanel";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
 import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
 import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
+import { NewProjectForm } from "@/components/workspaces/WorkspaceForms";
 import type { WorkspaceContext } from "@/lib/workspaces";
+import type { WorkspaceProject } from "@/lib/workspaces-constants";
 import type { WorkspaceDocument } from "@/lib/documents";
 import type { RepoOverview } from "@/lib/github";
 import type { Agent, Artifact, Decision } from "@/data/mission";
 
 /**
- * ContextPanel — the workspace's right rail, redesigned as a collapsible
- * full-height drawer (Claude.ai files / Perplexity sources inspired).
- *
- * Expanded (280px): every section stacks vertically, each with a clickable
- * uppercase header (icon + label + chevron). Collapsed (36px): only a vertical
- * strip of section icons remains — clicking one re-expands the drawer at that
- * section. Both the whole-drawer collapse and per-section open state persist in
+ * ContextPanel — the workspace's right rail as a collapsible, full-height
+ * drawer ("Contexto do workspace"). Expanded: a titled card whose rows are
+ * collapsible sections (icon + label + hint + chevron), with "Novo projecto"
+ * and "Carregar documentos" as actions at the foot. Collapsed: a slim vertical
+ * tab — a toggle plus the section icons, each re-opening the drawer at its
+ * section. Both the drawer state and per-section open state persist in
  * localStorage, scoped to the workspace.
  */
 
 type SectionId =
-  | "decisoes"
-  | "documentos"
+  | "contexto"
   | "repo"
   | "db"
-  | "contexto"
+  | "decisoes"
   | "artefactos"
   | "licoes"
-  | "agentes";
+  | "agentes"
+  | "projectos"
+  | "documentos";
 
 function decisionDotClass(status: string): string {
   if (status === "pendente") return "ctx-dot-amber";
@@ -54,6 +61,7 @@ function decisionDotClass(status: string): string {
 
 export default function ContextPanel({
   workspaceId,
+  workspaceSlug,
   projectId,
   githubRepo,
   supabaseUrl,
@@ -61,10 +69,12 @@ export default function ContextPanel({
   decisions,
   artifacts,
   agents,
+  projects,
   documents,
   overview,
 }: {
   workspaceId: string;
+  workspaceSlug?: string;
   /** When set, the panel is scoped to a project (repo + title wording). */
   projectId?: string;
   githubRepo?: string;
@@ -73,7 +83,9 @@ export default function ContextPanel({
   decisions: Decision[];
   artifacts: Artifact[];
   agents: Agent[];
-  /** Documents enable the "Documentos" section (workspace scope only). */
+  /** Projects enable the "Projectos" section + "Novo projecto" (workspace scope). */
+  projects?: WorkspaceProject[];
+  /** Documents enable the "Documentos" section + "Carregar documentos". */
   documents?: WorkspaceDocument[];
   /** Pre-fetched GitHub overview (workspace scope); omitted for projects. */
   overview?: RepoOverview | null;
@@ -86,23 +98,26 @@ export default function ContextPanel({
 
   const pendingDecisions = decisions.filter((d) => d.status === "pendente");
   const openPRs = overview?.prs ?? [];
+  const hasProjects = projects !== undefined;
   const hasDocuments = documents !== undefined;
 
   // Default open/closed per section. Decisões opens itself when something is
   // pending; Repositório opens itself when there are open PRs.
   const defaults: Record<SectionId, boolean> = {
-    decisoes: pendingDecisions.length > 0,
-    documentos: false,
+    contexto: false,
     repo: openPRs.length > 0,
     db: false,
-    contexto: false,
+    decisoes: pendingDecisions.length > 0,
     artefactos: false,
     licoes: false,
     agentes: false,
+    projectos: false,
+    documentos: false,
   };
 
   const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>({});
   const [collapsed, setCollapsed] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
   const openKey = `atelier-ctx-${workspaceId}`;
   const collapsedKey = `atelier-ctx-collapsed-${workspaceId}`;
 
@@ -142,7 +157,7 @@ export default function ContextPanel({
     }
   };
 
-  // Strip-icon click: expand the drawer and open that section.
+  // Strip-icon click / foot action: expand the drawer and open that section.
   const expandTo = (id: SectionId) => {
     setOpen((prev) => {
       const next = { ...prev, [id]: true };
@@ -152,23 +167,74 @@ export default function ContextPanel({
     setCollapsedPersist(false);
   };
 
-  // ── Section definitions (drives both the strip and the expanded body) ──────
+  // ── Section definitions (drive both the strip and the expanded rows) ───────
   type Section = {
     id: SectionId;
     label: string;
     Icon: Icon;
-    /** Badge on the strip icon + count in the header. */
+    /** Right-aligned status hint shown in the row. */
+    hint?: string;
+    /** Badge on the collapsed strip icon. */
     badge?: number;
-    /** Hidden entirely when false (e.g. Documentos outside workspace scope). */
     show: boolean;
     body: React.ReactNode;
   };
 
   const sections: Section[] = [
     {
+      id: "contexto",
+      label: isProject ? "Contexto do projecto" : "Contexto",
+      Icon: IconBrain,
+      hint: summary ? (context ? `v${context.version}` : "memória") : "vazio",
+      show: true,
+      body: summary ? (
+        <>
+          <p className="ctx-summary">{summary}</p>
+          {context ? (
+            <p className="ctx-meta">
+              v{context.version}
+              {context.lastUpdatedAt ? ` · ${ago(context.lastUpdatedAt)}` : ""}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="ctx-empty">Sem memória ainda.</p>
+      ),
+    },
+    {
+      id: "repo",
+      label: "Repositório",
+      Icon: IconBrandGithub,
+      hint: openPRs.length ? `${openPRs.length} PR` : undefined,
+      badge: openPRs.length || undefined,
+      show: true,
+      body: (
+        <RepoPanel
+          scope={
+            projectId
+              ? { kind: "project", projectId, workspaceId }
+              : { kind: "workspace", workspaceId }
+          }
+          initialRepo={githubRepo}
+          overview={isProject ? undefined : overview}
+        />
+      ),
+    },
+    {
+      id: "db",
+      label: "Base de dados",
+      Icon: IconDatabase,
+      hint: supabaseUrl ? "ligada" : undefined,
+      show: true,
+      body: <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />,
+    },
+    {
       id: "decisoes",
       label: "Decisões",
       Icon: IconCheck,
+      hint: pendingDecisions.length
+        ? `${pendingDecisions.length} pendente${pendingDecisions.length === 1 ? "" : "s"}`
+        : "nada a decidir",
       badge: pendingDecisions.length || undefined,
       show: true,
       body:
@@ -199,67 +265,10 @@ export default function ContextPanel({
         ),
     },
     {
-      id: "documentos",
-      label: "Documentos",
-      Icon: IconFiles,
-      badge: documents?.length || undefined,
-      show: hasDocuments,
-      body: (
-        <DocumentsPanel
-          workspaceId={workspaceId}
-          documents={documents ?? []}
-          embedded
-        />
-      ),
-    },
-    {
-      id: "repo",
-      label: "Repositório",
-      Icon: IconBrandGithub,
-      badge: openPRs.length || undefined,
-      show: true,
-      body: (
-        <RepoPanel
-          scope={
-            projectId
-              ? { kind: "project", projectId, workspaceId }
-              : { kind: "workspace", workspaceId }
-          }
-          initialRepo={githubRepo}
-          overview={isProject ? undefined : overview}
-        />
-      ),
-    },
-    {
-      id: "db",
-      label: "Base de dados",
-      Icon: IconDatabase,
-      show: true,
-      body: <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />,
-    },
-    {
-      id: "contexto",
-      label: isProject ? "Contexto do projecto" : "Contexto",
-      Icon: IconBrain,
-      show: true,
-      body: summary ? (
-        <>
-          <p className="ctx-summary">{summary}</p>
-          {context ? (
-            <p className="ctx-meta">
-              v{context.version}
-              {context.lastUpdatedAt ? ` · ${ago(context.lastUpdatedAt)}` : ""}
-            </p>
-          ) : null}
-        </>
-      ) : (
-        <p className="ctx-empty">Sem memória ainda.</p>
-      ),
-    },
-    {
       id: "artefactos",
       label: "Artefactos",
       Icon: IconBox,
+      hint: artifacts.length ? `${artifacts.length}` : undefined,
       badge: artifacts.length || undefined,
       show: true,
       body:
@@ -282,6 +291,7 @@ export default function ContextPanel({
       id: "licoes",
       label: "Lições aprendidas",
       Icon: IconBulb,
+      hint: lessons.length ? `${lessons.length}` : undefined,
       badge: lessons.length || undefined,
       show: true,
       body:
@@ -299,6 +309,7 @@ export default function ContextPanel({
       id: "agentes",
       label: "Agentes",
       Icon: IconRobot,
+      hint: agents.length ? `${agents.length} ativos` : undefined,
       badge: agents.length || undefined,
       show: true,
       body:
@@ -315,11 +326,75 @@ export default function ContextPanel({
           </div>
         ),
     },
+    {
+      id: "projectos",
+      label: "Projectos",
+      Icon: IconFolders,
+      hint: projects?.length ? `${projects.length}` : undefined,
+      badge: projects?.length || undefined,
+      show: hasProjects,
+      body: (
+        <>
+          <div className="ctx-projects-head">
+            <button
+              type="button"
+              className="ctx-mini-action"
+              onClick={() => setCreatingProject((v) => !v)}
+            >
+              {creatingProject ? "Fechar" : "+ Novo projecto"}
+            </button>
+          </div>
+          {creatingProject ? (
+            <div className="ctx-project-form">
+              <NewProjectForm
+                workspaceId={workspaceId}
+                workspaceSlug={workspaceSlug ?? workspaceId}
+                onCreated={() => setCreatingProject(false)}
+              />
+            </div>
+          ) : null}
+          {projects && projects.length > 0 ? (
+            <div className="ctx-cards">
+              {projects.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/workspaces/${workspaceSlug ?? workspaceId}/projects/${p.id}`}
+                  className="ctx-card"
+                >
+                  <span className="ctx-card-title">{p.name}</span>
+                  <span className="ctx-card-sub">
+                    {p.status}
+                    {p.updatedAt ? ` · ${ago(p.updatedAt)}` : ""}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : !creatingProject ? (
+            <p className="ctx-empty">Ainda não há projectos.</p>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: "documentos",
+      label: "Documentos",
+      Icon: IconFiles,
+      hint: documents?.length ? `${documents.length}` : undefined,
+      badge: documents?.length || undefined,
+      show: hasDocuments,
+      body: (
+        <DocumentsPanel
+          workspaceId={workspaceId}
+          documents={documents ?? []}
+          embedded
+        />
+      ),
+    },
   ];
 
   const visible = sections.filter((s) => s.show);
 
-  // ── Collapsed: a narrow vertical strip of section icons ────────────────────
+  // ── Collapsed: a slim vertical tab (toggle + section icons) ────────────────
   if (collapsed) {
     return (
       <aside className="ctx-panel ctx-collapsed" aria-label="Contexto (recolhido)">
@@ -327,10 +402,10 @@ export default function ContextPanel({
           type="button"
           className="ctx-strip-toggle"
           onClick={() => setCollapsedPersist(false)}
-          aria-label="Expandir painel"
-          title="Expandir painel"
+          aria-label="Abrir contexto"
+          title="Abrir contexto"
         >
-          <IconChevronRight size={16} stroke={1.8} />
+          <IconMenu2 size={17} stroke={1.7} />
         </button>
         <div className="ctx-strip">
           {visible.map((s) => (
@@ -351,49 +426,82 @@ export default function ContextPanel({
     );
   }
 
-  // ── Expanded: full drawer ──────────────────────────────────────────────────
+  // ── Expanded: the full drawer card ─────────────────────────────────────────
   return (
-    <aside className="ctx-panel ctx-expanded" aria-label="Contexto">
-      <div className="ctx-drawer-head">
-        <button
-          type="button"
-          className="ctx-strip-toggle"
-          onClick={() => setCollapsedPersist(true)}
-          aria-label="Recolher painel"
-          title="Recolher painel"
-        >
-          <IconChevronLeft size={16} stroke={1.8} />
-        </button>
-      </div>
+    <aside className="ctx-panel ctx-expanded" aria-label="Contexto do workspace">
+      <div className="ctx-drawer-card">
+        <div className="ctx-drawer-head">
+          <span className="ctx-drawer-title">Contexto do workspace</span>
+          <button
+            type="button"
+            className="ctx-strip-toggle"
+            onClick={() => setCollapsedPersist(true)}
+            aria-label="Recolher contexto"
+            title="Recolher contexto"
+          >
+            <IconX size={16} stroke={1.8} />
+          </button>
+        </div>
 
-      <div className="ctx-sections">
-        {visible.map((s) => {
-          const expanded = isOpen(s.id);
-          return (
-            <section key={s.id} className="ctx-section">
+        <div className="ctx-rows">
+          {visible.map((s) => {
+            const expanded = isOpen(s.id);
+            return (
+              <section key={s.id} className="ctx-section">
+                <button
+                  type="button"
+                  className={`ctx-row${expanded ? " open" : ""}`}
+                  onClick={() => toggle(s.id)}
+                  aria-expanded={expanded}
+                >
+                  <s.Icon size={16} stroke={1.6} className="ctx-row-icon" />
+                  <span className="ctx-row-label">{s.label}</span>
+                  {s.hint && !expanded ? (
+                    <span className="ctx-row-hint">{s.hint}</span>
+                  ) : null}
+                  <span className="ctx-row-chevron">
+                    {expanded ? (
+                      <IconChevronDown size={14} stroke={1.8} />
+                    ) : (
+                      <IconChevronRight size={14} stroke={1.8} />
+                    )}
+                  </span>
+                </button>
+                {expanded ? (
+                  <div className="ctx-section-body">{s.body}</div>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+
+        {hasProjects || hasDocuments ? (
+          <div className="ctx-drawer-actions">
+            {hasProjects ? (
               <button
                 type="button"
-                className="ctx-section-header"
-                onClick={() => toggle(s.id)}
-                aria-expanded={expanded}
+                className="ctx-drawer-btn"
+                onClick={() => {
+                  setCreatingProject(true);
+                  expandTo("projectos");
+                }}
               >
-                <s.Icon size={15} stroke={1.6} className="ctx-section-icon" />
-                <span className="ctx-section-title">{s.label}</span>
-                {s.badge ? (
-                  <span className="ctx-section-count">{s.badge}</span>
-                ) : null}
-                <span className="ctx-section-chevron">
-                  {expanded ? (
-                    <IconChevronDown size={13} stroke={1.8} />
-                  ) : (
-                    <IconChevronRight size={13} stroke={1.8} />
-                  )}
-                </span>
+                <IconPlus size={16} stroke={1.7} />
+                Novo projecto
               </button>
-              {expanded ? <div className="ctx-section-body">{s.body}</div> : null}
-            </section>
-          );
-        })}
+            ) : null}
+            {hasDocuments ? (
+              <button
+                type="button"
+                className="ctx-drawer-btn"
+                onClick={() => expandTo("documentos")}
+              >
+                <IconUpload size={16} stroke={1.7} />
+                Carregar documentos
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </aside>
   );
