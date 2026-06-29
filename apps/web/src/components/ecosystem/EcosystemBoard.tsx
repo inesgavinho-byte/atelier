@@ -146,7 +146,11 @@ export default function EcosystemBoard({
         </div>
 
         <div className="connector-actions">
-          {usable ? (
+          {c.href ? (
+            <Link href={c.href} className="connector-button primary">
+              Abrir
+            </Link>
+          ) : usable ? (
             <Link href="/workspaces" className="connector-button primary">
               Usar
             </Link>

@@ -17,6 +17,7 @@ export type ConnectorStatus =
 
 export type ConnectorCategory =
   | "IA"
+  | "Importação"
   | "Comunicação"
   | "Calendário"
   | "Documentos"
@@ -25,6 +26,7 @@ export type ConnectorCategory =
 
 export const CATEGORY_ORDER: ConnectorCategory[] = [
   "IA",
+  "Importação",
   "Comunicação",
   "Calendário",
   "Documentos",
@@ -51,6 +53,8 @@ export interface ConnectorDef {
    * available) and expose no credential fields. Absent is treated as "key".
    */
   auth?: "key" | "oauth";
+  /** When set, the card's primary action navigates here (a tool, not a key). */
+  href?: string;
   /** Display-only: where the tool is used (curated). */
   usedIn?: string[];
   /** Display-only: a small contextual metric (mock). */
@@ -121,6 +125,22 @@ export const CONNECTORS: ConnectorDef[] = [
     envRequired: ["MANUS_API_KEY"],
     capabilities: ["executar agente", "receber resultado"],
     testable: false,
+  },
+
+  /* ── Importação ─────────────────────────────────────────────────────── */
+  {
+    id: "chat-import",
+    name: "Importação de Chats",
+    category: "Importação",
+    description: "Importa conversas do Claude.ai, ChatGPT e Perplexity em batch.",
+    envRequired: [],
+    capabilities: [
+      "importar exportações (ZIP/JSON)",
+      "mapear a workspaces",
+      "extrair decisões e artefactos",
+    ],
+    testable: false,
+    href: "/import",
   },
 
   /* ── Comunicação ────────────────────────────────────────────────────── */
