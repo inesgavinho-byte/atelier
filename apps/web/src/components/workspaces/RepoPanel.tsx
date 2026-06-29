@@ -4,25 +4,32 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ago } from "@/components/mission/bits";
 import {
+  getProjectRepoOverview,
   getWorkspaceRepoOverview,
   setWorkspaceGithubRepo,
 } from "@/app/(main)/workspaces/[workspaceId]/actions";
+import { updateProject } from "@/app/(main)/workspaces/actions";
 import type { RepoOverview } from "@/lib/github";
 
 const REPO_RE = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
+/** Whether this panel manages a workspace's repo or a project's own repo. */
+export type RepoScope =
+  | { kind: "workspace"; workspaceId: string }
+  | { kind: "project"; projectId: string; workspaceId: string };
+
 /**
- * The "Repositório" section of the workspace context panel. When no repo is
- * configured it shows a discreet "Ligar repositório" link that reveals an
- * owner/repo field. When configured it loads the live overview (open PRs,
- * recent commits, CI state) via a server action, with a loading state and a
- * silent empty state if the API is unreachable.
+ * The "Repositório" section of the context panel. When no repo is configured it
+ * shows a discreet "Ligar repositório" link that reveals an owner/repo field.
+ * When configured it loads the live overview (open PRs, recent commits, CI
+ * state) via a server action, with a loading state and a silent empty state if
+ * the API is unreachable. Scoped to either a workspace or a single project.
  */
 export default function RepoPanel({
-  workspaceId,
+  scope,
   initialRepo,
 }: {
-  workspaceId: string;
+  scope: RepoScope;
   initialRepo?: string;
 }) {
   const router = useRouter();
@@ -35,6 +42,11 @@ export default function RepoPanel({
   const [overview, setOverview] = useState<RepoOverview | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Flatten the scope to primitives so the effect doesn't refire on a new
+  // object identity each render.
+  const workspaceId = scope.workspaceId;
+  const projectId = scope.kind === "project" ? scope.projectId : null;
+
   useEffect(() => {
     let active = true;
     if (!repo) {
@@ -42,7 +54,10 @@ export default function RepoPanel({
       return;
     }
     setLoading(true);
-    getWorkspaceRepoOverview(workspaceId)
+    const fetchOverview = projectId
+      ? getProjectRepoOverview(projectId)
+      : getWorkspaceRepoOverview(workspaceId);
+    fetchOverview
       .then((o) => {
         if (active) setOverview(o);
       })
@@ -55,7 +70,7 @@ export default function RepoPanel({
     return () => {
       active = false;
     };
-  }, [repo, workspaceId]);
+  }, [repo, workspaceId, projectId]);
 
   const save = () => {
     setErr(null);
@@ -65,7 +80,14 @@ export default function RepoPanel({
       return;
     }
     startSave(async () => {
-      const r = await setWorkspaceGithubRepo(workspaceId, clean);
+      const r =
+        scope.kind === "project"
+          ? await updateProject({
+              id: scope.projectId,
+              workspaceId: scope.workspaceId,
+              githubRepo: clean,
+            })
+          : await setWorkspaceGithubRepo(scope.workspaceId, clean);
       if (!r.ok) {
         setErr(r.message);
         return;

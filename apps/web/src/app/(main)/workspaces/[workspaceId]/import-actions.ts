@@ -29,8 +29,11 @@ export async function importContext(input: {
   source: string;
   content: string;
   kind: "text" | "json";
+  /** Target a specific project's memory; omit/null for the workspace. */
+  projectId?: string | null;
 }): Promise<ImportResult> {
   const { workspaceId } = input;
+  const projectId = input.projectId || null;
   const source = (IMPORT_SOURCES as readonly string[]).includes(input.source)
     ? (input.source as ImportSource)
     : "other";
@@ -76,8 +79,10 @@ export async function importContext(input: {
     };
   }
 
-  await mergeWorkspaceContext(workspaceId, extracted);
+  await mergeWorkspaceContext(workspaceId, extracted, projectId);
   revalidatePath(`/workspaces/${workspaceId}`);
+  if (projectId)
+    revalidatePath(`/workspaces/${workspaceId}/projects/${projectId}`);
 
   return {
     ok: true,

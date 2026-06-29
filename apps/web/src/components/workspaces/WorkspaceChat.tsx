@@ -37,12 +37,15 @@ const TASK_LABELS: Record<string, string> = {
 export default function WorkspaceChat({
   workspaceId,
   workspaceName,
+  projectId,
   initialMessages,
   contextVersion,
   contextUpdatedAt,
 }: {
   workspaceId: string;
   workspaceName: string;
+  /** When set, the chat is the project's continuous conversation. */
+  projectId?: string;
   initialMessages: ChatMessage[];
   contextVersion?: number;
   contextUpdatedAt?: string | null;
@@ -86,7 +89,7 @@ export default function WorkspaceChat({
     requestAnimationFrame(resizeTextarea);
 
     try {
-      const result = await sendWorkspaceMessage(workspaceId, content);
+      const result = await sendWorkspaceMessage(workspaceId, content, projectId);
       if (result.ok) {
         setMessages((prev) => [
           ...prev,

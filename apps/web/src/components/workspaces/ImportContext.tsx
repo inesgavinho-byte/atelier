@@ -19,11 +19,20 @@ const SOURCES = [
  */
 export default function ImportContext({
   workspaceId,
+  workspaceName,
+  projects = [],
+  defaultProjectId = "",
 }: {
   workspaceId: string;
+  workspaceName?: string;
+  /** Projects the user can import into, besides the workspace itself. */
+  projects?: { id: string; name: string }[];
+  /** Pre-select a target project (e.g. on a project page). */
+  defaultProjectId?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState(defaultProjectId);
   const [source, setSource] = useState("claude");
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -39,6 +48,7 @@ export default function ImportContext({
     setFileContent(null);
     setMsg(null);
     setOk(false);
+    setTarget(defaultProjectId);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -67,6 +77,7 @@ export default function ImportContext({
     startTransition(async () => {
       const r = await importContext({
         workspaceId,
+        projectId: target || null,
         source,
         content,
         kind: useJson ? "json" : "text",
@@ -110,9 +121,28 @@ export default function ImportContext({
 
             <div className="import-drawer-body">
               <p className="import-hint">
-                Traz uma conversa de outra IA para a memória deste workspace. O
+                Traz uma conversa de outra IA para a memória do ATELIER. O
                 agente de contexto extrai decisões, artefactos e lições.
               </p>
+
+              {projects.length ? (
+                <label className="import-field">
+                  <span className="import-label">Destino</span>
+                  <select
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                  >
+                    <option value="">
+                      Para o workspace{workspaceName ? ` ${workspaceName}` : ""}
+                    </option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        Para o projecto {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
 
               <label className="import-field">
                 <span className="import-label">Origem</span>

@@ -18,20 +18,39 @@ import {
 const field =
   "w-full border border-line bg-surface px-3 py-2 text-[15px] text-charcoal focus:border-charcoal focus:outline-none";
 
-/** Create a project inside a workspace. */
-export function NewProjectForm({ workspaceId }: { workspaceId: string }) {
+/** Create a project inside a workspace (name, description, GitHub repo). */
+export function NewProjectForm({
+  workspaceId,
+  workspaceSlug,
+  onCreated,
+}: {
+  workspaceId: string;
+  /** Used to navigate after creation (falls back to the id). */
+  workspaceSlug?: string;
+  /** Called instead of navigating, e.g. to close an inline form. */
+  onCreated?: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, start] = useTransition();
 
   const submit = () => {
     setMsg(null);
     start(async () => {
-      const r = await createProject({ workspaceId, name, description });
+      const r = await createProject({
+        workspaceId,
+        name,
+        description,
+        githubRepo,
+      });
       if (r.ok && r.id) {
-        router.push(`/workspaces/${workspaceId}/projects/${r.id}`);
+        if (onCreated) onCreated();
+        router.push(
+          `/workspaces/${workspaceSlug ?? workspaceId}/projects/${r.id}`
+        );
       } else setMsg(r.message);
     });
   };
@@ -42,7 +61,7 @@ export function NewProjectForm({ workspaceId }: { workspaceId: string }) {
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Nome do projeto"
+        placeholder="Nome do projecto"
         className={field}
       />
       <input
@@ -52,6 +71,13 @@ export function NewProjectForm({ workspaceId }: { workspaceId: string }) {
         placeholder="Descrição (opcional)"
         className={field}
       />
+      <input
+        type="text"
+        value={githubRepo}
+        onChange={(e) => setGithubRepo(e.target.value)}
+        placeholder="Repositório GitHub — owner/repo (opcional)"
+        className={field}
+      />
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -59,7 +85,7 @@ export function NewProjectForm({ workspaceId }: { workspaceId: string }) {
           onClick={submit}
           disabled={saving || !name.trim()}
         >
-          {saving ? "A criar…" : "Criar projeto"}
+          {saving ? "A criar…" : "Criar projecto"}
         </button>
         {msg ? <span className="meta">{msg}</span> : null}
       </div>
