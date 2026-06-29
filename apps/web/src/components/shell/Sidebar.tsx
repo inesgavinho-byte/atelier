@@ -176,8 +176,13 @@ export default function Sidebar({
 
   return (
     <aside className="shell-sidebar">
-      <Link href="/" className="shell-logo">
-        ATELIER
+      <Link href="/" className="shell-logo" aria-label="DECIMA">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/decima-wordmark-dark.png"
+          alt="DECIMA"
+          className="shell-logo-img"
+        />
       </Link>
 
       <div className="shell-nav-scroll">
@@ -206,7 +211,7 @@ export default function Sidebar({
               {profile?.displayName ?? "Inês Gavinho"}
             </span>
             <span className="shell-user-org">
-              {profile?.roleTitle || "ATELIER"}
+              {profile?.roleTitle || "DECIMA"}
             </span>
           </div>
         </Link>
