@@ -122,13 +122,7 @@ export default async function MainLayout({
   ];
 
   return (
-    <AppShell
-      corpus={corpus}
-      sections={sections}
-      gated={gateEnabled()}
-      pendingDecisions={pendingDecisions}
-      unread={unread}
-    >
+    <AppShell corpus={corpus} sections={sections} gated={gateEnabled()}>
       {children}
     </AppShell>
   );

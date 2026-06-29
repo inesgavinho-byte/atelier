@@ -400,8 +400,9 @@ export default function WorkspaceChat({
             onClick={() => void debate()}
             disabled={!canSend}
             title="DECIMUS — juízo profundo do workspace"
+            aria-label="DECIMUS — juízo profundo do workspace"
           >
-            DECIMUS
+            <span aria-hidden>⌘</span>
           </button>
           <button
             type="button"
