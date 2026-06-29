@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Meter } from "@/components/mission/bits";
 import {
   getAgentsForInitiative,
   getArtifactsForInitiative,
@@ -15,11 +14,9 @@ import {
   getWorkspaceContext,
 } from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
-import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
-import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
-import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
+import WorkspaceMoreMenu from "@/components/workspaces/WorkspaceMoreMenu";
 import { getDocuments } from "@/lib/documents";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
@@ -86,44 +83,32 @@ export default async function WorkspaceDetailPage({
       debate: (m.metadata?.debate as { provider: string; label: string; model: string; text: string }[]) ?? [],
     }));
 
+  const slug = ws.slug ?? ws.id;
+
   return (
     <div className="ws-page">
-      <Link href="/workspaces" className="action-quiet mb-6 inline-block">
-        ← Workspaces
-      </Link>
-
-      <header className="ws-header">
-        <WorkspaceTitle workspaceId={ws.id} name={ws.name} intent={ws.intent} />
-        <div className="ws-header-meta">
-          <div className="ws-header-progress">
-            <Meter value={ws.progress} />
-            <span className="ws-header-progress-label">{ws.progress}%</span>
-          </div>
-          <Link href="/decisions" className="ws-header-chip">
-            {pendingCount}{" "}
-            {pendingCount === 1 ? "decisão pendente" : "decisões pendentes"}
-          </Link>
-          <Link
-            href={`/workspaces/${ws.slug ?? ws.id}/timeline`}
-            className="ws-header-chip"
-          >
-            Timeline
-          </Link>
-          <ImportContext
-            workspaceId={ws.id}
-            workspaceName={ws.name}
-            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-          />
-        </div>
-      </header>
-
-      <WorkspaceProjects
-        workspaceId={ws.id}
-        workspaceSlug={ws.slug ?? ws.id}
-        projects={projects}
-      />
-
-      <DocumentsPanel workspaceId={ws.id} documents={documents} />
+      {/* Compact action bar — the large workspace title now lives only in the
+          sidebar and search. Decisões · Timeline · Importar contexto · Mais. */}
+      <div className="ws-actionbar">
+        <Link href="/decisions" className="ws-pill ws-pill-decisions">
+          {pendingCount} {pendingCount === 1 ? "decisão" : "decisões"}
+        </Link>
+        <Link href={`/workspaces/${slug}/timeline`} className="ws-pill">
+          Timeline
+        </Link>
+        <ImportContext
+          workspaceId={ws.id}
+          workspaceName={ws.name}
+          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          triggerClassName="ws-pill"
+        />
+        <WorkspaceMoreMenu
+          workspaceId={ws.id}
+          name={ws.name}
+          intent={ws.intent}
+          progress={ws.progress}
+        />
+      </div>
 
       <div className="ws-layout">
         <WorkspaceChat
@@ -136,12 +121,15 @@ export default async function WorkspaceDetailPage({
         />
         <ContextPanel
           workspaceId={ws.id}
+          workspaceSlug={slug}
           githubRepo={ws.githubRepo}
           supabaseUrl={ws.supabaseUrl}
           context={context}
           decisions={wsDecisions}
           artifacts={artifacts}
           agents={agents}
+          projects={projects}
+          documents={documents}
           overview={overview}
         />
       </div>

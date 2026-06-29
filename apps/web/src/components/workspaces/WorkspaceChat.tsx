@@ -47,7 +47,7 @@ const TASK_LABELS: Record<string, string> = {
   summary: "resumo",
   reasoning: "análise",
   general: "geral",
-  complex: "debate",
+  complex: "profundo",
 };
 
 function hostOf(url: string): string {
@@ -215,10 +215,10 @@ export default function WorkspaceChat({
           },
         ]);
       } else {
-        setError(r.error ?? "Falha no Council completo.");
+        setError(r.error ?? "Falha no DECIMUS.");
       }
     } catch {
-      setError("Falha no Council completo.");
+      setError("Falha no DECIMUS.");
     } finally {
       setPending(false);
       router.refresh();
@@ -257,7 +257,8 @@ export default function WorkspaceChat({
                       <div className="ws-msg-head">
                         <span className="ws-dot-council" />
                         <span>
-                          Council{m.model ? ` · ${m.model}` : ""}
+                          {m.taskType === "complex" ? "DECIMUS" : "DECIMA"}
+                          {m.model ? ` · ${m.model}` : ""}
                           {m.taskType && TASK_LABELS[m.taskType]
                             ? ` · ${TASK_LABELS[m.taskType]}`
                             : ""}
@@ -358,7 +359,7 @@ export default function WorkspaceChat({
             <div className="ws-msg-bubble">
               <div className="ws-msg-head">
                 <span className="ws-dot-council" />
-                <span>Council</span>
+                <span>DECIMA</span>
               </div>
               <div className="ws-typing" aria-label="a pensar">
                 <span />
@@ -395,12 +396,12 @@ export default function WorkspaceChat({
           />
           <button
             type="button"
-            className={`ws-debate-btn${suggestDebate ? " suggest" : ""}`}
+            className={`ws-decimus${suggestDebate ? " suggest" : ""}`}
             onClick={() => void debate()}
             disabled={!canSend}
-            title="Council completo — várias IAs debatem e sintetizam"
+            title="DECIMUS — juízo profundo do workspace"
           >
-            ⚖︎ Council completo
+            DECIMUS
           </button>
           <button
             type="button"
@@ -414,7 +415,7 @@ export default function WorkspaceChat({
         </div>
         {suggestDebate ? (
           <p className="ws-debate-hint">
-            Pergunta com vários ângulos — experimenta o Council completo.
+            Pergunta com vários ângulos — experimenta o DECIMUS.
           </p>
         ) : null}
       </div>
