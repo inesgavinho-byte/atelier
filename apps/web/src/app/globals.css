@@ -6667,3 +6667,65 @@ a.ctx-card:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Loading skeletons — calm shimmer using theme tokens (no bright colours).
+ * ────────────────────────────────────────────────────────────────────────── */
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
+.skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px;
+}
+.skel > *,
+.skel-chat > *,
+.skel-row > * {
+  animation: skel-pulse 1.4s ease-in-out infinite;
+}
+.skel-line {
+  height: 14px;
+  border-radius: 6px;
+  background: var(--surface-card);
+}
+.skel-w40 { width: 40%; }
+.skel-w60 { width: 60%; }
+.skel-w200 { width: 200px; }
+.skel-card {
+  height: 120px;
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  border: 0.5px solid var(--border);
+}
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.skel-grow { flex: 1; animation: none; }
+.skel-pill {
+  height: 32px;
+  width: 96px;
+  border-radius: 999px;
+  background: var(--surface-card);
+  border: 0.5px solid var(--border);
+}
+.skel-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+}
+.skel-bubble {
+  height: 96px;
+  border-radius: 14px;
+  background: var(--surface-card);
+  border: 0.5px solid var(--border);
+}
+.skel-bubble-short {
+  height: 56px;
+  width: 70%;
+}

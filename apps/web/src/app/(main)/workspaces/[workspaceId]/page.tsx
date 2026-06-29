@@ -44,6 +44,7 @@ export default async function WorkspaceDetailPage({
     overview,
     documents,
     sessions,
+    chatUser,
   ] = await Promise.all([
     getDecisions(),
     getPendingDecisions(),
@@ -55,9 +56,8 @@ export default async function WorkspaceDetailPage({
     getWorkspaceRepoOverview(ws.id).catch(() => null),
     getDocuments(ws.id).catch(() => []),
     getSessions(ws.id).catch(() => []),
+    getChatIdentity(ws.id),
   ]);
-
-  const chatUser = await getChatIdentity(ws.id);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
 

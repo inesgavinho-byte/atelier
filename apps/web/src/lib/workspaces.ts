@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type {
@@ -111,7 +112,8 @@ export async function getProjects(
 }
 
 /** All projects across every workspace — used by global search. */
-export async function getAllProjects(): Promise<WorkspaceProject[]> {
+export const getAllProjects = cache(getAllProjectsUncached);
+async function getAllProjectsUncached(): Promise<WorkspaceProject[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb.from("workspace_projects").select("*");

@@ -10,6 +10,7 @@
  */
 
 import "server-only";
+import { cache } from "react";
 import { getSupabase } from "@/lib/supabase";
 import {
   type ActivityEvent,
@@ -104,7 +105,10 @@ const toArtifact = (r: any): Artifact => ({
 
 /* ── Initiatives ─────────────────────────────────────────────────────────── */
 
-export async function getInitiatives(): Promise<Initiative[]> {
+// Per-request memoised: the layout, the search corpus and individual pages all
+// read initiatives within one render — cache() collapses them to one query.
+export const getInitiatives = cache(getInitiativesUncached);
+async function getInitiativesUncached(): Promise<Initiative[]> {
   const sb = getSupabase();
   if (!sb) return [];
   // Deterministic, complete ordering: sort first, then name as a stable
@@ -185,7 +189,8 @@ export async function getInitiativeById(
 
 /* ── Decisions ───────────────────────────────────────────────────────────── */
 
-export async function getDecisions(): Promise<Decision[]> {
+export const getDecisions = cache(getDecisionsUncached);
+async function getDecisionsUncached(): Promise<Decision[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
@@ -397,14 +402,29 @@ export interface SearchResult {
 }
 
 export async function getSearchCorpus(): Promise<SearchResult[]> {
-  const [initiatives, decisions, agents, artifacts, objectives] =
-    await Promise.all([
-      getInitiatives(),
-      getDecisions(),
-      getAgents(),
-      getArtifacts(),
-      getObjectives(),
-    ]);
+  // One round-trip wave for the whole corpus (the second group does not depend
+  // on the first), so the layout's search index never serialises two waits.
+  const [
+    initiatives,
+    decisions,
+    agents,
+    artifacts,
+    objectives,
+    readings,
+    workspaces,
+    projects,
+    chats,
+  ] = await Promise.all([
+    getInitiatives(),
+    getDecisions(),
+    getAgents(),
+    getArtifacts(),
+    getObjectives(),
+    getReadings().catch(() => []),
+    getWorkspaces().catch(() => []),
+    getAllProjects().catch(() => []),
+    getAllChats().catch(() => []),
+  ]);
   const iniById = new Map(initiatives.map((i) => [i.id, i]));
   const out: SearchResult[] = [];
 
@@ -454,14 +474,8 @@ export async function getSearchCorpus(): Promise<SearchResult[]> {
       href: `/product/${doc.id}`,
     });
 
-  // Readings & workspaces (each isolated — never break search if a table is
-  // empty or unavailable).
-  const [readings, workspaces, projects, chats] = await Promise.all([
-    getReadings().catch(() => []),
-    getWorkspaces().catch(() => []),
-    getAllProjects().catch(() => []),
-    getAllChats().catch(() => []),
-  ]);
+  // Readings & workspaces (each isolated above — never break search if a table
+  // is empty or unavailable).
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   for (const r of readings)
     out.push({

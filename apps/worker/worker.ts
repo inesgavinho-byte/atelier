@@ -1046,6 +1046,31 @@ async function telegramBriefingLoop(): Promise<void> {
   }
 }
 
+/**
+ * Keep-alive for the MarkItDown service. Railway free/idle services sleep after
+ * inactivity, making the first document conversion slow (cold start). A light
+ * periodic /health ping keeps it warm. No-op when MARKITDOWN_URL is unset.
+ */
+async function markitdownKeepAliveLoop(): Promise<void> {
+  const base = process.env.MARKITDOWN_URL;
+  if (!base) return;
+  const interval = Number(process.env.MARKITDOWN_KEEPALIVE_MS ?? 600_000); // 10 min
+  const url = `${base.replace(/\/$/, "")}/health`;
+  console.log(`[markitdown] keep-alive a cada ${interval} ms.`);
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      await fetch(url, { signal: ctrl.signal }).catch(() => null);
+      clearTimeout(t);
+    } catch {
+      /* keep-alive is best-effort */
+    }
+    await sleep(interval);
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
   // Context agent, minions and the Telegram bot run in parallel with jobs.
@@ -1054,6 +1079,7 @@ async function main(): Promise<void> {
   void telegramLoop();
   void telegramNotifyLoop();
   void telegramBriefingLoop();
+  void markitdownKeepAliveLoop();
   // eslint-disable-next-line no-constant-condition
   for (;;) {
     try {
