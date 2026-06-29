@@ -1,64 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  IconCheck,
+  IconFiles,
+  IconBrandGithub,
+  IconDatabase,
+  IconBrain,
+  IconBox,
+  IconBulb,
+  IconRobot,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronDown,
+  type Icon,
+} from "@tabler/icons-react";
 import { StateTag, ago } from "@/components/mission/bits";
 import RepoPanel from "@/components/workspaces/RepoPanel";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
+import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
 import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
 import type { WorkspaceContext } from "@/lib/workspaces";
+import type { WorkspaceDocument } from "@/lib/documents";
 import type { RepoOverview } from "@/lib/github";
 import type { Agent, Artifact, Decision } from "@/data/mission";
 
 /**
- * ContextPanel — the workspace's right rail (ADR-0004, redesigned).
+ * ContextPanel — the workspace's right rail, redesigned as a collapsible
+ * full-height drawer (Claude.ai files / Perplexity sources inspired).
  *
- * Sections collapse/expand (state persisted per workspace in localStorage) so
- * the panel doesn't push useful content down. A non-collapsible "Requer acção"
- * block sits at the top whenever something needs the operator (pending
- * decisions, open PRs, a failed CI run). Each entry is a microcard; items that
- * need action carry a coloured left border.
+ * Expanded (280px): every section stacks vertically, each with a clickable
+ * uppercase header (icon + label + chevron). Collapsed (36px): only a vertical
+ * strip of section icons remains — clicking one re-expands the drawer at that
+ * section. Both the whole-drawer collapse and per-section open state persist in
+ * localStorage, scoped to the workspace.
  */
 
 type SectionId =
-  | "contexto"
+  | "decisoes"
+  | "documentos"
   | "repo"
   | "db"
-  | "decisoes"
+  | "contexto"
   | "artefactos"
   | "licoes"
   | "agentes";
-
-function CollapsibleSection({
-  title,
-  count,
-  expanded,
-  onToggle,
-  children,
-}: {
-  title: string;
-  count?: number;
-  expanded: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="ctx-section">
-      <button
-        type="button"
-        className="ctx-section-header"
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
-        <span className="ctx-section-chevron">{expanded ? "↓" : "›"}</span>
-        <span className="ctx-section-title">{title}</span>
-        {!expanded && count ? (
-          <span className="ctx-section-count">{count}</span>
-        ) : null}
-      </button>
-      {expanded ? <div className="ctx-section-body">{children}</div> : null}
-    </section>
-  );
-}
 
 function decisionDotClass(status: string): string {
   if (status === "pendente") return "ctx-dot-amber";
@@ -75,6 +61,7 @@ export default function ContextPanel({
   decisions,
   artifacts,
   agents,
+  documents,
   overview,
 }: {
   workspaceId: string;
@@ -86,6 +73,8 @@ export default function ContextPanel({
   decisions: Decision[];
   artifacts: Artifact[];
   agents: Agent[];
+  /** Documents enable the "Documentos" section (workspace scope only). */
+  documents?: WorkspaceDocument[];
   /** Pre-fetched GitHub overview (workspace scope); omitted for projects. */
   overview?: RepoOverview | null;
 }) {
@@ -97,156 +86,93 @@ export default function ContextPanel({
 
   const pendingDecisions = decisions.filter((d) => d.status === "pendente");
   const openPRs = overview?.prs ?? [];
-  const ciFailed = overview?.ci?.state === "failure" ? overview.ci : null;
-  const actionCount = pendingDecisions.length + openPRs.length + (ciFailed ? 1 : 0);
+  const hasDocuments = documents !== undefined;
 
-  // Default open/closed per section; Repo opens itself when it has open PRs.
+  // Default open/closed per section. Decisões opens itself when something is
+  // pending; Repositório opens itself when there are open PRs.
   const defaults: Record<SectionId, boolean> = {
-    contexto: false,
+    decisoes: pendingDecisions.length > 0,
+    documentos: false,
     repo: openPRs.length > 0,
     db: false,
-    decisoes: true,
+    contexto: false,
     artefactos: false,
     licoes: false,
     agentes: false,
   };
 
   const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>({});
-  const storageKey = `atelier-ctx-${workspaceId}`;
+  const [collapsed, setCollapsed] = useState(false);
+  const openKey = `atelier-ctx-${workspaceId}`;
+  const collapsedKey = `atelier-ctx-collapsed-${workspaceId}`;
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      const raw = window.localStorage.getItem(openKey);
       if (raw) setOpen(JSON.parse(raw));
+      setCollapsed(window.localStorage.getItem(collapsedKey) === "1");
     } catch {
       /* ignore */
     }
-  }, [storageKey]);
+  }, [openKey, collapsedKey]);
 
   const isOpen = (id: SectionId) => open[id] ?? defaults[id];
-  const toggle = (id: SectionId) => {
-    setOpen((prev) => {
-      const next = { ...prev, [id]: !(prev[id] ?? defaults[id]) };
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+
+  const persistOpen = (next: Partial<Record<SectionId, boolean>>) => {
+    try {
+      window.localStorage.setItem(openKey, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
   };
 
-  return (
-    <aside className="ctx-panel">
-      {/* Requer acção — always visible, only when there is something to do */}
-      {actionCount > 0 ? (
-        <section className="ctx-action">
-          <div className="ctx-action-head">
-            <span className="ctx-section-title">Requer acção</span>
-            <span className="ctx-action-count">{actionCount}</span>
-          </div>
-          <div className="ctx-cards">
-            {pendingDecisions.map((d) => (
-              <div key={d.id} className="ctx-card ctx-card-amber">
-                <span className="ctx-card-flag ctx-flag-amber">
-                  Acção necessária
-                </span>
-                <span className="ctx-card-title">{d.title}</span>
-                <div className="ctx-card-actions">
-                  <HomeDecisionActions id={d.id} />
-                </div>
-              </div>
-            ))}
-            {openPRs.map((pr) => (
-              <a
-                key={`pr-${pr.number}`}
-                href={pr.url}
-                target="_blank"
-                rel="noreferrer"
-                className="ctx-card ctx-card-violet"
-              >
-                <span className="ctx-card-flag ctx-flag-violet">PR aberto</span>
-                <span className="ctx-card-title">{pr.title}</span>
-                <span className="ctx-card-sub">
-                  #{pr.number} · Ver PR →
-                </span>
-              </a>
-            ))}
-            {ciFailed ? (
-              <a
-                href={ciFailed.url}
-                target="_blank"
-                rel="noreferrer"
-                className="ctx-card ctx-card-red"
-              >
-                <span className="ctx-card-flag ctx-flag-red">CI falhou</span>
-                <span className="ctx-card-title">
-                  {ciFailed.label}
-                  {ciFailed.branch ? ` · ${ciFailed.branch}` : ""}
-                </span>
-                <span className="ctx-card-sub">Ver logs →</span>
-              </a>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
+  const toggle = (id: SectionId) =>
+    setOpen((prev) => {
+      const next = { ...prev, [id]: !(prev[id] ?? defaults[id]) };
+      persistOpen(next);
+      return next;
+    });
 
-      {/* Context summary */}
-      <CollapsibleSection
-        title={isProject ? "Contexto do projecto" : "Contexto do workspace"}
-        expanded={isOpen("contexto")}
-        onToggle={() => toggle("contexto")}
-      >
-        {summary ? (
-          <>
-            <p className="ctx-summary">{summary}</p>
-            {context ? (
-              <p className="ctx-meta">
-                v{context.version}
-                {context.lastUpdatedAt ? ` · ${ago(context.lastUpdatedAt)}` : ""}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p className="ctx-empty">Sem memória ainda.</p>
-        )}
-      </CollapsibleSection>
+  const setCollapsedPersist = (v: boolean) => {
+    setCollapsed(v);
+    try {
+      window.localStorage.setItem(collapsedKey, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
 
-      {/* Repository */}
-      <CollapsibleSection
-        title="Repositório"
-        count={openPRs.length || undefined}
-        expanded={isOpen("repo")}
-        onToggle={() => toggle("repo")}
-      >
-        <RepoPanel
-          scope={
-            projectId
-              ? { kind: "project", projectId, workspaceId }
-              : { kind: "workspace", workspaceId }
-          }
-          initialRepo={githubRepo}
-          overview={isProject ? undefined : overview}
-        />
-      </CollapsibleSection>
+  // Strip-icon click: expand the drawer and open that section.
+  const expandTo = (id: SectionId) => {
+    setOpen((prev) => {
+      const next = { ...prev, [id]: true };
+      persistOpen(next);
+      return next;
+    });
+    setCollapsedPersist(false);
+  };
 
-      {/* Database */}
-      <CollapsibleSection
-        title="Base de dados"
-        expanded={isOpen("db")}
-        onToggle={() => toggle("db")}
-      >
-        <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />
-      </CollapsibleSection>
+  // ── Section definitions (drives both the strip and the expanded body) ──────
+  type Section = {
+    id: SectionId;
+    label: string;
+    Icon: Icon;
+    /** Badge on the strip icon + count in the header. */
+    badge?: number;
+    /** Hidden entirely when false (e.g. Documentos outside workspace scope). */
+    show: boolean;
+    body: React.ReactNode;
+  };
 
-      {/* Decisions */}
-      <CollapsibleSection
-        title="Decisões"
-        count={decisions.length || undefined}
-        expanded={isOpen("decisoes")}
-        onToggle={() => toggle("decisoes")}
-      >
-        {decisions.length === 0 ? (
+  const sections: Section[] = [
+    {
+      id: "decisoes",
+      label: "Decisões",
+      Icon: IconCheck,
+      badge: pendingDecisions.length || undefined,
+      show: true,
+      body:
+        decisions.length === 0 ? (
           <p className="ctx-empty">Nada a decidir.</p>
         ) : (
           <div className="ctx-cards">
@@ -270,17 +196,74 @@ export default function ContextPanel({
               );
             })}
           </div>
-        )}
-      </CollapsibleSection>
-
-      {/* Artifacts */}
-      <CollapsibleSection
-        title="Artefactos"
-        count={artifacts.length || undefined}
-        expanded={isOpen("artefactos")}
-        onToggle={() => toggle("artefactos")}
-      >
-        {artifacts.length === 0 ? (
+        ),
+    },
+    {
+      id: "documentos",
+      label: "Documentos",
+      Icon: IconFiles,
+      badge: documents?.length || undefined,
+      show: hasDocuments,
+      body: (
+        <DocumentsPanel
+          workspaceId={workspaceId}
+          documents={documents ?? []}
+          embedded
+        />
+      ),
+    },
+    {
+      id: "repo",
+      label: "Repositório",
+      Icon: IconBrandGithub,
+      badge: openPRs.length || undefined,
+      show: true,
+      body: (
+        <RepoPanel
+          scope={
+            projectId
+              ? { kind: "project", projectId, workspaceId }
+              : { kind: "workspace", workspaceId }
+          }
+          initialRepo={githubRepo}
+          overview={isProject ? undefined : overview}
+        />
+      ),
+    },
+    {
+      id: "db",
+      label: "Base de dados",
+      Icon: IconDatabase,
+      show: true,
+      body: <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />,
+    },
+    {
+      id: "contexto",
+      label: isProject ? "Contexto do projecto" : "Contexto",
+      Icon: IconBrain,
+      show: true,
+      body: summary ? (
+        <>
+          <p className="ctx-summary">{summary}</p>
+          {context ? (
+            <p className="ctx-meta">
+              v{context.version}
+              {context.lastUpdatedAt ? ` · ${ago(context.lastUpdatedAt)}` : ""}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="ctx-empty">Sem memória ainda.</p>
+      ),
+    },
+    {
+      id: "artefactos",
+      label: "Artefactos",
+      Icon: IconBox,
+      badge: artifacts.length || undefined,
+      show: true,
+      body:
+        artifacts.length === 0 ? (
           <p className="ctx-empty">Sem artefactos.</p>
         ) : (
           <div className="ctx-cards">
@@ -293,17 +276,16 @@ export default function ContextPanel({
               </div>
             ))}
           </div>
-        )}
-      </CollapsibleSection>
-
-      {/* Lessons learned */}
-      <CollapsibleSection
-        title="Lições aprendidas"
-        count={lessons.length || undefined}
-        expanded={isOpen("licoes")}
-        onToggle={() => toggle("licoes")}
-      >
-        {lessons.length === 0 ? (
+        ),
+    },
+    {
+      id: "licoes",
+      label: "Lições aprendidas",
+      Icon: IconBulb,
+      badge: lessons.length || undefined,
+      show: true,
+      body:
+        lessons.length === 0 ? (
           <p className="ctx-empty">Sem lições registadas.</p>
         ) : (
           <ul className="ctx-bullets">
@@ -311,17 +293,16 @@ export default function ContextPanel({
               <li key={i}>{l}</li>
             ))}
           </ul>
-        )}
-      </CollapsibleSection>
-
-      {/* Agents */}
-      <CollapsibleSection
-        title="Agentes"
-        count={agents.length || undefined}
-        expanded={isOpen("agentes")}
-        onToggle={() => toggle("agentes")}
-      >
-        {agents.length === 0 ? (
+        ),
+    },
+    {
+      id: "agentes",
+      label: "Agentes",
+      Icon: IconRobot,
+      badge: agents.length || undefined,
+      show: true,
+      body:
+        agents.length === 0 ? (
           <p className="ctx-empty">Sem agentes atribuídos.</p>
         ) : (
           <div className="ctx-cards">
@@ -332,8 +313,88 @@ export default function ContextPanel({
               </div>
             ))}
           </div>
-        )}
-      </CollapsibleSection>
+        ),
+    },
+  ];
+
+  const visible = sections.filter((s) => s.show);
+
+  // ── Collapsed: a narrow vertical strip of section icons ────────────────────
+  if (collapsed) {
+    return (
+      <aside className="ctx-panel ctx-collapsed" aria-label="Contexto (recolhido)">
+        <button
+          type="button"
+          className="ctx-strip-toggle"
+          onClick={() => setCollapsedPersist(false)}
+          aria-label="Expandir painel"
+          title="Expandir painel"
+        >
+          <IconChevronRight size={16} stroke={1.8} />
+        </button>
+        <div className="ctx-strip">
+          {visible.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="ctx-strip-icon"
+              onClick={() => expandTo(s.id)}
+              aria-label={s.label}
+              title={s.label}
+            >
+              <s.Icon size={18} stroke={1.6} />
+              {s.badge ? <span className="ctx-strip-badge">{s.badge}</span> : null}
+            </button>
+          ))}
+        </div>
+      </aside>
+    );
+  }
+
+  // ── Expanded: full drawer ──────────────────────────────────────────────────
+  return (
+    <aside className="ctx-panel ctx-expanded" aria-label="Contexto">
+      <div className="ctx-drawer-head">
+        <button
+          type="button"
+          className="ctx-strip-toggle"
+          onClick={() => setCollapsedPersist(true)}
+          aria-label="Recolher painel"
+          title="Recolher painel"
+        >
+          <IconChevronLeft size={16} stroke={1.8} />
+        </button>
+      </div>
+
+      <div className="ctx-sections">
+        {visible.map((s) => {
+          const expanded = isOpen(s.id);
+          return (
+            <section key={s.id} className="ctx-section">
+              <button
+                type="button"
+                className="ctx-section-header"
+                onClick={() => toggle(s.id)}
+                aria-expanded={expanded}
+              >
+                <s.Icon size={15} stroke={1.6} className="ctx-section-icon" />
+                <span className="ctx-section-title">{s.label}</span>
+                {s.badge ? (
+                  <span className="ctx-section-count">{s.badge}</span>
+                ) : null}
+                <span className="ctx-section-chevron">
+                  {expanded ? (
+                    <IconChevronDown size={13} stroke={1.8} />
+                  ) : (
+                    <IconChevronRight size={13} stroke={1.8} />
+                  )}
+                </span>
+              </button>
+              {expanded ? <div className="ctx-section-body">{s.body}</div> : null}
+            </section>
+          );
+        })}
+      </div>
     </aside>
   );
 }

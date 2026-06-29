@@ -19,7 +19,6 @@ import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
-import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
 import { getDocuments } from "@/lib/documents";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
@@ -122,8 +121,6 @@ export default async function WorkspaceDetailPage({
         projects={projects}
       />
 
-      <DocumentsPanel workspaceId={ws.id} documents={documents} />
-
       <div className="ws-layout">
         <WorkspaceChat
           key={ws.id}
@@ -141,6 +138,7 @@ export default async function WorkspaceDetailPage({
           decisions={wsDecisions}
           artifacts={artifacts}
           agents={agents}
+          documents={documents}
           overview={overview}
         />
       </div>
