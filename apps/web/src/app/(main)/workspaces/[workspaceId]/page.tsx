@@ -11,12 +11,14 @@ import {
 import {
   getCanonicalChat,
   getMessages,
+  getProjects,
   getWorkspaceContext,
 } from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
+import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ export default async function WorkspaceDetailPage({
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
 
-  const [allDecisions, pending, artifacts, agents, context, canonical] =
+  const [allDecisions, pending, artifacts, agents, context, canonical, projects] =
     await Promise.all([
       getDecisions(),
       getPendingDecisions(),
@@ -36,6 +38,7 @@ export default async function WorkspaceDetailPage({
       getAgentsForInitiative(ws.id),
       getWorkspaceContext(ws.id),
       getCanonicalChat(ws.id),
+      getProjects(ws.id),
     ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
@@ -81,9 +84,19 @@ export default async function WorkspaceDetailPage({
             {pendingCount}{" "}
             {pendingCount === 1 ? "decisão pendente" : "decisões pendentes"}
           </Link>
-          <ImportContext workspaceId={ws.id} />
+          <ImportContext
+            workspaceId={ws.id}
+            workspaceName={ws.name}
+            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          />
         </div>
       </header>
+
+      <WorkspaceProjects
+        workspaceId={ws.id}
+        workspaceSlug={ws.slug ?? ws.id}
+        projects={projects}
+      />
 
       <div className="ws-layout">
         <WorkspaceChat

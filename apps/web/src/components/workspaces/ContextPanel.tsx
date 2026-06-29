@@ -24,6 +24,7 @@ function decisionDotClass(status: string): string {
 
 export default function ContextPanel({
   workspaceId,
+  projectId,
   githubRepo,
   supabaseUrl,
   context,
@@ -32,6 +33,8 @@ export default function ContextPanel({
   agents,
 }: {
   workspaceId: string;
+  /** When set, the panel is scoped to a project (repo + title wording). */
+  projectId?: string;
   githubRepo?: string;
   supabaseUrl?: string;
   context: WorkspaceContext | null;
@@ -39,6 +42,7 @@ export default function ContextPanel({
   artifacts: Artifact[];
   agents: Agent[];
 }) {
+  const isProject = Boolean(projectId);
   const summary = context?.summary?.trim() ?? "";
   const lessons = (context?.lessons ?? []).filter(
     (l): l is string => typeof l === "string" && l.trim().length > 0
@@ -46,9 +50,11 @@ export default function ContextPanel({
 
   return (
     <aside className="ctx-panel">
-      {/* 1. Workspace context */}
+      {/* 1. Workspace / project context */}
       <section className="ctx-section">
-        <SectionTitle>Contexto do workspace</SectionTitle>
+        <SectionTitle>
+          {isProject ? "Contexto do projecto" : "Contexto do workspace"}
+        </SectionTitle>
         {summary ? (
           <>
             <p className="ctx-summary">{summary}</p>
@@ -66,8 +72,15 @@ export default function ContextPanel({
         )}
       </section>
 
-      {/* 2. Repository (GitHub per workspace) */}
-      <RepoPanel workspaceId={workspaceId} initialRepo={githubRepo} />
+      {/* 2. Repository (GitHub per workspace or per project) */}
+      <RepoPanel
+        scope={
+          projectId
+            ? { kind: "project", projectId, workspaceId }
+            : { kind: "workspace", workspaceId }
+        }
+        initialRepo={githubRepo}
+      />
 
       {/* 3. Database (Supabase per workspace) */}
       <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />

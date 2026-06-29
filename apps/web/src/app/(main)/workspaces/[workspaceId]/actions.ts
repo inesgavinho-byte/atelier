@@ -72,6 +72,26 @@ export async function getWorkspaceRepoOverview(
 }
 
 /**
+ * Live overview for a project's configured repo. Reads the repo server-side
+ * from the project row, so the client cannot point our token at an arbitrary
+ * repository. Returns null when none is configured / no token.
+ */
+export async function getProjectRepoOverview(
+  projectId: string
+): Promise<RepoOverview | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("workspace_projects")
+    .select("github_repo")
+    .eq("id", projectId)
+    .maybeSingle();
+  const repo = data?.github_repo as string | null | undefined;
+  if (!repo) return null;
+  return getRepoOverview(repo);
+}
+
+/**
  * The single canonical chat for a workspace or one of its projects (compat shim
  * while workspace_chats still exists — ADR-0004 / ADR-0005 F1). Finds the
  * earliest matching chat (project-less, or scoped to projectId) or creates one.

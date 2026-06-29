@@ -4,6 +4,7 @@ import {
   getPendingDecisions,
   getSearchCorpus,
 } from "@/lib/mission";
+import { getAllProjects } from "@/lib/workspaces";
 import { countUnreadReadings } from "@/lib/readings";
 import { gateEnabled } from "@/lib/auth";
 
@@ -22,14 +23,23 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives, unread, pending] = await Promise.all([
+  const [corpus, initiatives, projects, unread, pending] = await Promise.all([
     getSearchCorpus(),
     getInitiatives(),
+    getAllProjects(),
     countUnreadReadings(),
     getPendingDecisions(),
   ]);
 
   const pendingDecisions = pending.length;
+
+  // Group projects under their workspace, ordered by sort.
+  const projectsByWorkspace = new Map<string, typeof projects>();
+  for (const p of [...projects].sort((a, b) => a.sort - b.sort)) {
+    const list = projectsByWorkspace.get(p.workspaceId) ?? [];
+    list.push(p);
+    projectsByWorkspace.set(p.workspaceId, list);
+  }
 
   const sections: NavSection[] = [
     {
@@ -44,14 +54,32 @@ export default async function MainLayout({
       items: [
         // Guard against rows with neither slug nor id (would render
         // /workspaces/null). Link by slug, falling back to id — the route
-        // resolves either (getInitiativeByIdOrSlug).
+        // resolves either (getInitiativeByIdOrSlug). Each workspace expands to
+        // its projects.
         ...initiatives
           .filter((w) => w.slug || w.id)
-          .map((w) => ({
-            label: w.name,
-            href: `/workspaces/${w.slug ?? w.id}`,
-            workspace: w.name,
-          })),
+          .map((w) => {
+            const ref = w.slug ?? w.id;
+            const wsProjects = projectsByWorkspace.get(w.id) ?? [];
+            const children = [
+              ...wsProjects.map((p) => ({
+                label: p.name,
+                href: `/workspaces/${ref}/projects/${p.id}`,
+              })),
+              {
+                label: "+ Novo projecto",
+                href: `/workspaces/${ref}`,
+                icon: "+",
+              },
+            ];
+            return {
+              label: w.name,
+              href: `/workspaces/${ref}`,
+              workspace: w.name,
+              expandKey: w.id,
+              children,
+            };
+          }),
         { label: "Novo Workspace", href: "/workspaces", icon: "+" },
       ],
     },
