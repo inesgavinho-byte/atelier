@@ -68,7 +68,7 @@ async function ghGet<T>(
     const res = await fetchWithTimeout(
       `https://api.github.com${path}`,
       { headers: ghHeaders(token) },
-      12000
+      6000
     );
     if (!res.ok) return null;
     return (await res.json()) as T;

@@ -80,7 +80,8 @@ const toMessage = (r: any): WorkspaceMessage => ({
   createdAt: r.created_at,
 });
 
-export async function getWorkspaces(): Promise<Workspace[]> {
+export const getWorkspaces = cache(getWorkspacesUncached);
+async function getWorkspacesUncached(): Promise<Workspace[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
@@ -121,7 +122,8 @@ async function getAllProjectsUncached(): Promise<WorkspaceProject[]> {
 }
 
 /** All chats across every workspace — used by global search. */
-export async function getAllChats(): Promise<WorkspaceChat[]> {
+export const getAllChats = cache(getAllChatsUncached);
+async function getAllChatsUncached(): Promise<WorkspaceChat[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb.from("workspace_chats").select("*");

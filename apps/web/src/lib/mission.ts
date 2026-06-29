@@ -143,7 +143,8 @@ export async function getInitiativeByIdOrSlug(
 
 /* ── Agents ──────────────────────────────────────────────────────────────── */
 
-export async function getAgents(): Promise<Agent[]> {
+export const getAgents = cache(getAgentsUncached);
+async function getAgentsUncached(): Promise<Agent[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
@@ -226,7 +227,8 @@ export async function getDecisionsForInitiative(
 
 /* ── Objectives ──────────────────────────────────────────────────────────── */
 
-export async function getObjectives(): Promise<Objective[]> {
+export const getObjectives = cache(getObjectivesUncached);
+async function getObjectivesUncached(): Promise<Objective[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
@@ -266,7 +268,8 @@ export async function getActivityForInitiative(
 
 /* ── Artifacts ───────────────────────────────────────────────────────────── */
 
-export async function getArtifacts(): Promise<Artifact[]> {
+export const getArtifacts = cache(getArtifactsUncached);
+async function getArtifactsUncached(): Promise<Artifact[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb

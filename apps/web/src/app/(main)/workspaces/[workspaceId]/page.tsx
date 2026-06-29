@@ -21,7 +21,6 @@ import WorkspaceSearchPill from "@/components/workspaces/WorkspaceSearchPill";
 import { getDocuments } from "@/lib/documents";
 import { getSessions } from "@/lib/sessions";
 import { getChatIdentity } from "@/lib/profile";
-import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +40,6 @@ export default async function WorkspaceDetailPage({
     context,
     canonical,
     projects,
-    overview,
     documents,
     sessions,
     chatUser,
@@ -53,7 +51,6 @@ export default async function WorkspaceDetailPage({
     getWorkspaceContext(ws.id),
     getCanonicalChat(ws.id),
     getProjects(ws.id),
-    getWorkspaceRepoOverview(ws.id).catch(() => null),
     getDocuments(ws.id).catch(() => []),
     getSessions(ws.id).catch(() => []),
     getChatIdentity(ws.id),
@@ -149,7 +146,6 @@ export default async function WorkspaceDetailPage({
           projects={projects}
           documents={documents}
           sessions={sessions}
-          overview={overview}
         />
       </div>
     </div>
