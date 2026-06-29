@@ -1,19 +1,63 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { StateTag, ago } from "@/components/mission/bits";
 import RepoPanel from "@/components/workspaces/RepoPanel";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
+import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
 import type { WorkspaceContext } from "@/lib/workspaces";
+import type { RepoOverview } from "@/lib/github";
 import type { Agent, Artifact, Decision } from "@/data/mission";
 
 /**
- * ContextPanel — the workspace's right rail (ADR-0004).
+ * ContextPanel — the workspace's right rail (ADR-0004, redesigned).
  *
- * Surfaces the compressed workspace memory, decisions, artifacts, lessons and
- * assigned agents alongside the continuous chat. A server component: it only
- * reads data passed from the page. Each section degrades to a calm empty state.
+ * Sections collapse/expand (state persisted per workspace in localStorage) so
+ * the panel doesn't push useful content down. A non-collapsible "Requer acção"
+ * block sits at the top whenever something needs the operator (pending
+ * decisions, open PRs, a failed CI run). Each entry is a microcard; items that
+ * need action carry a coloured left border.
  */
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="ctx-section-title">{children}</h2>;
+type SectionId =
+  | "contexto"
+  | "repo"
+  | "db"
+  | "decisoes"
+  | "artefactos"
+  | "licoes"
+  | "agentes";
+
+function CollapsibleSection({
+  title,
+  count,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  count?: number;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="ctx-section">
+      <button
+        type="button"
+        className="ctx-section-header"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <span className="ctx-section-chevron">{expanded ? "↓" : "›"}</span>
+        <span className="ctx-section-title">{title}</span>
+        {!expanded && count ? (
+          <span className="ctx-section-count">{count}</span>
+        ) : null}
+      </button>
+      {expanded ? <div className="ctx-section-body">{children}</div> : null}
+    </section>
+  );
 }
 
 function decisionDotClass(status: string): string {
@@ -31,6 +75,7 @@ export default function ContextPanel({
   decisions,
   artifacts,
   agents,
+  overview,
 }: {
   workspaceId: string;
   /** When set, the panel is scoped to a project (repo + title wording). */
@@ -41,6 +86,8 @@ export default function ContextPanel({
   decisions: Decision[];
   artifacts: Artifact[];
   agents: Agent[];
+  /** Pre-fetched GitHub overview (workspace scope); omitted for projects. */
+  overview?: RepoOverview | null;
 }) {
   const isProject = Boolean(projectId);
   const summary = context?.summary?.trim() ?? "";
@@ -48,80 +95,214 @@ export default function ContextPanel({
     (l): l is string => typeof l === "string" && l.trim().length > 0
   );
 
+  const pendingDecisions = decisions.filter((d) => d.status === "pendente");
+  const openPRs = overview?.prs ?? [];
+  const ciFailed = overview?.ci?.state === "failure" ? overview.ci : null;
+  const actionCount = pendingDecisions.length + openPRs.length + (ciFailed ? 1 : 0);
+
+  // Default open/closed per section; Repo opens itself when it has open PRs.
+  const defaults: Record<SectionId, boolean> = {
+    contexto: false,
+    repo: openPRs.length > 0,
+    db: false,
+    decisoes: true,
+    artefactos: false,
+    licoes: false,
+    agentes: false,
+  };
+
+  const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>({});
+  const storageKey = `atelier-ctx-${workspaceId}`;
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) setOpen(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, [storageKey]);
+
+  const isOpen = (id: SectionId) => open[id] ?? defaults[id];
+  const toggle = (id: SectionId) => {
+    setOpen((prev) => {
+      const next = { ...prev, [id]: !(prev[id] ?? defaults[id]) };
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
   return (
     <aside className="ctx-panel">
-      {/* 1. Workspace / project context */}
-      <section className="ctx-section">
-        <SectionTitle>
-          {isProject ? "Contexto do projecto" : "Contexto do workspace"}
-        </SectionTitle>
+      {/* Requer acção — always visible, only when there is something to do */}
+      {actionCount > 0 ? (
+        <section className="ctx-action">
+          <div className="ctx-action-head">
+            <span className="ctx-section-title">Requer acção</span>
+            <span className="ctx-action-count">{actionCount}</span>
+          </div>
+          <div className="ctx-cards">
+            {pendingDecisions.map((d) => (
+              <div key={d.id} className="ctx-card ctx-card-amber">
+                <span className="ctx-card-flag ctx-flag-amber">
+                  Acção necessária
+                </span>
+                <span className="ctx-card-title">{d.title}</span>
+                <div className="ctx-card-actions">
+                  <HomeDecisionActions id={d.id} />
+                </div>
+              </div>
+            ))}
+            {openPRs.map((pr) => (
+              <a
+                key={`pr-${pr.number}`}
+                href={pr.url}
+                target="_blank"
+                rel="noreferrer"
+                className="ctx-card ctx-card-violet"
+              >
+                <span className="ctx-card-flag ctx-flag-violet">PR aberto</span>
+                <span className="ctx-card-title">{pr.title}</span>
+                <span className="ctx-card-sub">
+                  #{pr.number} · Ver PR →
+                </span>
+              </a>
+            ))}
+            {ciFailed ? (
+              <a
+                href={ciFailed.url}
+                target="_blank"
+                rel="noreferrer"
+                className="ctx-card ctx-card-red"
+              >
+                <span className="ctx-card-flag ctx-flag-red">CI falhou</span>
+                <span className="ctx-card-title">
+                  {ciFailed.label}
+                  {ciFailed.branch ? ` · ${ciFailed.branch}` : ""}
+                </span>
+                <span className="ctx-card-sub">Ver logs →</span>
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* Context summary */}
+      <CollapsibleSection
+        title={isProject ? "Contexto do projecto" : "Contexto do workspace"}
+        expanded={isOpen("contexto")}
+        onToggle={() => toggle("contexto")}
+      >
         {summary ? (
           <>
             <p className="ctx-summary">{summary}</p>
             {context ? (
               <p className="ctx-meta">
                 v{context.version}
-                {context.lastUpdatedAt
-                  ? ` · ${ago(context.lastUpdatedAt)}`
-                  : ""}
+                {context.lastUpdatedAt ? ` · ${ago(context.lastUpdatedAt)}` : ""}
               </p>
             ) : null}
           </>
         ) : (
           <p className="ctx-empty">Sem memória ainda.</p>
         )}
-      </section>
+      </CollapsibleSection>
 
-      {/* 2. Repository (GitHub per workspace or per project) */}
-      <RepoPanel
-        scope={
-          projectId
-            ? { kind: "project", projectId, workspaceId }
-            : { kind: "workspace", workspaceId }
-        }
-        initialRepo={githubRepo}
-      />
+      {/* Repository */}
+      <CollapsibleSection
+        title="Repositório"
+        count={openPRs.length || undefined}
+        expanded={isOpen("repo")}
+        onToggle={() => toggle("repo")}
+      >
+        <RepoPanel
+          scope={
+            projectId
+              ? { kind: "project", projectId, workspaceId }
+              : { kind: "workspace", workspaceId }
+          }
+          initialRepo={githubRepo}
+          overview={isProject ? undefined : overview}
+        />
+      </CollapsibleSection>
 
-      {/* 3. Database (Supabase per workspace) */}
-      <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />
+      {/* Database */}
+      <CollapsibleSection
+        title="Base de dados"
+        expanded={isOpen("db")}
+        onToggle={() => toggle("db")}
+      >
+        <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />
+      </CollapsibleSection>
 
-      {/* 3. Decisions */}
-      <section className="ctx-section">
-        <SectionTitle>Decisões</SectionTitle>
+      {/* Decisions */}
+      <CollapsibleSection
+        title="Decisões"
+        count={decisions.length || undefined}
+        expanded={isOpen("decisoes")}
+        onToggle={() => toggle("decisoes")}
+      >
         {decisions.length === 0 ? (
           <p className="ctx-empty">Nada a decidir.</p>
         ) : (
-          <ul className="ctx-list">
-            {decisions.map((d) => (
-              <li key={d.id} className="ctx-row">
-                <span className={`ctx-dot ${decisionDotClass(d.status)}`} />
-                <span className="ctx-row-text">{d.title}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="ctx-cards">
+            {decisions.map((d) => {
+              const pending = d.status === "pendente";
+              return (
+                <div
+                  key={d.id}
+                  className={`ctx-card${pending ? " ctx-card-amber" : ""}`}
+                >
+                  <span className="ctx-card-row">
+                    <span className={`ctx-dot ${decisionDotClass(d.status)}`} />
+                    <span className="ctx-card-title">{d.title}</span>
+                  </span>
+                  {pending ? (
+                    <div className="ctx-card-actions">
+                      <HomeDecisionActions id={d.id} />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         )}
-      </section>
+      </CollapsibleSection>
 
-      {/* 3. Artifacts */}
-      <section className="ctx-section">
-        <SectionTitle>Artefactos</SectionTitle>
+      {/* Artifacts */}
+      <CollapsibleSection
+        title="Artefactos"
+        count={artifacts.length || undefined}
+        expanded={isOpen("artefactos")}
+        onToggle={() => toggle("artefactos")}
+      >
         {artifacts.length === 0 ? (
           <p className="ctx-empty">Sem artefactos.</p>
         ) : (
-          <ul className="ctx-list">
+          <div className="ctx-cards">
             {artifacts.map((a) => (
-              <li key={a.id} className="ctx-row">
-                <span className="ctx-dot ctx-dot-violet" />
-                <span className="ctx-row-text">{a.title}</span>
-              </li>
+              <div key={a.id} className="ctx-card">
+                <span className="ctx-card-row">
+                  <span className="ctx-dot ctx-dot-violet" />
+                  <span className="ctx-card-title">{a.title}</span>
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-      </section>
+      </CollapsibleSection>
 
-      {/* 4. Lessons learned */}
-      <section className="ctx-section">
-        <SectionTitle>Lições aprendidas</SectionTitle>
+      {/* Lessons learned */}
+      <CollapsibleSection
+        title="Lições aprendidas"
+        count={lessons.length || undefined}
+        expanded={isOpen("licoes")}
+        onToggle={() => toggle("licoes")}
+      >
         {lessons.length === 0 ? (
           <p className="ctx-empty">Sem lições registadas.</p>
         ) : (
@@ -131,24 +312,28 @@ export default function ContextPanel({
             ))}
           </ul>
         )}
-      </section>
+      </CollapsibleSection>
 
-      {/* 5. Agents */}
-      <section className="ctx-section">
-        <SectionTitle>Agentes</SectionTitle>
+      {/* Agents */}
+      <CollapsibleSection
+        title="Agentes"
+        count={agents.length || undefined}
+        expanded={isOpen("agentes")}
+        onToggle={() => toggle("agentes")}
+      >
         {agents.length === 0 ? (
           <p className="ctx-empty">Sem agentes atribuídos.</p>
         ) : (
-          <ul className="ctx-list">
+          <div className="ctx-cards">
             {agents.map((a) => (
-              <li key={a.id} className="ctx-agent">
-                <span className="ctx-row-text">{a.role}</span>
+              <div key={a.id} className="ctx-card ctx-agent">
+                <span className="ctx-card-title">{a.role}</span>
                 <StateTag state={a.state} />
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
-      </section>
+      </CollapsibleSection>
     </aside>
   );
 }

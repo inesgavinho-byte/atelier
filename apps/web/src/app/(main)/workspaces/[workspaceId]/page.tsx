@@ -19,6 +19,7 @@ import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
+import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,16 +31,25 @@ export default async function WorkspaceDetailPage({
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
 
-  const [allDecisions, pending, artifacts, agents, context, canonical, projects] =
-    await Promise.all([
-      getDecisions(),
-      getPendingDecisions(),
-      getArtifactsForInitiative(ws.id),
-      getAgentsForInitiative(ws.id),
-      getWorkspaceContext(ws.id),
-      getCanonicalChat(ws.id),
-      getProjects(ws.id),
-    ]);
+  const [
+    allDecisions,
+    pending,
+    artifacts,
+    agents,
+    context,
+    canonical,
+    projects,
+    overview,
+  ] = await Promise.all([
+    getDecisions(),
+    getPendingDecisions(),
+    getArtifactsForInitiative(ws.id),
+    getAgentsForInitiative(ws.id),
+    getWorkspaceContext(ws.id),
+    getCanonicalChat(ws.id),
+    getProjects(ws.id),
+    getWorkspaceRepoOverview(ws.id).catch(() => null),
+  ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
 
@@ -115,6 +125,7 @@ export default async function WorkspaceDetailPage({
           decisions={wsDecisions}
           artifacts={artifacts}
           agents={agents}
+          overview={overview}
         />
       </div>
     </div>
