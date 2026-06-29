@@ -3042,12 +3042,17 @@
 .ws-page {
   display: flex;
   flex-direction: column;
-  /* Fill the shell content height (minus topbar) so the chat input pins low. */
-  min-height: calc(100vh - 59px - 64px);
+  /* Bind to the shell content height (viewport − topbar − content padding) so
+     the transcript scrolls internally and the input stays pinned low. A hard
+     height (not min-height) is required: with min-height a tall transcript
+     grows the page and the whole shell scrolls, pushing the input off-screen. */
+  height: calc(100vh - 59px - 64px);
+  overflow: hidden;
 }
 
 .ws-header {
   margin-bottom: 18px;
+  flex-shrink: 0;
 }
 .ws-header-title {
   font-size: 32px;
@@ -3295,6 +3300,7 @@
 }
 
 .ws-chat-foot {
+  flex-shrink: 0;
   border-top: 0.5px solid var(--border);
   background: var(--panel-strong);
 }
@@ -3611,8 +3617,18 @@
 }
 
 @media (max-width: 1024px) {
+  /* Stacked layout: let the page scroll normally and give the chat a tall,
+     usable height instead of pinning to the viewport (which would clip the
+     context panel stacked below it). */
+  .ws-page {
+    height: auto;
+    overflow: visible;
+  }
   .ws-layout {
     flex-direction: column;
+  }
+  .ws-chat {
+    min-height: 70vh;
   }
   .ctx-panel {
     width: auto;
