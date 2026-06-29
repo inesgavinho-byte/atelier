@@ -1,0 +1,7 @@
+# ATELIER MarkItDown service. Pinned-ish for reproducible Railway builds.
+# markitdown[all] pulls the optional extractors (pdf, docx, xlsx, pptx, images
+# with OCR, audio transcription, html, etc.).
+markitdown[all]>=0.1.1,<0.2
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.32,<0.35
+python-multipart>=0.0.12,<0.1

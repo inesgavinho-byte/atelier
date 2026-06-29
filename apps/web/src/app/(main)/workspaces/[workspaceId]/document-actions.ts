@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
 import {
   chunkMarkdown,
+  convertBinaryToMarkdown,
   convertToMarkdown,
   isTextKind,
   searchDocumentChunks,
@@ -12,9 +13,10 @@ import {
 
 /**
  * Add a document to a workspace (Bloco 5). Text-like content is converted to
- * canonical Markdown and chunked for keyword search now; binaries are stored
- * as 'pending_conversion' for the future MarkItDown service. The UI never calls
- * an LLM here — this is deterministic ingestion.
+ * canonical Markdown in-process. Binaries (PDF/Office/images) are sent to the
+ * MarkItDown service when MARKITDOWN_URL is configured; if it isn't (or the
+ * call fails) they are stored as 'pending_conversion' as before. The UI never
+ * calls an LLM here — this is deterministic ingestion.
  */
 export async function addDocument(input: {
   workspaceId: string;
@@ -24,13 +26,28 @@ export async function addDocument(input: {
   kind?: string;
   /** Extracted text for text-like files; omit for binaries. */
   text?: string;
+  /** Base64-encoded bytes for binaries (PDF/Office/images). */
+  base64?: string;
+  mime?: string;
 }): Promise<{ ok: boolean; id?: string; chunks?: number; status?: string; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
 
   const title = input.title.trim() || input.sourceName?.trim() || "Documento";
-  const canText = isTextKind(input.kind) && typeof input.text === "string";
-  const markdown = canText ? convertToMarkdown(input.text as string) : "";
+
+  // Text-like files convert in-process; binaries go through MarkItDown when it
+  // is configured, otherwise they wait as `pending_conversion`.
+  let markdown = "";
+  if (isTextKind(input.kind) && typeof input.text === "string") {
+    markdown = convertToMarkdown(input.text);
+  } else if (input.base64) {
+    const converted = await convertBinaryToMarkdown(
+      Buffer.from(input.base64, "base64"),
+      input.sourceName || title,
+      input.mime
+    );
+    if (converted) markdown = converted.markdown;
+  }
   const status = markdown ? "ready" : "pending_conversion";
 
   const { data, error } = await sb
@@ -74,7 +91,7 @@ export async function addDocument(input: {
     message:
       status === "ready"
         ? `Documento processado — ${chunks} ${chunks === 1 ? "secção" : "secções"}.`
-        : "Documento guardado — conversão (PDF/Office) fica para o serviço MarkItDown.",
+        : "Documento guardado em fila — conversão (PDF/Office) pendente do serviço MarkItDown.",
   };
 }
 

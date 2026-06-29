@@ -13,9 +13,24 @@ import type { WorkspaceDocument } from "@/lib/documents";
 /** Extensions we can read as text in the browser (Node-first pipeline). */
 const TEXT_EXT = ["txt", "md", "markdown", "csv", "json", "log", "text"];
 
+/** Binaries above this size aren't sent inline (server-action payload limit). */
+const MAX_BINARY_BYTES = 4 * 1024 * 1024;
+
 type Hit = { documentId: string; documentTitle: string; idx: number; content: string };
 
 const extOf = (name: string) => name.split(".").pop()?.toLowerCase() ?? "";
+
+/** ArrayBuffer → base64, chunked so large buffers don't blow the call stack. */
+function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    const sub = bytes.subarray(i, i + chunk) as unknown as number[];
+    binary += String.fromCharCode.apply(null, sub);
+  }
+  return btoa(binary);
+}
 
 /**
  * "Documentos" — upload (drag & drop) + library + keyword search for a
@@ -43,15 +58,29 @@ export default function DocumentsPanel({
     for (const file of Array.from(files)) {
       const kind = extOf(file.name);
       const isText = TEXT_EXT.includes(kind);
-      const text = isText ? await file.text() : undefined;
-      const r = await addDocument({
+      const base = {
         workspaceId,
         title: file.name.replace(/\.[^.]+$/, ""),
         sourceName: file.name,
         kind,
-        text,
-      });
-      setMsg(r.message);
+      };
+      if (isText) {
+        const r = await addDocument({ ...base, text: await file.text() });
+        setMsg(r.message);
+      } else if (file.size > MAX_BINARY_BYTES) {
+        // Too large to send inline; queue without bytes (stays pending).
+        const r = await addDocument(base);
+        setMsg(`${file.name}: demasiado grande para conversão directa (>4 MB). ${r.message}`);
+      } else {
+        // Binary → base64 → MarkItDown service (server-side). Degrades to
+        // pending_conversion when the service isn't configured.
+        const r = await addDocument({
+          ...base,
+          base64: toBase64(await file.arrayBuffer()),
+          mime: file.type || undefined,
+        });
+        setMsg(r.message);
+      }
     }
     router.refresh();
   };
@@ -109,8 +138,8 @@ export default function DocumentsPanel({
           {busy ? "A processar…" : "Arrasta ficheiros ou clica para carregar"}
         </p>
         <p className="ws-docs-drop-sub">
-          .txt .md .csv .json processados já; PDF/Word ficam em fila para o
-          MarkItDown.
+          .txt .md .csv .json processados já; PDF/Word/Excel convertidos pelo
+          MarkItDown (ou em fila se o serviço estiver desligado).
         </p>
       </div>
       {msg ? <p className="meta mt-2">{msg}</p> : null}
