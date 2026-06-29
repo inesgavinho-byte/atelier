@@ -5,7 +5,13 @@ import {
   getPendingSignals,
   type MinionSignal,
 } from "@/lib/minions";
+import {
+  getTelegramGroups,
+  getRecentPendingItems,
+} from "@/lib/conversation-watch";
+import { getWorkspaces } from "@/lib/workspaces";
 import MinionsBoard from "@/components/minions/MinionsBoard";
+import ConversationWatch from "@/components/minions/ConversationWatch";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +44,14 @@ export default async function MinionsPage() {
     );
   }
 
-  const [minions, pendingSignals] = await Promise.all([
-    getMinions(),
-    getPendingSignals(),
-  ]);
+  const [minions, pendingSignals, groups, pendingItems, workspaces] =
+    await Promise.all([
+      getMinions(),
+      getPendingSignals(),
+      getTelegramGroups(),
+      getRecentPendingItems(),
+      getWorkspaces(),
+    ]);
 
   // Recent signals per minion for the drawer (few minions ⇒ cheap).
   const entries = await Promise.all(
@@ -73,6 +83,14 @@ export default async function MinionsPage() {
           signalsByMinion={signalsByMinion}
         />
       )}
+
+      <div className="mt-10">
+        <ConversationWatch
+          groups={groups}
+          items={pendingItems}
+          workspaces={workspaces.map((w) => ({ id: w.id, name: w.name }))}
+        />
+      </div>
     </div>
   );
 }
