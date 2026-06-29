@@ -242,10 +242,289 @@ async function contextAgentLoop(): Promise<void> {
   }
 }
 
+/* ── Minions (EPIC-003) ───────────────────────────────────────────────────── */
+
+// How often to check which minions are due. Each minion's own cadence is
+// frequency_minutes; this is just the scheduler tick.
+const MINION_INTERVAL_MS = Number(process.env.WORKER_MINION_MS ?? 300_000);
+
+interface Minion {
+  id: string;
+  name: string;
+  slug: string;
+  mission: string;
+  frequency_minutes: number;
+  autonomy_level: number;
+  state: string;
+}
+
+interface MinionResult {
+  kind: string; // 'info'|'warning'|'decision_required'|'opportunity'|'risk'
+  signal: string;
+  evidence: string[];
+  interpretation: string;
+  recommended_action: string;
+  approval_required: boolean;
+}
+
+const minionShortId = (prefix: string) =>
+  `${prefix}-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+
+/** Per-minion guidance appended to the shared system prompt. */
+const MINION_GUIDANCE: Record<string, string> = {
+  inbox:
+    "És o Inbox Minion. Observas capturas, leituras e imports recentes. " +
+    "Classifica e diz o que merece atenção. Raramente exige aprovação.",
+  context:
+    "És o Context Minion. Observas o que mudou nos workspaces (decisões, " +
+    "actividade). Resume o estado. Não exige aprovação.",
+  decision:
+    "És o Decision Minion. Detectas o que precisa de uma decisão da Inês. " +
+    "Reúne evidência e prepara uma recomendação clara. Usa kind " +
+    "'decision_required' e approval_required=true quando há mesmo uma decisão.",
+  "project-sentinel":
+    "És o Project Sentinel. Vigias decisões pendentes, jobs com erro e " +
+    "bloqueios. Sinaliza risco com kind 'risk' ou 'warning'.",
+  product:
+    "És o Product Minion. Observas o estado do produto (jobs, artefactos, " +
+    "decisões) e o que pode violar a arquitectura. kind 'warning' ou 'info'.",
+  pattern:
+    "És o Pattern Minion. Observas o contexto de TODOS os workspaces e " +
+    "procuras padrões, tensões e oportunidades. kind 'opportunity' ou 'info'.",
+};
+
+/** Build a compact text view of a minion's sources. Empty string ⇒ skip run. */
+async function gatherMinionContext(slug: string): Promise<string> {
+  const lines: string[] = [];
+  const push = (label: string, rows: { toString: () => string }[]) => {
+    if (rows.length) lines.push(`## ${label}\n${rows.join("\n")}`);
+  };
+
+  if (slug === "inbox") {
+    const [{ data: caps }, { data: reads }, { data: imps }] = await Promise.all([
+      sb.from("captures").select("kind, value, created_at").order("created_at", { ascending: false }).limit(15),
+      sb.from("readings").select("title, status, created_at").eq("status", "Por ler").order("created_at", { ascending: false }).limit(15),
+      sb.from("context_imports").select("source, created_at").order("created_at", { ascending: false }).limit(10),
+    ]);
+    push("Capturas recentes", (caps ?? []).map((c) => `- [${c.kind}] ${String(c.value).slice(0, 120)}`));
+    push("Leituras por ler", (reads ?? []).map((r) => `- ${r.title ?? "(sem título)"}`));
+    push("Imports recentes", (imps ?? []).map((i) => `- ${i.source}`));
+  } else if (slug === "context") {
+    const [{ data: decs }, { data: acts }] = await Promise.all([
+      sb.from("decisions").select("title, status, updated_at").order("updated_at", { ascending: false }).limit(10),
+      sb.from("activity").select("kind, title, at").order("at", { ascending: false }).limit(20),
+    ]);
+    push("Decisões recentes", (decs ?? []).map((d) => `- ${d.title} (${d.status})`));
+    push("Actividade", (acts ?? []).map((a) => `- [${a.kind}] ${a.title}`));
+  } else if (slug === "decision") {
+    const [{ data: pend }, { data: jobs }, { data: imps }] = await Promise.all([
+      sb.from("decisions").select("title, context, recommendation").eq("status", "pendente").limit(15),
+      sb.from("jobs").select("prompt, output, status").eq("status", "done").order("updated_at", { ascending: false }).limit(8),
+      sb.from("context_imports").select("source, created_at").order("created_at", { ascending: false }).limit(5),
+    ]);
+    push("Decisões pendentes", (pend ?? []).map((d) => `- ${d.title}`));
+    push("Jobs concluídos", (jobs ?? []).map((j) => `- ${String(j.prompt).slice(0, 100)}`));
+    push("Imports", (imps ?? []).map((i) => `- ${i.source}`));
+  } else if (slug === "project-sentinel") {
+    const [{ data: pend }, { data: errs }, { data: wss }] = await Promise.all([
+      sb.from("decisions").select("title").eq("status", "pendente").limit(20),
+      sb.from("jobs").select("prompt, error").eq("status", "error").order("updated_at", { ascending: false }).limit(10),
+      sb.from("workspaces").select("name").limit(30),
+    ]);
+    push("Decisões pendentes", (pend ?? []).map((d) => `- ${d.title}`));
+    push("Jobs com erro", (errs ?? []).map((j) => `- ${String(j.prompt).slice(0, 80)} → ${j.error ?? ""}`));
+    push("Workspaces", (wss ?? []).map((w) => `- ${w.name}`));
+  } else if (slug === "product") {
+    const [{ data: jobs }, { data: arts }, { data: decs }] = await Promise.all([
+      sb.from("jobs").select("prompt, status").order("updated_at", { ascending: false }).limit(10),
+      sb.from("artifacts").select("title, kind, state").order("updated_at", { ascending: false }).limit(20),
+      sb.from("decisions").select("title, kind").order("updated_at", { ascending: false }).limit(10),
+    ]);
+    push("Jobs", (jobs ?? []).map((j) => `- [${j.status}] ${String(j.prompt).slice(0, 80)}`));
+    push("Artefactos", (arts ?? []).map((a) => `- ${a.title} (${a.kind}, ${a.state})`));
+    push("Decisões", (decs ?? []).map((d) => `- ${d.title}`));
+  } else if (slug === "pattern") {
+    const [{ data: ctxs }, { data: arts }] = await Promise.all([
+      sb.from("workspace_context").select("workspace_id, summary").is("project_id", null).limit(40),
+      sb.from("artifacts").select("title, kind").order("updated_at", { ascending: false }).limit(30),
+    ]);
+    push("Contexto dos workspaces", (ctxs ?? []).map((c) => `- ${String(c.summary).slice(0, 200)}`));
+    push("Artefactos", (arts ?? []).map((a) => `- ${a.title}`));
+  }
+
+  return lines.join("\n\n").trim();
+}
+
+/** Run a minion's analysis via Anthropic (Haiku). Returns null when inactive. */
+async function runMinionLLM(
+  minion: Minion,
+  context: string
+): Promise<MinionResult | null> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    console.error("[minion] ANTHROPIC_API_KEY em falta — minions inactivos.");
+    return null;
+  }
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.WORKER_MINION_MODEL ?? "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      system:
+        `${MINION_GUIDANCE[minion.slug] ?? minion.mission}\n\n` +
+        "Os Minions observam, organizam e propõem — NUNCA decidem nem agem " +
+        "sozinhos. Responde APENAS com JSON válido, sem texto à volta, com as " +
+        "chaves: kind ('info'|'warning'|'decision_required'|'opportunity'|'risk'), " +
+        "signal (string curta), evidence (string[]), interpretation (string), " +
+        "recommended_action (string), approval_required (boolean). Português europeu. " +
+        "Se não houver nada digno de nota, devolve kind 'info' e signal vazio.",
+      messages: [
+        { role: "user", content: `Minion: ${minion.name}\n\nFontes:\n${context}` },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    console.error(`[minion] Anthropic HTTP ${res.status} (${minion.slug})`);
+    return null;
+  }
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = (data.content ?? [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("")
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  try {
+    const p = JSON.parse(text) as Partial<MinionResult>;
+    if (!p.signal || !String(p.signal).trim()) return null; // nothing to report
+    return {
+      kind: p.kind ?? "info",
+      signal: String(p.signal),
+      evidence: Array.isArray(p.evidence) ? p.evidence.map(String) : [],
+      interpretation: p.interpretation ?? "",
+      recommended_action: p.recommended_action ?? "",
+      approval_required: Boolean(p.approval_required),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Execute one minion: gather → analyse → store signal (+ decision/activity). */
+async function runMinion(minion: Minion): Promise<void> {
+  const nextRun = new Date(
+    Date.now() + minion.frequency_minutes * 60_000
+  ).toISOString();
+  try {
+    const context = await gatherMinionContext(minion.slug);
+    const result = context ? await runMinionLLM(minion, context) : null;
+
+    if (result) {
+      await sb.from("minion_signals").insert({
+        minion_id: minion.id,
+        kind: result.kind,
+        signal: result.signal,
+        evidence: result.evidence,
+        interpretation: result.interpretation,
+        recommended_action: result.recommended_action,
+        approval_required: result.approval_required,
+      });
+
+      // Recommend (autonomy ≥ 3): turn an approval-required signal into a
+      // pending decision card. Always internal, always 'pendente'.
+      if (result.approval_required && minion.autonomy_level >= 3) {
+        await sb.from("decisions").insert({
+          id: minionShortId("min"),
+          title: result.signal.slice(0, 120),
+          kind: "direção",
+          priority: "média",
+          context: result.interpretation,
+          recommendation: result.recommended_action,
+          status: "pendente",
+        });
+      }
+      // Informational signals also land on the activity timeline.
+      if (result.kind === "info") {
+        await sb.from("activity").insert({
+          id: minionShortId("act"),
+          kind: "agente",
+          title: `${minion.name}: ${result.signal}`.slice(0, 160),
+          at: now(),
+        });
+      }
+    }
+
+    await sb
+      .from("minions")
+      .update({
+        last_run_at: now(),
+        next_run_at: nextRun,
+        last_signal: result ?? null,
+        state: "active",
+        last_error: null,
+        updated_at: now(),
+      })
+      .eq("id", minion.id);
+    console.log(
+      `[minion] ${minion.slug} → ${result ? result.kind : "sem sinal"}`
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await sb
+      .from("minions")
+      .update({
+        last_run_at: now(),
+        next_run_at: nextRun,
+        state: "error",
+        last_error: message,
+        updated_at: now(),
+      })
+      .eq("id", minion.id);
+    console.error(`[minion] ${minion.slug} erro: ${message}`);
+  }
+}
+
+/** One scheduler pass: run every active minion whose next_run_at is due. */
+async function minionTick(): Promise<void> {
+  const { data, error } = await sb
+    .from("minions")
+    .select("id, name, slug, mission, frequency_minutes, autonomy_level, state")
+    .eq("state", "active")
+    .or(`next_run_at.is.null,next_run_at.lte.${now()}`);
+  if (error) {
+    console.error(`[minion] poll falhou: ${error.message}`);
+    return;
+  }
+  for (const minion of (data ?? []) as Minion[]) {
+    await runMinion(minion);
+  }
+}
+
+async function minionLoop(): Promise<void> {
+  console.log(`[minion] scheduler a cada ${MINION_INTERVAL_MS} ms.`);
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    try {
+      await minionTick();
+    } catch (e) {
+      console.error("[minion] tick falhou:", e);
+    }
+    await sleep(MINION_INTERVAL_MS);
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
-  // Context agent runs in parallel with the jobs loop.
+  // Context agent and minions run in parallel with the jobs loop.
   void contextAgentLoop();
+  void minionLoop();
   // eslint-disable-next-line no-constant-condition
   for (;;) {
     try {
