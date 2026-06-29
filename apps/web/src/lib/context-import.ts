@@ -133,6 +133,9 @@ function pickProvider(): { provider: ProviderId; model?: string } | null {
   if (avail.get("claude")) return { provider: "claude", model: HAIKU };
   if (avail.get("openai")) return { provider: "openai" };
   if (avail.get("perplexity")) return { provider: "perplexity" };
+  // Last-resort: any other provider that has a key (groq, deepseek, …).
+  for (const a of gateway.availability())
+    if (a.available) return { provider: a.id };
   return null;
 }
 
@@ -177,12 +180,27 @@ function safeParseJson(text: string): ExtractedContext | null {
   }
 }
 
-/** Run the Council extraction over a transcript. Returns null when unavailable. */
-export async function extractContext(
+/** Outcome of an extraction — distinguishes "no provider" from "call failed". */
+export type ExtractOutcome =
+  | { ok: true; data: ExtractedContext }
+  | { ok: false; reason: string };
+
+/**
+ * Run the Council extraction over a transcript, reporting WHY it failed so the
+ * caller can show an honest message instead of a blanket "no provider".
+ */
+export async function extractContextDetailed(
   transcript: string
-): Promise<ExtractedContext | null> {
+): Promise<ExtractOutcome> {
   const choice = pickProvider();
-  if (!choice) return null;
+  if (!choice) {
+    return {
+      ok: false,
+      reason:
+        "nenhum provider de IA com chave configurada. Define ANTHROPIC_API_KEY " +
+        "(ou OPENAI_API_KEY) no ambiente, ou liga um provider em Ecossistema.",
+    };
+  }
 
   // Cap the transcript so a huge paste stays within a cheap request.
   const clipped = transcript.slice(0, 24000);
@@ -197,6 +215,29 @@ export async function extractContext(
       { role: "user", content: clipped },
     ],
   });
-  if (!r.ok || !r.text) return null;
-  return safeParseJson(r.text);
+  if (!r.ok) {
+    return {
+      ok: false,
+      reason: `o provider ${choice.provider} falhou: ${r.error ?? "erro desconhecido"}.`,
+    };
+  }
+  if (!r.text) {
+    return { ok: false, reason: `o provider ${choice.provider} respondeu vazio.` };
+  }
+  const parsed = safeParseJson(r.text);
+  if (!parsed) {
+    return {
+      ok: false,
+      reason: "a resposta do provider não era JSON válido.",
+    };
+  }
+  return { ok: true, data: parsed };
+}
+
+/** Run the Council extraction over a transcript. Returns null when unavailable. */
+export async function extractContext(
+  transcript: string
+): Promise<ExtractedContext | null> {
+  const outcome = await extractContextDetailed(transcript);
+  return outcome.ok ? outcome.data : null;
 }
