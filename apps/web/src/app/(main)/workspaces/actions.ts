@@ -447,6 +447,8 @@ export async function createArtifactFromMessage(
     title: firstLine(content),
     kind: "nota",
     state: "rascunho",
+    content,
+    revision: 1,
     updated_at: now(),
   });
   return error
