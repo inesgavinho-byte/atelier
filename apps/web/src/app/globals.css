@@ -5848,6 +5848,18 @@ a.ctx-card:hover {
 .tl-dot-deploy {
   background: rgba(40, 170, 110, 0.85);
 }
+.tl-dot-document {
+  background: rgba(90, 150, 230, 0.85);
+}
+.tl-dot-import {
+  background: rgba(200, 120, 220, 0.85);
+}
+.tl-title-icon {
+  display: inline;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--text-muted);
+}
 .tl-body {
   min-width: 0;
 }

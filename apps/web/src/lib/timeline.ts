@@ -17,6 +17,8 @@ export type TimelineKind =
   | "capture"
   | "decision"
   | "artifact"
+  | "document"
+  | "import"
   | "commit"
   | "pr"
   | "deploy"

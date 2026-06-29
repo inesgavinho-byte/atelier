@@ -1,12 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  IconMessage,
+  IconBook,
+  IconNote,
+  IconCheck,
+  IconBox,
+  IconFile,
+  IconDownload,
+  IconGitCommit,
+  IconGitPullRequest,
+  IconRocket,
+  IconClock,
+  IconActivity,
+  type Icon,
+} from "@tabler/icons-react";
 import { ago } from "@/components/mission/bits";
 import type { TimelineEvent, TimelineKind } from "@/lib/timeline";
 
 /**
- * TimelineView — the chronological memory of a workspace (ADR-0005 F2).
- * Read-only; filters by event kind on the client.
+ * TimelineView — the chronological memory of a workspace (ADR-0005 F2 / Bloco F).
+ * Read-only; an icon per kind, filters by kind on the client.
  */
 
 const KIND_LABELS: Partial<Record<TimelineKind, string>> = {
@@ -15,6 +30,8 @@ const KIND_LABELS: Partial<Record<TimelineKind, string>> = {
   capture: "Captura",
   decision: "Decisão",
   artifact: "Artefacto",
+  document: "Documento",
+  import: "Importação",
   commit: "Commit",
   pr: "PR",
   deploy: "Deploy",
@@ -22,6 +39,23 @@ const KIND_LABELS: Partial<Record<TimelineKind, string>> = {
   session_end: "Sessão",
   note: "Nota",
   activity: "Actividade",
+};
+
+const KIND_ICONS: Partial<Record<TimelineKind, Icon>> = {
+  chat: IconMessage,
+  reading: IconBook,
+  capture: IconNote,
+  decision: IconCheck,
+  artifact: IconBox,
+  document: IconFile,
+  import: IconDownload,
+  commit: IconGitCommit,
+  pr: IconGitPullRequest,
+  deploy: IconRocket,
+  session_start: IconClock,
+  session_end: IconClock,
+  note: IconNote,
+  activity: IconActivity,
 };
 
 export default function TimelineView({ events }: { events: TimelineEvent[] }) {
@@ -62,11 +96,18 @@ export default function TimelineView({ events }: { events: TimelineEvent[] }) {
       </div>
 
       <ul className="tl-list">
-        {shown.map((e) => (
+        {shown.map((e) => {
+          const Ico = KIND_ICONS[e.kind];
+          return (
           <li key={e.id} className="tl-row">
             <span className={`tl-dot tl-dot-${e.kind}`} />
             <div className="tl-body">
-              <p className="tl-title">{e.title}</p>
+              <p className="tl-title">
+                {Ico ? (
+                  <Ico size={14} stroke={1.8} className="tl-title-icon" />
+                ) : null}
+                {e.title}
+              </p>
               <p className="tl-meta">
                 <span className="tl-kind">{KIND_LABELS[e.kind] ?? e.kind}</span>
                 {e.actor ? ` · ${e.actor}` : ""}
@@ -75,7 +116,8 @@ export default function TimelineView({ events }: { events: TimelineEvent[] }) {
               {e.body ? <p className="tl-extra">{e.body}</p> : null}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
