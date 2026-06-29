@@ -33,6 +33,16 @@ export interface NavSection {
   items: NavItem[];
 }
 
+/** Minimal profile shape the sidebar foot needs (no server imports). */
+export interface ShellProfile {
+  displayName: string;
+  roleTitle: string;
+  avatarUrl: string | null;
+  initials: string;
+  personalColour: string;
+  status: string;
+}
+
 /**
  * Atelier application shell — visionOS/macOS visual language. A translucent
  * sidebar + a blurred topbar over the page content. Owns the search/capture
@@ -43,12 +53,15 @@ export default function AppShell({
   corpus,
   sections,
   gated = false,
+  profile,
   children,
 }: {
   corpus: SearchResult[];
   sections: NavSection[];
   /** When the access gate is on, show a Sair (logout) control. */
   gated?: boolean;
+  /** Operator profile for the sidebar foot avatar + name. */
+  profile?: ShellProfile;
   children: React.ReactNode;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -81,6 +94,7 @@ export default function AppShell({
         <Sidebar
           sections={sections}
           gated={gated}
+          profile={profile}
           onSearch={openSearch}
           onCapture={openCapture}
         />

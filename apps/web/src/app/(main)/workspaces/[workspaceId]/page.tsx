@@ -20,6 +20,7 @@ import WorkspaceMoreMenu from "@/components/workspaces/WorkspaceMoreMenu";
 import WorkspaceSearchPill from "@/components/workspaces/WorkspaceSearchPill";
 import { getDocuments } from "@/lib/documents";
 import { getSessions } from "@/lib/sessions";
+import { getChatIdentity } from "@/lib/profile";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,8 @@ export default async function WorkspaceDetailPage({
     getDocuments(ws.id).catch(() => []),
     getSessions(ws.id).catch(() => []),
   ]);
+
+  const chatUser = await getChatIdentity(ws.id);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
 
@@ -132,6 +135,7 @@ export default async function WorkspaceDetailPage({
           contextVersion={context?.version}
           contextUpdatedAt={context?.lastUpdatedAt}
           artifacts={artifacts.map((a) => ({ id: a.id, title: a.title }))}
+          user={chatUser}
         />
         <ContextPanel
           workspaceId={ws.id}

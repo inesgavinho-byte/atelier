@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { NavItem, NavSection } from "@/components/shell/AppShell";
+import type { NavItem, NavSection, ShellProfile } from "@/components/shell/AppShell";
 import ThemeToggle from "@/components/shell/ThemeToggle";
+import Avatar from "@/components/profile/Avatar";
 import { workspaceColor } from "@/lib/workspace-color";
 import { logout } from "@/app/login/actions";
 
@@ -19,11 +20,13 @@ const EXPANDED_KEY = "atelier-ws-expanded";
 export default function Sidebar({
   sections,
   gated,
+  profile,
   onSearch,
   onCapture,
 }: {
   sections: NavSection[];
   gated: boolean;
+  profile?: ShellProfile;
   onSearch: () => void;
   onCapture: () => void;
 }) {
@@ -189,19 +192,31 @@ export default function Sidebar({
       </div>
 
       <div className="shell-sidebar-foot">
-        <span className="shell-user-avatar">IG</span>
-        <div className="shell-user-meta">
-          <span className="shell-user-name">Inês Gavinho</span>
-          {gated ? (
-            <form action={logout}>
-              <button type="submit" className="shell-logout">
-                Sair
-              </button>
-            </form>
-          ) : (
-            <span className="shell-user-org">ATELIER</span>
-          )}
-        </div>
+        <Link href="/settings/profile" className="shell-user-link">
+          <Avatar
+            name={profile?.displayName ?? "Inês Gavinho"}
+            avatarUrl={profile?.avatarUrl ?? null}
+            colour={profile?.personalColour}
+            initials={profile?.initials}
+            status={profile?.status}
+            size={32}
+          />
+          <div className="shell-user-meta">
+            <span className="shell-user-name">
+              {profile?.displayName ?? "Inês Gavinho"}
+            </span>
+            <span className="shell-user-org">
+              {profile?.roleTitle || "ATELIER"}
+            </span>
+          </div>
+        </Link>
+        {gated ? (
+          <form action={logout}>
+            <button type="submit" className="shell-logout" title="Sair">
+              ⏻
+            </button>
+          </form>
+        ) : null}
         <ThemeToggle />
       </div>
     </aside>
