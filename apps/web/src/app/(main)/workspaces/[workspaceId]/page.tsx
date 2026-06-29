@@ -14,6 +14,7 @@ import {
   getWorkspaceContext,
 } from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
+import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 
@@ -70,8 +71,7 @@ export default async function WorkspaceDetailPage({
       </Link>
 
       <header className="ws-header">
-        <h1 className="ws-header-title">{ws.name}</h1>
-        {ws.intent ? <p className="ws-header-intent">{ws.intent}</p> : null}
+        <WorkspaceTitle workspaceId={ws.id} name={ws.name} intent={ws.intent} />
         <div className="ws-header-meta">
           <div className="ws-header-progress">
             <Meter value={ws.progress} />

@@ -61,6 +61,68 @@ export async function renameWorkspace(
   return { ok: !error };
 }
 
+/** Slugify a name the same way the DB backfill does (accent-stripped). */
+function slugify(s: string): string {
+  return (
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "workspace"
+  );
+}
+
+/**
+ * Edit a workspace's name and intent. The slug follows the name automatically
+ * — but only while it hasn't been personalised (i.e. it still equals the old
+ * name's slug); a slug the user set by hand is left untouched. Returns the
+ * (possibly new) slug so the caller can navigate to the canonical URL.
+ */
+export async function updateWorkspace(
+  id: string,
+  input: { name: string; intent?: string }
+): Promise<{ ok: boolean; slug?: string; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const name = input.name.trim();
+  if (!name) return { ok: false, message: "Nome em falta." };
+
+  const { data: current } = await sb
+    .from("workspaces")
+    .select("name, slug")
+    .eq("id", id)
+    .maybeSingle();
+
+  const patch: Record<string, unknown> = { name, updated_at: now() };
+  if (input.intent !== undefined) patch.intent = input.intent.trim() || null;
+
+  let resultSlug = (current?.slug as string | null | undefined) ?? undefined;
+  const slugWasAuto =
+    !current?.slug || current.slug === slugify(current.name ?? "");
+  if (slugWasAuto) {
+    const base = slugify(name);
+    // Avoid colliding with another workspace's slug (partial unique index).
+    const { data: clash } = await sb
+      .from("workspaces")
+      .select("id")
+      .eq("slug", base)
+      .neq("id", id)
+      .maybeSingle();
+    const candidate = clash ? `${base}-${id.slice(0, 4)}` : base;
+    patch.slug = candidate;
+    resultSlug = candidate;
+  }
+
+  const { error } = await sb.from("workspaces").update(patch).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/workspaces");
+  revalidatePath(`/workspaces/${id}`);
+  if (resultSlug) revalidatePath(`/workspaces/${resultSlug}`);
+  return { ok: true, slug: resultSlug, message: "Workspace actualizado." };
+}
+
 export async function archiveWorkspace(id: string): Promise<{ ok: boolean }> {
   const sb = getSupabase();
   if (!sb) return { ok: false };
