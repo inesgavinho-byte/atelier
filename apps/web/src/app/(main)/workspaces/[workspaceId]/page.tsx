@@ -19,6 +19,8 @@ import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
+import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
+import { getDocuments } from "@/lib/documents";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +42,7 @@ export default async function WorkspaceDetailPage({
     canonical,
     projects,
     overview,
+    documents,
   ] = await Promise.all([
     getDecisions(),
     getPendingDecisions(),
@@ -49,6 +52,7 @@ export default async function WorkspaceDetailPage({
     getCanonicalChat(ws.id),
     getProjects(ws.id),
     getWorkspaceRepoOverview(ws.id).catch(() => null),
+    getDocuments(ws.id).catch(() => []),
   ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
@@ -117,6 +121,8 @@ export default async function WorkspaceDetailPage({
         workspaceSlug={ws.slug ?? ws.id}
         projects={projects}
       />
+
+      <DocumentsPanel workspaceId={ws.id} documents={documents} />
 
       <div className="ws-layout">
         <WorkspaceChat
