@@ -5806,15 +5806,37 @@ a.ctx-card:hover {
   font-size: 12px;
   color: var(--text-muted);
 }
+.cw-group-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
 .cw-select {
   flex: 0 0 auto;
-  max-width: 50%;
+  max-width: 220px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--text-primary);
   font-size: 13px;
+}
+.cw-autonomy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+.cw-autonomy input[type="range"] {
+  width: 120px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.cw-autonomy-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 .cw-subhead {
   font-size: 13px;
