@@ -127,13 +127,16 @@ const TILES: Record<string, Tile> = {
 };
 
 /**
- * Remote logo URLs for connectors with no bundled/official SVG (loaded by the
- * browser). Falls back to the brand tile via onError/onLoad if the host is
- * unreachable. Kept minimal — bundled logos are preferred.
+ * File-based logos for the Microsoft 365 marks (official SVGs bundled under
+ * /public/connectors, from the microsoft-cloud-icons set). Served same-origin
+ * and loaded via <img>, so they avoid the inline-SVG duplicate-id problem
+ * (Outlook is shown for both email and calendar). Falls back to the brand tile
+ * via onError/onLoad if a file is ever missing.
  */
 const REMOTE_ICONS: Record<string, string> = {
-  sharepoint:
-    "https://msicons.com/icons/sharepoint/microsoft-office-sharepoint-2025.svg",
+  "outlook-email": "/connectors/outlook.svg",
+  "outlook-calendar": "/connectors/outlook.svg",
+  sharepoint: "/connectors/sharepoint.svg",
 };
 
 function LogoIcon({ logo, size }: { logo: Logo; size: number }) {
