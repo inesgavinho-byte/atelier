@@ -18,9 +18,7 @@ import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 import WorkspaceMoreMenu from "@/components/workspaces/WorkspaceMoreMenu";
 import WorkspaceSearchPill from "@/components/workspaces/WorkspaceSearchPill";
-import MissionEngine from "@/components/workspaces/MissionEngine";
 import { getDocuments } from "@/lib/documents";
-import { getMissionState } from "@/lib/mission-engine";
 import { getSessions } from "@/lib/sessions";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
@@ -98,16 +96,6 @@ export default async function WorkspaceDetailPage({
 
   const slug = ws.slug ?? ws.id;
 
-  const mission = await getMissionState({
-    workspaceId: ws.id,
-    context,
-    decisions: wsDecisions,
-    artifacts,
-    documentCount: documents.length,
-    repoConnected: Boolean(ws.githubRepo),
-    overview,
-  });
-
   return (
     <div className="ws-page">
       {/* Compact action bar — the large workspace title now lives only in the
@@ -134,8 +122,6 @@ export default async function WorkspaceDetailPage({
         <div className="ws-actionbar-spacer" />
         <WorkspaceSearchPill />
       </div>
-
-      <MissionEngine workspaceId={ws.id} state={mission} />
 
       <div className="ws-layout">
         <WorkspaceChat
