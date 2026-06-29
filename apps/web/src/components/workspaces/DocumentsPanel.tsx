@@ -2,6 +2,15 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  IconFile,
+  IconFileText,
+  IconFileTypePdf,
+  IconFileTypeDocx,
+  IconFileTypeXls,
+  IconMarkdown,
+  IconPhoto,
+} from "@tabler/icons-react";
 import { ago } from "@/components/mission/bits";
 import {
   addDocument,
@@ -12,6 +21,20 @@ import type { WorkspaceDocument } from "@/lib/documents";
 
 /** Extensions we can read as text in the browser (Node-first pipeline). */
 const TEXT_EXT = ["txt", "md", "markdown", "csv", "json", "log", "text"];
+
+/** Small file-type glyph for the document list, keyed by extension/kind. */
+function DocTypeIcon({ kind }: { kind?: string }) {
+  const k = (kind ?? "").toLowerCase();
+  const p = { size: 15, className: "ws-docs-item-icon", stroke: 1.6 };
+  if (k === "pdf") return <IconFileTypePdf {...p} />;
+  if (k === "doc" || k === "docx") return <IconFileTypeDocx {...p} />;
+  if (k === "xls" || k === "xlsx" || k === "csv") return <IconFileTypeXls {...p} />;
+  if (k === "md" || k === "markdown") return <IconMarkdown {...p} />;
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(k))
+    return <IconPhoto {...p} />;
+  if (["txt", "json", "log", "text"].includes(k)) return <IconFileText {...p} />;
+  return <IconFile {...p} />;
+}
 
 /** Binaries above this size aren't sent inline (server-action payload limit). */
 const MAX_BINARY_BYTES = 4 * 1024 * 1024;
@@ -40,9 +63,12 @@ function toBase64(buf: ArrayBuffer): string {
 export default function DocumentsPanel({
   workspaceId,
   documents,
+  embedded = false,
 }: {
   workspaceId: string;
   documents: WorkspaceDocument[];
+  /** Rendered inside the workspace drawer: no compact bar, controls always on. */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +76,8 @@ export default function DocumentsPanel({
   const [msg, setMsg] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   // Compact by default: the dropzone + search only appear once the user opens
-  // the panel via "Carregar", so Documentos stays a single discreet line.
+  // the panel via "Carregar", so Documentos stays a single discreet line. In
+  // embedded (drawer) mode the controls are always visible.
   const [expanded, setExpanded] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -115,32 +142,35 @@ export default function DocumentsPanel({
     });
 
   const hasDocs = documents.length > 0;
+  const showControls = embedded || expanded;
 
   return (
-    <section className="ws-docs-compact">
-      {/* Discreet single-line bar */}
-      <div className="ws-docs-bar">
-        {hasDocs ? (
-          <span className="ws-docs-bar-label">
-            Documentos <span className="ws-docs-count">{documents.length}</span>
-          </span>
-        ) : (
-          <span className="ws-docs-bar-label ws-docs-bar-empty">
-            Ainda não há documentos
-          </span>
-        )}
-        <button
-          type="button"
-          className="ws-docs-load"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Fechar" : hasDocs ? "Carregar" : "Carregar →"}
-        </button>
-      </div>
+    <section className={embedded ? "ws-docs-embedded" : "ws-docs-compact"}>
+      {/* Discreet single-line bar — only in the standalone compact variant */}
+      {!embedded ? (
+        <div className="ws-docs-bar">
+          {hasDocs ? (
+            <span className="ws-docs-bar-label">
+              Documentos <span className="ws-docs-count">{documents.length}</span>
+            </span>
+          ) : (
+            <span className="ws-docs-bar-label ws-docs-bar-empty">
+              Ainda não há documentos
+            </span>
+          )}
+          <button
+            type="button"
+            className="ws-docs-load"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "Fechar" : hasDocs ? "Carregar" : "Carregar →"}
+          </button>
+        </div>
+      ) : null}
 
-      {/* Upload + search — hidden until "Carregar" */}
-      {expanded ? (
+      {/* Upload + search — always visible when embedded, else hidden until "Carregar" */}
+      {showControls ? (
         <div className="ws-docs-expand">
           <div
             className={`ws-docs-drop${dragging ? " dragging" : ""}`}
@@ -210,6 +240,7 @@ export default function DocumentsPanel({
         <ul className="ws-docs-list ws-docs-list-compact">
           {documents.map((d) => (
             <li key={d.id} className="ws-docs-item">
+              <DocTypeIcon kind={d.kind ?? extOf(d.sourceName ?? d.title)} />
               <span className="ws-docs-item-main">
                 <span className="ws-docs-item-title">{d.title}</span>
                 <span className="ws-docs-item-meta">
@@ -231,6 +262,8 @@ export default function DocumentsPanel({
             </li>
           ))}
         </ul>
+      ) : embedded ? (
+        <p className="ctx-empty">Sem documentos.</p>
       ) : null}
     </section>
   );
