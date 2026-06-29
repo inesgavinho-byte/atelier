@@ -47,13 +47,30 @@ export interface RunSessionResult extends AIRunResponse {
   routeReason: string;
 }
 
+/** The resolved execution plan for a session, before the gateway runs it. */
+export interface SessionPlan {
+  provider: ProviderId;
+  model: string | undefined;
+  temperature: number | undefined;
+  /** Full message list (system prompt prepended). */
+  messages: AIMessage[];
+  taskType: TaskType;
+  routeReason: string;
+  skillId: string | null;
+}
+
 export const runtime = {
   /** Skill id a session will use, from explicit id or work mode. */
   resolveSkillId(modeId?: string | null, skillId?: string | null): string | null {
     return skillId ?? skillIdForMode(modeId);
   },
 
-  async run(input: RunSessionInput): Promise<RunSessionResult> {
+  /**
+   * Resolve the provider, model and full message list for an input — the same
+   * routing run() uses, but without executing. Lets the streaming path share
+   * exactly one routing implementation with the blocking path.
+   */
+  plan(input: RunSessionInput): SessionPlan {
     const skillId = this.resolveSkillId(input.modeId, input.skillId);
     const bundle = skillId ? loadSkillBundle(skillId) : null;
     const system = buildSystemPrompt(
@@ -71,13 +88,10 @@ export const runtime = {
     ];
 
     // Classify the latest user turn (pure rules) and look up its ideal route.
-    const lastUser = [...input.messages]
-      .reverse()
-      .find((m) => m.role === "user");
+    const lastUser = [...input.messages].reverse().find((m) => m.role === "user");
     const taskType = classifyMessage(lastUser?.content ?? "");
     const route = ROUTING_TABLE[taskType];
 
-    // Resolve the provider + model to run with.
     let provider: ProviderId;
     let model: string | undefined;
     if (input.provider) {
@@ -95,24 +109,35 @@ export const runtime = {
         const avail = new Map(
           gateway.availability().map((a) => [a.id, a.available])
         );
-        provider =
-          FALLBACK_ORDER.find((id) => avail.get(id)) ?? "claude";
+        provider = FALLBACK_ORDER.find((id) => avail.get(id)) ?? "claude";
         model = input.model;
       }
     }
 
-    const res = await gateway.run({
+    return {
       provider,
-      messages,
       model,
       temperature: input.temperature,
-    });
-
-    return {
-      ...res,
-      skillId: bundle?.skill.id ?? null,
+      messages,
       taskType,
       routeReason: route.reason,
+      skillId: bundle?.skill.id ?? null,
+    };
+  },
+
+  async run(input: RunSessionInput): Promise<RunSessionResult> {
+    const plan = this.plan(input);
+    const res = await gateway.run({
+      provider: plan.provider,
+      messages: plan.messages,
+      model: plan.model,
+      temperature: plan.temperature,
+    });
+    return {
+      ...res,
+      skillId: plan.skillId,
+      taskType: plan.taskType,
+      routeReason: plan.routeReason,
     };
   },
 };

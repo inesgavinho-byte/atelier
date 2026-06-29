@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Markdown from "@/components/Markdown";
 import { ago } from "@/components/mission/bits";
-import { sendWorkspaceMessage } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 /**
  * WorkspaceChat — the continuous workspace conversation (ADR-0004).
@@ -88,21 +87,42 @@ export default function WorkspaceChat({
     // Reset the textarea height once cleared.
     requestAnimationFrame(resizeTextarea);
 
+    const assistantId = `assistant-${Date.now()}`;
     try {
-      const result = await sendWorkspaceMessage(workspaceId, content, projectId);
-      if (result.ok) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            content: result.text ?? "",
-            model: result.model,
-            taskType: result.taskType,
-          },
-        ]);
-      } else {
-        setError(result.error ?? "Falha ao enviar a mensagem.");
+      const res = await fetch(`/workspaces/${workspaceId}/chat-stream`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content, projectId }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        setError(txt || "Falha ao enviar a mensagem.");
+        setPending(false);
+        return;
+      }
+
+      const model = res.headers.get("x-model") ?? undefined;
+      const taskType = res.headers.get("x-task-type") ?? undefined;
+
+      // Reveal an empty assistant bubble and stop the typing dots; chunks fill it.
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: "assistant", content: "", model, taskType },
+      ]);
+      setPending(false);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        if (!text) continue;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: m.content + text } : m
+          )
+        );
       }
     } catch {
       setError("Falha ao enviar a mensagem.");

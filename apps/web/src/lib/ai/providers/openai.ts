@@ -1,7 +1,12 @@
 import "server-only";
 import type { AIProvider, AIRunRequest, AIRunResponse } from "@/lib/ai/types";
 import { providerMeta } from "@/lib/ai/types";
-import { errMessage, fetchWithTimeout, readEnv } from "@/lib/ai/providers/http";
+import {
+  errMessage,
+  fetchWithTimeout,
+  readEnv,
+  streamOpenAICompat,
+} from "@/lib/ai/providers/http";
 
 const META = providerMeta("openai")!;
 
@@ -101,7 +106,17 @@ export const openaiProvider: AIProvider = {
   },
 
   async *stream(req: AIRunRequest) {
-    const r = await this.run(req);
-    if (r.ok && r.text) yield r.text;
+    const key = readEnv("OPENAI_API_KEY");
+    if (!key) return;
+    yield* streamOpenAICompat(
+      "https://api.openai.com/v1/chat/completions",
+      key,
+      {
+        model: req.model || META.defaultModel,
+        messages: req.messages,
+        temperature: req.temperature ?? 0.7,
+        max_tokens: req.maxTokens ?? 1024,
+      }
+    );
   },
 };

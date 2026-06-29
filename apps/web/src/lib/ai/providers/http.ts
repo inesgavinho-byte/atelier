@@ -51,3 +51,91 @@ export function readEnv(...names: string[]): string | undefined {
   }
   return undefined;
 }
+
+/* ── Streaming (SSE) helpers ───────────────────────────────────────────────── */
+
+/** Read an SSE byte stream line by line, yielding each `data:` payload. */
+async function* sseData(res: Response): AsyncGenerator<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (line.startsWith("data:")) yield line.slice(5).trim();
+    }
+  }
+}
+
+/**
+ * Stream an OpenAI-compatible chat completion, yielding content deltas as they
+ * arrive (openai / perplexity / groq / deepseek all share this shape).
+ */
+export async function* streamOpenAICompat(
+  url: string,
+  key: string,
+  body: Record<string, unknown>
+): AsyncGenerator<string> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ ...body, stream: true }),
+  });
+  if (!res.ok || !res.body) return;
+  for await (const payload of sseData(res)) {
+    if (payload === "[DONE]") break;
+    try {
+      const json = JSON.parse(payload) as {
+        choices?: { delta?: { content?: string } }[];
+      };
+      const delta = json.choices?.[0]?.delta?.content;
+      if (typeof delta === "string" && delta) yield delta;
+    } catch {
+      /* keepalive / partial line — ignore */
+    }
+  }
+}
+
+/** Stream an Anthropic messages response, yielding text deltas as they arrive. */
+export async function* streamAnthropic(
+  key: string,
+  body: Record<string, unknown>
+): AsyncGenerator<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ ...body, stream: true }),
+  });
+  if (!res.ok || !res.body) return;
+  for await (const payload of sseData(res)) {
+    try {
+      const json = JSON.parse(payload) as {
+        type?: string;
+        delta?: { type?: string; text?: string };
+      };
+      if (
+        json.type === "content_block_delta" &&
+        json.delta?.type === "text_delta" &&
+        typeof json.delta.text === "string" &&
+        json.delta.text
+      ) {
+        yield json.delta.text;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+}
