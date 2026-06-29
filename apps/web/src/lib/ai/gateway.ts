@@ -79,6 +79,20 @@ export class AIGateway {
     }
     return p.run(rest);
   }
+
+  /**
+   * Stream a request against the chosen provider, yielding text deltas. Yields
+   * nothing when the provider is unknown or its credentials are missing — the
+   * caller should fall back to run() if the stream produced no text.
+   */
+  async *stream(
+    req: AIRunRequest & { provider: ProviderId }
+  ): AsyncGenerator<string> {
+    const { provider, ...rest } = req;
+    const p = this.get(provider);
+    if (!p || !p.available()) return;
+    yield* p.stream(rest);
+  }
 }
 
 /** The shared gateway instance. Register future providers here. */

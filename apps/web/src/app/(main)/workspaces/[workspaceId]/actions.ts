@@ -1,20 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
-import type { AIMessage } from "@/lib/ai/types";
 import { runtime } from "@/lib/ai-runtime/runtime";
-import { hydrateCredentialOverrides } from "@/lib/credentials-store";
-import { getArtifactsForInitiative, getDecisions } from "@/lib/mission";
 import {
-  getCanonicalChat,
-  getMessages,
-  getProject,
-  getWorkspace,
-  getWorkspaceContext,
-  type WorkspaceContext,
-} from "@/lib/workspaces";
+  prepareWorkspaceTurn,
+  persistAssistantTurn,
+} from "@/lib/workspace-chat";
 import {
   getRepoOverview,
   isValidRepo,
@@ -92,90 +84,10 @@ export async function getProjectRepoOverview(
 }
 
 /**
- * The single canonical chat for a workspace or one of its projects (compat shim
- * while workspace_chats still exists — ADR-0004 / ADR-0005 F1). Finds the
- * earliest matching chat (project-less, or scoped to projectId) or creates one.
- */
-async function ensureCanonicalChat(
-  sb: SupabaseClient,
-  workspaceId: string,
-  title: string | undefined,
-  projectId?: string
-): Promise<string | null> {
-  // Same selection the page uses, so reads and writes hit the same chat.
-  const existing = await getCanonicalChat(workspaceId, projectId);
-  if (existing) return existing.id;
-
-  const { data, error } = await sb
-    .from("workspace_chats")
-    .insert({
-      workspace_id: workspaceId,
-      project_id: projectId || null,
-      title: title || "Conversa",
-      provider: "ATELIER",
-      mode: "livre",
-    })
-    .select("id")
-    .single();
-  return error ? null : (data.id as string);
-}
-
-/**
- * Build the leading Council system prompt: persona + compressed workspace
- * memory + the workspace's live active decisions and artifacts. The Knowledge
- * Library principles still travel via the runtime's own base prompt.
- */
-function councilSystemMessage(
-  workspaceName: string | undefined,
-  ctx: WorkspaceContext | null,
-  decisions: { title: string; status: string }[],
-  artifacts: { title: string; kind: string }[],
-  project?: { name: string; ctx: WorkspaceContext | null }
-): string {
-  const place = project
-    ? `Estás no projecto ${project.name} do workspace ${workspaceName ?? "(sem nome)"}.`
-    : `Este é o workspace ${workspaceName ?? "(sem nome)"}.`;
-  const parts: string[] = [
-    `És o Council do ATELIER — o parceiro de pensamento e trabalho de Inês Gavinho. ${place}`,
-    "Responde em português europeu, com rigor e concisão. Nunca menciones a tua arquitectura interna (modos, sessões, modelos ou providers) — responde de forma natural, como uma conversa contínua que se lembra do contexto.",
-  ];
-  if (ctx?.summary.trim()) {
-    parts.push(`## Memória comprimida do workspace\n${ctx.summary.trim()}`);
-  }
-  if (project?.ctx?.summary.trim()) {
-    parts.push(
-      `## Memória comprimida do projecto ${project.name}\n${project.ctx.summary.trim()}`
-    );
-  }
-  if (decisions.length) {
-    parts.push(
-      "## Decisões activas\n" +
-        decisions.map((d) => `- ${d.title} — ${d.status}`).join("\n")
-    );
-  }
-  if (artifacts.length) {
-    parts.push(
-      "## Artefactos\n" +
-        artifacts.map((a) => `- ${a.title} (${a.kind})`).join("\n")
-    );
-  }
-  const allLessons = [
-    ...(ctx?.lessons ?? []),
-    ...(project?.ctx?.lessons ?? []),
-  ].map((l) => (typeof l === "string" ? l : JSON.stringify(l)));
-  if (allLessons.length) {
-    parts.push(
-      "## Lições aprendidas\n" + allLessons.map((l) => `- ${l}`).join("\n")
-    );
-  }
-  return parts.join("\n\n");
-}
-
-/**
- * Send a message in a workspace's continuous chat (ADR-0004). Persists the user
- * turn, builds the system prompt (ATELIER identity + compressed workspace
- * context) plus a sliding window of recent turns, runs it through the runtime
- * (the Council picks the provider — never the user), and stores the reply.
+ * Send a message in a workspace's continuous chat (ADR-0004), blocking variant.
+ * Streaming goes through the chat-stream route; this remains as a fallback and
+ * shares the exact same turn preparation + persistence (lib/workspace-chat).
+ * The Council picks the provider — never the user.
  */
 export async function sendWorkspaceMessage(
   workspaceId: string,
@@ -190,71 +102,7 @@ export async function sendWorkspaceMessage(
   taskType?: string;
   error?: string;
 }> {
-  const trimmed = content.trim();
-  if (!trimmed) return { ok: false, error: "Mensagem vazia." };
-
-  const sb = getSupabase();
-  if (!sb) return { ok: false, error: "Supabase não configurado." };
-
-  await hydrateCredentialOverrides();
-
-  const ws = await getWorkspace(workspaceId);
-  const project = projectId ? await getProject(projectId) : undefined;
-  const chatTitle = project?.name ?? ws?.name;
-  const chatId = await ensureCanonicalChat(sb, workspaceId, chatTitle, projectId);
-  if (!chatId) return { ok: false, error: "Não foi possível abrir a conversa." };
-
-  // Compressed memory (workspace-level + project-level) plus the workspace's
-  // live active decisions and artifacts.
-  const [ctx, projectCtx, allDecisions, artifacts] = await Promise.all([
-    getWorkspaceContext(workspaceId),
-    projectId ? getWorkspaceContext(workspaceId, projectId) : Promise.resolve(null),
-    getDecisions().catch(() => []),
-    getArtifactsForInitiative(workspaceId).catch(() => []),
-  ]);
-  // The project's own memory version drives the displayed context line.
-  const ctxVersion = (project ? projectCtx?.version : ctx?.version) ?? null;
-  const activeDecisions = allDecisions
-    .filter(
-      (d) =>
-        d.workspaceId === workspaceId &&
-        d.status !== "aprovada" &&
-        d.status !== "rejeitada"
-    )
-    .map((d) => ({ title: d.title, status: d.status }));
-  const artifactList = artifacts.map((a) => ({ title: a.title, kind: a.kind }));
-
-  // Persist the user turn first so it survives a failed model call.
-  await sb.from("workspace_messages").insert({
-    chat_id: chatId,
-    role: "user",
-    content: trimmed,
-    context_version: ctxVersion,
-  });
-
-  // Sliding window of recent turns (includes the message just stored).
-  const thread = (await getMessages(chatId))
-    .filter((m) => m.role === "user" || m.role === "assistant")
-    .slice(-30)
-    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
-
-  const system = councilSystemMessage(
-    ws?.name,
-    ctx,
-    activeDecisions,
-    artifactList,
-    project ? { name: project.name, ctx: projectCtx } : undefined
-  );
-  const messages: AIMessage[] = [
-    { role: "system", content: system },
-    ...thread,
-  ];
-
-  const result = await runtime.run({
-    workspaceName: ws?.name,
-    projectName: project?.name,
-    messages,
-  });
+  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId);
 
   const revalidate = () => {
     revalidatePath(`/workspaces/${workspaceId}`);
@@ -262,23 +110,30 @@ export async function sendWorkspaceMessage(
       revalidatePath(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
+  if (!prepared.ok || !prepared.chatId || !prepared.messages) {
+    return { ok: false, error: prepared.error ?? "Falha ao preparar a conversa." };
+  }
+
+  const result = await runtime.run({
+    workspaceName: prepared.workspaceName,
+    projectName: prepared.projectName,
+    messages: prepared.messages,
+  });
+
   if (!result.ok) {
     revalidate();
     return { ok: false, error: result.error ?? "Falha na execução." };
   }
 
-  await sb.from("workspace_messages").insert({
-    chat_id: chatId,
-    role: "assistant",
-    content: result.text ?? "",
+  await persistAssistantTurn(prepared.chatId, {
+    text: result.text ?? "",
     provider: result.provider,
     model: result.model,
-    task_type: result.taskType,
+    taskType: result.taskType,
     tokens: result.tokens ?? null,
-    latency_ms: result.latencyMs,
-    context_version: ctxVersion,
+    latencyMs: result.latencyMs,
+    ctxVersion: prepared.ctxVersion,
   });
-  await sb.from("workspace_chats").update({ updated_at: now() }).eq("id", chatId);
 
   revalidate();
   return {

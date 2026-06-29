@@ -1,7 +1,12 @@
 import "server-only";
 import type { AIProvider, AIRunRequest, AIRunResponse } from "@/lib/ai/types";
 import { providerMeta } from "@/lib/ai/types";
-import { errMessage, fetchWithTimeout, readEnv } from "@/lib/ai/providers/http";
+import {
+  errMessage,
+  fetchWithTimeout,
+  readEnv,
+  streamAnthropic,
+} from "@/lib/ai/providers/http";
 
 const META = providerMeta("claude")!;
 const KEYS = ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"];
@@ -120,7 +125,21 @@ export const claudeProvider: AIProvider = {
   },
 
   async *stream(req: AIRunRequest) {
-    const r = await this.run(req);
-    if (r.ok && r.text) yield r.text;
+    const key = readEnv(...KEYS);
+    if (!key) return;
+    const system = req.messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
+    const turns = req.messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role, content: m.content }));
+    yield* streamAnthropic(key, {
+      model: req.model || META.defaultModel,
+      max_tokens: req.maxTokens ?? 1024,
+      temperature: req.temperature ?? 0.7,
+      ...(system ? { system } : {}),
+      messages: turns,
+    });
   },
 };
