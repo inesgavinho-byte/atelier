@@ -7,6 +7,7 @@ import {
 import { getAllProjects } from "@/lib/workspaces";
 import { countUnreadReadings } from "@/lib/readings";
 import { countPendingSignals } from "@/lib/minions";
+import { countPendingItems } from "@/lib/conversation-watch";
 import { gateEnabled } from "@/lib/auth";
 import { getProfile } from "@/lib/profile";
 
@@ -25,16 +26,25 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives, projects, unread, pending, pendingSignals, profile] =
-    await Promise.all([
-      getSearchCorpus(),
-      getInitiatives(),
-      getAllProjects(),
-      countUnreadReadings(),
-      getPendingDecisions(),
-      countPendingSignals(),
-      getProfile(),
-    ]);
+  const [
+    corpus,
+    initiatives,
+    projects,
+    unread,
+    pending,
+    pendingSignals,
+    pendingItems,
+    profile,
+  ] = await Promise.all([
+    getSearchCorpus(),
+    getInitiatives(),
+    getAllProjects(),
+    countUnreadReadings(),
+    getPendingDecisions(),
+    countPendingSignals(),
+    countPendingItems(),
+    getProfile(),
+  ]);
 
   const pendingDecisions = pending.length;
 
@@ -97,6 +107,12 @@ export default async function MainLayout({
           href: "/decisions",
           icon: "✓",
           badge: pendingDecisions || undefined,
+        },
+        {
+          label: "Pendentes",
+          href: "/pending",
+          icon: "◷",
+          badge: pendingItems || undefined,
         },
         {
           label: "Inbox",
