@@ -8,6 +8,7 @@ import { getAllProjects } from "@/lib/workspaces";
 import { countUnreadReadings } from "@/lib/readings";
 import { countPendingSignals } from "@/lib/minions";
 import { gateEnabled } from "@/lib/auth";
+import { getProfile } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives, projects, unread, pending, pendingSignals] =
+  const [corpus, initiatives, projects, unread, pending, pendingSignals, profile] =
     await Promise.all([
       getSearchCorpus(),
       getInitiatives(),
@@ -32,6 +33,7 @@ export default async function MainLayout({
       countUnreadReadings(),
       getPendingDecisions(),
       countPendingSignals(),
+      getProfile(),
     ]);
 
   const pendingDecisions = pending.length;
@@ -116,13 +118,26 @@ export default async function MainLayout({
           icon: "◉",
           badge: pendingSignals || undefined,
         },
+        { label: "Perfil", href: "/settings/profile", icon: "☺" },
         { label: "Sistema", href: "/admin/system", icon: "⚙" },
       ],
     },
   ];
 
   return (
-    <AppShell corpus={corpus} sections={sections} gated={gateEnabled()}>
+    <AppShell
+      corpus={corpus}
+      sections={sections}
+      gated={gateEnabled()}
+      profile={{
+        displayName: profile.displayName,
+        roleTitle: profile.roleTitle,
+        avatarUrl: profile.avatarUrl,
+        initials: profile.initials,
+        personalColour: profile.personalColour,
+        status: profile.status,
+      }}
+    >
       {children}
     </AppShell>
   );

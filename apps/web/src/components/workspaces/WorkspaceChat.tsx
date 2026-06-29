@@ -8,6 +8,8 @@ import { estimateCostUSD, formatCostUSD } from "@/lib/ai/cost";
 import { isComplexQuestion } from "@/lib/ai-runtime/classifier";
 import { sendCouncilDebate } from "@/app/(main)/workspaces/[workspaceId]/actions";
 import ArtifactSaveControls from "@/components/workspaces/ArtifactSaveControls";
+import Avatar from "@/components/profile/Avatar";
+import { personalColour } from "@/lib/profile-colors";
 
 /**
  * WorkspaceChat — the continuous workspace conversation (ADR-0004).
@@ -81,6 +83,7 @@ export default function WorkspaceChat({
   contextVersion,
   contextUpdatedAt,
   artifacts = [],
+  user,
 }: {
   workspaceId: string;
   workspaceName: string;
@@ -91,6 +94,13 @@ export default function WorkspaceChat({
   contextUpdatedAt?: string | null;
   /** Existing artifacts, for the "Actualizar artefacto" picker (Bloco E). */
   artifacts?: { id: string; title: string }[];
+  /** The current operator's chat identity (avatar + colour). */
+  user?: {
+    name: string;
+    initials: string;
+    avatarUrl: string | null;
+    colour: string;
+  };
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -272,7 +282,8 @@ export default function WorkspaceChat({
               ? m.taskType === "complex"
                 ? "DECIMUS"
                 : "DECIMA"
-              : "Inês";
+              : user?.name ?? "Inês";
+            const userTint = personalColour(user?.colour).tint;
             const detail = isAssistant
               ? [
                   m.model,
@@ -287,16 +298,19 @@ export default function WorkspaceChat({
               : "";
             return (
               <div key={m.id} className={`ws-msg ${m.role}`}>
-                <div
-                  className={`ws-avatar ${isAssistant ? "ws-avatar-decimus" : "ws-avatar-ines"}`}
-                  aria-hidden
-                >
-                  {isAssistant ? (
+                {isAssistant ? (
+                  <span className="ws-avatar ws-avatar-decimus" aria-hidden>
                     <span className="ws-decima-glyph">◐</span>
-                  ) : (
-                    "IG"
-                  )}
-                </div>
+                  </span>
+                ) : (
+                  <Avatar
+                    name={user?.name ?? "Inês"}
+                    avatarUrl={user?.avatarUrl ?? null}
+                    colour={user?.colour}
+                    initials={user?.initials}
+                    size={38}
+                  />
+                )}
                 <div className="ws-msg-main">
                   <div className="ws-msg-meta">
                     <span className="ws-msg-name">{name}</span>
@@ -307,6 +321,7 @@ export default function WorkspaceChat({
                   </div>
                   <div
                     className={`ws-msg-bubble ${isAssistant ? "ws-bubble-decimus" : "ws-bubble-ines"}`}
+                    style={isAssistant ? undefined : { background: userTint }}
                   >
                   {m.role === "assistant" ? (
                     <>
