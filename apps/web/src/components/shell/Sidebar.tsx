@@ -98,6 +98,13 @@ export default function Sidebar({
       );
     }
 
+    // Tint the active workspace row with its own colour (subtle wash) instead
+    // of the generic accent, so each workspace keeps its identity.
+    const wsTint =
+      color && isActive(item)
+        ? ({ ["--ws-tint" as string]: color.tint } as React.CSSProperties)
+        : undefined;
+
     // Expandable workspace: a row (link + chevron) plus its projects.
     if (item.children?.length && item.expandKey) {
       const key = item.expandKey;
@@ -105,7 +112,12 @@ export default function Sidebar({
       const expanded = key in open ? open[key] : activeAncestor;
       return (
         <div key={item.label} className="shell-nav-group">
-          <div className={`shell-nav-item${isActive(item) ? " active" : ""}`}>
+          <div
+            className={`shell-nav-item${item.workspace ? " is-workspace" : ""}${
+              isActive(item) ? " active" : ""
+            }`}
+            style={wsTint}
+          >
             <Link href={item.href ?? "/"} className="shell-nav-item-main">
               {inner}
             </Link>
@@ -149,7 +161,10 @@ export default function Sidebar({
       <Link
         key={item.label}
         href={item.href ?? "/"}
-        className={`shell-nav-item${isActive(item) ? " active" : ""}`}
+        className={`shell-nav-item${item.workspace ? " is-workspace" : ""}${
+          isActive(item) ? " active" : ""
+        }`}
+        style={wsTint}
       >
         {inner}
       </Link>

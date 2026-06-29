@@ -22,6 +22,7 @@ export default function ImportContext({
   workspaceName,
   projects = [],
   defaultProjectId = "",
+  triggerClassName = "ws-header-chip",
 }: {
   workspaceId: string;
   workspaceName?: string;
@@ -29,6 +30,8 @@ export default function ImportContext({
   projects?: { id: string; name: string }[];
   /** Pre-select a target project (e.g. on a project page). */
   defaultProjectId?: string;
+  /** Class for the trigger button (defaults to the legacy header chip). */
+  triggerClassName?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -98,7 +101,7 @@ export default function ImportContext({
     <>
       <button
         type="button"
-        className="ws-header-chip"
+        className={triggerClassName}
         onClick={() => setOpen(true)}
       >
         Importar contexto

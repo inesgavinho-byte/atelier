@@ -58,6 +58,40 @@ export async function setMinionAutonomy(
   return { ok: true, message: `Autonomia: nível ${clamped}.` };
 }
 
+/* ── Conversation Watch (ADR-0006) ──────────────────────────────────────────── */
+
+/** Link (or unlink) a Telegram group to a workspace — routes its items there. */
+export async function setGroupWorkspace(
+  groupId: string,
+  workspaceId: string | null
+): Promise<{ ok: boolean; message: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false, message: "Service role não configurado." };
+  const { error } = await admin
+    .from("telegram_groups")
+    .update({ workspace_id: workspaceId || null })
+    .eq("id", groupId);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/minions");
+  return { ok: true, message: workspaceId ? "Grupo ligado." : "Grupo desligado." };
+}
+
+/** Resolve / dismiss a pending item from the dashboard. */
+export async function setPendingItemStatus(
+  id: string,
+  status: "resolved" | "dismissed"
+): Promise<{ ok: boolean; message: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false, message: "Service role não configurado." };
+  const { error } = await admin
+    .from("telegram_pending_items")
+    .update({ status, resolved_at: now() })
+    .eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/minions");
+  return { ok: true, message: status === "resolved" ? "Resolvido." : "Dispensado." };
+}
+
 /** Mark a signal reviewed / actioned / dismissed. */
 export async function setSignalStatus(
   id: string,

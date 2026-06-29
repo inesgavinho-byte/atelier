@@ -4,6 +4,14 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
 
 ## Documentos de visão
 
+- [`DECIMA-PHILOSOPHY-v2.md`](DECIMA-PHILOSOPHY-v2.md) — **The Philosophy of
+  Organisational Intelligence (v2)**. O **documento filosófico fundacional** da
+  DECIMA: a plataforma como _Continuity Engine_ para o juízo organizacional —
+  observar a realidade, compreender, lembrar, julgar, coordenar, executar,
+  aprender e continuar. É o **critério de avaliação de todas as decisões de
+  produto e arquitectura** (ver _The New Product Test_: cada funcionalidade tem
+  de aumentar compreensão, simplificar, melhorar o juízo, preservar
+  continuidade e reduzir carga cognitiva — caso contrário, remove-se).
 - [`DECIMA-PERSONAL-DECIMIN-v2.md`](DECIMA-PERSONAL-DECIMIN-v2.md) — **Personal
   Decimin (v2)**. A **versão mais recente** da visão do Personal Decimin — o
   _Chief of Staff_ pessoal que mantém continuidade cognitiva (modos internos,
@@ -26,6 +34,13 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
   ficheiros descartáveis, mantém **Living Artifacts** (objectos permanentes que
   evoluem por revisões), com integração Google Workspace, *templates*,
   *canonical Markdown* e o pipeline de ingestão.
+- [`DECIMA-PERSONAL-DECIMIN.md`](DECIMA-PERSONAL-DECIMIN.md) — **Personal Decimin
+  & Conversation Watch**. O companheiro cognitivo pessoal: organiza, pensa,
+  prepara, acompanha e faz *follow-up*, garantindo que nada de importante
+  desaparece entre conversas, grupos e canais. O **Conversation Watch** (grupos
+  de Telegram como primeiro canal) detecta pedidos, compromissos, ficheiros
+  prometidos e perguntas sem resposta, e encaminha sinais para o Space certo.
+  Formalizado em [`../060-decisions/ADR-0006-personal-decimin-conversation-watch.md`](../060-decisions/ADR-0006-personal-decimin-conversation-watch.md).
 
 A **v2** é a visão fundacional actual.
 

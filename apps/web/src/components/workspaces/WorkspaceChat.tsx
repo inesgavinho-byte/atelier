@@ -19,6 +19,7 @@ import { sendCouncilDebate } from "@/app/(main)/workspaces/[workspaceId]/actions
 
 type NextStep = { action: string; why: string; effort: "S" | "M" | "L" };
 type Perspective = { provider: string; label: string; model: string; text: string };
+type DocSource = { documentId: string; documentTitle: string };
 
 type ChatMessage = {
   id: string;
@@ -28,6 +29,7 @@ type ChatMessage = {
   taskType?: string;
   tokens?: number | null;
   citations?: string[];
+  sources?: DocSource[];
   steps?: NextStep[];
   debate?: Perspective[];
 };
@@ -45,7 +47,7 @@ const TASK_LABELS: Record<string, string> = {
   summary: "resumo",
   reasoning: "análise",
   general: "geral",
-  complex: "debate",
+  complex: "profundo",
 };
 
 function hostOf(url: string): string {
@@ -152,6 +154,7 @@ export default function WorkspaceChat({
             model?: string;
             taskType?: string;
             citations?: string[];
+            sources?: DocSource[];
             steps?: NextStep[];
           };
           setMessages((prev) =>
@@ -164,6 +167,7 @@ export default function WorkspaceChat({
                     model: meta.model ?? m.model,
                     taskType: meta.taskType ?? m.taskType,
                     citations: meta.citations ?? [],
+                    sources: meta.sources ?? [],
                     steps: meta.steps ?? [],
                   }
                 : m
@@ -207,13 +211,14 @@ export default function WorkspaceChat({
             model: r.model,
             taskType: "complex",
             debate: r.perspectives ?? [],
+            sources: r.sources ?? [],
           },
         ]);
       } else {
-        setError(r.error ?? "Falha no Council completo.");
+        setError(r.error ?? "Falha no DECIMUS.");
       }
     } catch {
-      setError("Falha no Council completo.");
+      setError("Falha no DECIMUS.");
     } finally {
       setPending(false);
       router.refresh();
@@ -252,7 +257,8 @@ export default function WorkspaceChat({
                       <div className="ws-msg-head">
                         <span className="ws-dot-council" />
                         <span>
-                          Council{m.model ? ` · ${m.model}` : ""}
+                          {m.taskType === "complex" ? "DECIMUS" : "DECIMA"}
+                          {m.model ? ` · ${m.model}` : ""}
                           {m.taskType && TASK_LABELS[m.taskType]
                             ? ` · ${TASK_LABELS[m.taskType]}`
                             : ""}
@@ -298,6 +304,23 @@ export default function WorkspaceChat({
                         </details>
                       ) : null}
 
+                      {m.sources && m.sources.length > 0 ? (
+                        <details className="ws-sources ws-docsources">
+                          <summary>
+                            Documentos consultados ({m.sources.length})
+                          </summary>
+                          <ul>
+                            {m.sources.map((s) => (
+                              <li key={s.documentId}>
+                                <span className="ws-source-host">
+                                  {s.documentTitle}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+
                       {m.steps && m.steps.length > 0 ? (
                         <div className="ws-steps">
                           <p className="ws-steps-title">Próximos passos</p>
@@ -336,7 +359,7 @@ export default function WorkspaceChat({
             <div className="ws-msg-bubble">
               <div className="ws-msg-head">
                 <span className="ws-dot-council" />
-                <span>Council</span>
+                <span>DECIMA</span>
               </div>
               <div className="ws-typing" aria-label="a pensar">
                 <span />
@@ -373,12 +396,12 @@ export default function WorkspaceChat({
           />
           <button
             type="button"
-            className={`ws-debate-btn${suggestDebate ? " suggest" : ""}`}
+            className={`ws-decimus${suggestDebate ? " suggest" : ""}`}
             onClick={() => void debate()}
             disabled={!canSend}
-            title="Council completo — várias IAs debatem e sintetizam"
+            title="DECIMUS — juízo profundo do workspace"
           >
-            ⚖︎ Council completo
+            DECIMUS
           </button>
           <button
             type="button"
@@ -392,7 +415,7 @@ export default function WorkspaceChat({
         </div>
         {suggestDebate ? (
           <p className="ws-debate-hint">
-            Pergunta com vários ângulos — experimenta o Council completo.
+            Pergunta com vários ângulos — experimenta o DECIMUS.
           </p>
         ) : null}
       </div>
