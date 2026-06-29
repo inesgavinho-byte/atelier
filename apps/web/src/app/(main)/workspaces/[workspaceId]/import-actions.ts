@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
 import {
-  extractContext,
+  extractContextDetailed,
   toTranscript,
   IMPORT_SOURCES,
   type ImportSource,
@@ -59,7 +59,8 @@ export async function importContext(input: {
   }
 
   await hydrateCredentialOverrides();
-  const extracted = await extractContext(transcript);
+  const outcome = await extractContextDetailed(transcript);
+  const extracted = outcome.ok ? outcome.data : null;
 
   // Always store the raw import; mark processed only when extraction succeeded.
   const { error: insErr } = await admin.from("context_imports").insert({
@@ -72,10 +73,11 @@ export async function importContext(input: {
   if (insErr) return { ok: false, message: `Falha ao guardar: ${insErr.message}` };
 
   if (!extracted) {
+    // Surface the real reason (no provider vs. provider call failed) instead of
+    // a blanket message, so the fix is obvious.
     return {
       ok: true,
-      message:
-        "Importado, mas não processado — nenhum provider de IA disponível. Configura uma chave em Ecossistema.",
+      message: `Importado, mas não processado — ${outcome.ok ? "sem dados" : outcome.reason}`,
     };
   }
 
