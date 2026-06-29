@@ -12,11 +12,8 @@ import {
   disconnectConnector,
   testConnector,
 } from "@/app/(main)/ecosystem/actions";
-import StatusBadge from "@/components/ecosystem/StatusBadge";
 import ConnectorDrawer from "@/components/ecosystem/ConnectorDrawer";
 import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
-
-const SESSION_PROVIDERS = new Set(["openai", "claude", "perplexity"]);
 
 interface Runtime {
   status: ConnectorStatus;
@@ -24,6 +21,26 @@ interface Runtime {
   lastChecked?: string;
   testing: boolean;
 }
+
+/** status → state-dot class (the text badges were retired in the compact UI). */
+const DOT: Record<ConnectorStatus, string> = {
+  Ligado: "eco-dot-green",
+  "Credenciais em falta": "eco-dot-amber",
+  "Requer OAuth": "eco-dot-oauth",
+  Erro: "eco-dot-red",
+  "Em teste": "eco-dot-testing",
+  "Não ligado": "eco-dot-grey",
+};
+
+/** Accessible label for the dot (the only status cue on the card). */
+const DOT_LABEL: Record<ConnectorStatus, string> = {
+  Ligado: "Ligado",
+  "Credenciais em falta": "Credenciais em falta",
+  "Requer OAuth": "Requer OAuth",
+  Erro: "Erro",
+  "Em teste": "A testar",
+  "Não ligado": "Não configurado",
+};
 
 export default function EcosystemBoard({
   connectors,
@@ -49,12 +66,10 @@ export default function EcosystemBoard({
   );
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"Todas" | ConnectorCategory>("Todas");
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const runTest = (id: string) => {
-    setOpenMenu(null);
     setRuntime((prev) => ({
       ...prev,
       [id]: { ...prev[id], testing: true, status: "Em teste" },
@@ -74,7 +89,6 @@ export default function EcosystemBoard({
   };
 
   const runDisconnect = (id: string) => {
-    setOpenMenu(null);
     setRuntime((prev) => ({
       ...prev,
       [id]: { ...prev[id], testing: true, status: "Em teste" },
@@ -106,7 +120,6 @@ export default function EcosystemBoard({
     });
   }, [connectors, query, tab]);
 
-  // Group filtered connectors by category, preserving the canonical order.
   const sections = CATEGORY_ORDER.map((cat) => ({
     category: cat,
     items: filtered.filter((c) => c.category === cat),
@@ -114,111 +127,50 @@ export default function EcosystemBoard({
 
   const drawer = connectors.find((c) => c.id === drawerId) ?? null;
 
-  const renderCard = (c: ConnectorView) => {
-    const rt = runtime[c.id];
-    const usable = SESSION_PROVIDERS.has(c.id);
+  // A single compact row: icon + name + short description + state dot. The
+  // whole row is the hit target — clicking opens the drawer (or navigates,
+  // for tool connectors that declare an href).
+  const renderRow = (c: ConnectorView) => {
+    const status = runtime[c.id].status;
+    const dot = (
+      <span
+        className={`eco-dot ${DOT[status] ?? "eco-dot-grey"}`}
+        title={DOT_LABEL[status] ?? "Não configurado"}
+        aria-label={DOT_LABEL[status] ?? "Não configurado"}
+        role="img"
+      />
+    );
+    const inner = (
+      <>
+        <span className="eco-row-icon">
+          <ConnectorIcon connectorId={c.id} name={c.name} size={28} />
+        </span>
+        <span className="eco-row-body">
+          <span className="eco-row-name">{c.name}</span>
+          <span className="eco-row-desc">{c.description}</span>
+        </span>
+        {dot}
+      </>
+    );
+
+    if (c.href) {
+      return (
+        <Link key={c.id} href={c.href} className="connector-card eco-row">
+          {inner}
+        </Link>
+      );
+    }
     return (
-      <div key={c.id} className="connector-card">
-        <div>
-          <div className="connector-card-top">
-            <span className="connector-logo">
-              <ConnectorIcon connectorId={c.id} name={c.name} size={32} />
-            </span>
-            <StatusBadge status={rt.status} />
-          </div>
-          <h3 className="connector-name">{c.name}</h3>
-          <p className="connector-description">{c.description}</p>
-
-          {c.usedIn?.length ? (
-            <div className="connector-used">
-              <div className="connector-used-label">Usado em</div>
-              <div className="connector-tags">
-                {c.usedIn.map((u) => (
-                  <span key={u} className="connector-tag">
-                    {u}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {c.metric ? <div className="connector-metric">{c.metric}</div> : null}
-        </div>
-
-        <div className="connector-actions">
-          {c.href ? (
-            <Link href={c.href} className="connector-button primary">
-              Abrir
-            </Link>
-          ) : usable ? (
-            <Link href="/workspaces" className="connector-button primary">
-              Usar
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="connector-button primary"
-              onClick={() => setDrawerId(c.id)}
-            >
-              Usar
-            </button>
-          )}
-          <button
-            type="button"
-            className="connector-button"
-            onClick={() => setDrawerId(c.id)}
-          >
-            Configurar
-          </button>
-          <button
-            type="button"
-            className="connector-more"
-            aria-label="Mais opções"
-            onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
-          >
-            ⋯
-            {openMenu === c.id ? (
-              <span className="connector-menu">
-                <button type="button" onClick={() => setDrawerId(c.id)}>
-                  Detalhes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runTest(c.id)}
-                  disabled={c.auth === "oauth"}
-                  title={c.auth === "oauth" ? "Requer OAuth" : undefined}
-                >
-                  Testar ligação
-                </button>
-                <button type="button" onClick={() => runDisconnect(c.id)}>
-                  Desligar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    setDrawerId(c.id);
-                  }}
-                >
-                  Ver logs
-                </button>
-              </span>
-            ) : null}
-          </button>
-        </div>
-      </div>
+      <button
+        key={c.id}
+        type="button"
+        className="connector-card eco-row"
+        onClick={() => setDrawerId(c.id)}
+      >
+        {inner}
+      </button>
     );
   };
-
-  const addCard = (
-    <div className="connector-add-card" key="__add">
-      <div>
-        <div className="connector-add-plus">+</div>
-        <div className="connector-add-title">Adicionar ferramenta</div>
-        <div className="connector-add-subtitle">Mais integrações em breve</div>
-      </div>
-    </div>
-  );
 
   return (
     <div>
@@ -248,13 +200,10 @@ export default function EcosystemBoard({
       {sections.length === 0 ? (
         <p className="meta italic">Nenhuma ferramenta corresponde à pesquisa.</p>
       ) : (
-        sections.map((s, idx) => (
+        sections.map((s) => (
           <section key={s.category} className="ecosystem-section">
             <h2 className="ecosystem-section-title">{s.category}</h2>
-            <div className="connector-grid">
-              {s.items.map(renderCard)}
-              {idx === sections.length - 1 ? addCard : null}
-            </div>
+            <div className="connector-grid">{s.items.map(renderRow)}</div>
           </section>
         ))
       )}
