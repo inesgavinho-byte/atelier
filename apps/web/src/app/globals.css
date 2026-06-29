@@ -5081,3 +5081,93 @@ a.ctx-card:hover {
   gap: 10px;
   margin: 8px 0 4px;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Timeline (ADR-0005 F2). Theme-aware (semantic tokens).
+ * ────────────────────────────────────────────────────────────────────────── */
+.tl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 20px;
+}
+.tl-pill {
+  height: 28px;
+  padding: 0 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.tl-pill:hover {
+  border-color: var(--text-muted);
+}
+.tl-pill.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.tl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--border);
+}
+.tl-row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 0 0 18px 18px;
+}
+.tl-dot {
+  position: absolute;
+  left: -5px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  border: 2px solid var(--bg);
+}
+.tl-dot-decision {
+  background: rgba(255, 180, 50, 0.95);
+}
+.tl-dot-artifact {
+  background: rgba(120, 100, 255, 0.8);
+}
+.tl-dot-chat {
+  background: var(--teal);
+}
+.tl-dot-reading {
+  background: var(--accent);
+}
+.tl-dot-pr,
+.tl-dot-commit,
+.tl-dot-deploy {
+  background: rgba(40, 170, 110, 0.85);
+}
+.tl-body {
+  min-width: 0;
+}
+.tl-title {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.tl-meta {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.tl-kind {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.tl-extra {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
