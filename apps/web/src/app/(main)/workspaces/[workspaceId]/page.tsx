@@ -98,6 +98,12 @@ export default async function WorkspaceDetailPage({
             {pendingCount}{" "}
             {pendingCount === 1 ? "decisão pendente" : "decisões pendentes"}
           </Link>
+          <Link
+            href={`/workspaces/${ws.slug ?? ws.id}/timeline`}
+            className="ws-header-chip"
+          >
+            Timeline
+          </Link>
           <ImportContext
             workspaceId={ws.id}
             workspaceName={ws.name}
