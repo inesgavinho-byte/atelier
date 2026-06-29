@@ -3473,6 +3473,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Document sources (RAG, item 19) reuse .ws-sources; titles aren't links. */
+.ws-docsources li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-docsources li::before {
+  content: "▪";
+  color: var(--text-muted);
+}
 
 /* Próximos passos — clickable, ROI-ordered */
 .ws-steps {

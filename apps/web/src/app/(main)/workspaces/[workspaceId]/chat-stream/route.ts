@@ -48,6 +48,7 @@ export async function POST(
 
   const chatId = prepared.chatId;
   const ctxVersion = prepared.ctxVersion ?? null;
+  const sources = prepared.sources ?? [];
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -105,7 +106,10 @@ export async function POST(
             tokens: meta.tokens ?? null,
             latencyMs: Date.now() - t0,
             ctxVersion,
-            metadata: citations.length ? { citations } : {},
+            metadata: {
+              ...(citations.length ? { citations } : {}),
+              ...(sources.length ? { sources } : {}),
+            },
           });
 
           let steps: unknown[] = [];
@@ -117,9 +121,10 @@ export async function POST(
           } catch {
             /* next-steps is best-effort */
           }
-          if (messageId && (steps.length || citations.length)) {
+          if (messageId && (steps.length || citations.length || sources.length)) {
             await updateMessageMetadata(messageId, {
               ...(citations.length ? { citations } : {}),
+              ...(sources.length ? { sources } : {}),
               ...(steps.length ? { steps } : {}),
             });
           }
@@ -134,6 +139,7 @@ export async function POST(
                   model: plan.model ?? plan.provider,
                   taskType: plan.taskType,
                   citations,
+                  sources,
                   steps,
                 })
             )
