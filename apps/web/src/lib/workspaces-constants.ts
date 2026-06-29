@@ -64,5 +64,7 @@ export interface WorkspaceMessage {
   taskType?: string;
   tokens?: number;
   latencyMs?: number;
+  /** Council enrichments: { citations?: string[], steps?: NextStep[] }. */
+  metadata?: Record<string, unknown>;
   createdAt: string;
 }

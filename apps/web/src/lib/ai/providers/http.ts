@@ -1,4 +1,5 @@
 import "server-only";
+import type { StreamMeta } from "@/lib/ai/types";
 
 /**
  * Shared HTTP helpers for AI providers (server-only). One place for the fetch
@@ -75,12 +76,15 @@ async function* sseData(res: Response): AsyncGenerator<string> {
 
 /**
  * Stream an OpenAI-compatible chat completion, yielding content deltas as they
- * arrive (openai / perplexity / groq / deepseek all share this shape).
+ * arrive (openai / perplexity / groq / deepseek all share this shape). When
+ * present, usage and Perplexity citations are reported via onMeta after the
+ * stream ends.
  */
 export async function* streamOpenAICompat(
   url: string,
   key: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  onMeta?: (meta: StreamMeta) => void
 ): AsyncGenerator<string> {
   const res = await fetch(url, {
     method: "POST",
@@ -91,24 +95,36 @@ export async function* streamOpenAICompat(
     body: JSON.stringify({ ...body, stream: true }),
   });
   if (!res.ok || !res.body) return;
+  let tokens: number | null = null;
+  let citations: string[] | undefined;
   for await (const payload of sseData(res)) {
     if (payload === "[DONE]") break;
     try {
       const json = JSON.parse(payload) as {
         choices?: { delta?: { content?: string } }[];
+        usage?: { total_tokens?: number };
+        citations?: unknown[];
       };
+      if (Array.isArray(json.citations)) {
+        citations = json.citations.filter(
+          (c): c is string => typeof c === "string"
+        );
+      }
+      if (json.usage?.total_tokens) tokens = json.usage.total_tokens;
       const delta = json.choices?.[0]?.delta?.content;
       if (typeof delta === "string" && delta) yield delta;
     } catch {
       /* keepalive / partial line — ignore */
     }
   }
+  if (onMeta && (tokens != null || citations)) onMeta({ tokens, citations });
 }
 
 /** Stream an Anthropic messages response, yielding text deltas as they arrive. */
 export async function* streamAnthropic(
   key: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  onMeta?: (meta: StreamMeta) => void
 ): AsyncGenerator<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -120,12 +136,20 @@ export async function* streamAnthropic(
     body: JSON.stringify({ ...body, stream: true }),
   });
   if (!res.ok || !res.body) return;
+  let input = 0;
+  let output = 0;
   for await (const payload of sseData(res)) {
     try {
       const json = JSON.parse(payload) as {
         type?: string;
         delta?: { type?: string; text?: string };
+        message?: { usage?: { input_tokens?: number } };
+        usage?: { output_tokens?: number };
       };
+      if (json.type === "message_start" && json.message?.usage?.input_tokens) {
+        input = json.message.usage.input_tokens;
+      }
+      if (json.usage?.output_tokens) output = json.usage.output_tokens;
       if (
         json.type === "content_block_delta" &&
         json.delta?.type === "text_delta" &&
@@ -138,4 +162,5 @@ export async function* streamAnthropic(
       /* ignore */
     }
   }
+  if (onMeta) onMeta({ tokens: input + output || null });
 }

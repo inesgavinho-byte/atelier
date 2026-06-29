@@ -13,6 +13,7 @@ export type TaskType =
   | "code"
   | "writing"
   | "planning"
+  | "brainstorming"
   | "summary"
   | "reasoning"
   | "general";
@@ -80,6 +81,26 @@ const RULES: { type: Exclude<TaskType, "general">; cues: string[] }[] = [
       "plan",
       "strategy",
       "next steps",
+    ],
+  },
+  {
+    type: "brainstorming",
+    cues: [
+      "brainstorm",
+      "ideias",
+      "ideas",
+      "imagina",
+      "e se",
+      "what if",
+      "possibilidades",
+      "possibilities",
+      "opções",
+      "options",
+      "alternativas",
+      "criativo",
+      "criatividade",
+      "creative",
+      "explora",
     ],
   },
   {

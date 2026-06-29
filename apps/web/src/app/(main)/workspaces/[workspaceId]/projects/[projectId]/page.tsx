@@ -64,6 +64,9 @@ export default async function ProjectDetailPage({
       content: m.content,
       model: m.model,
       taskType: m.taskType,
+      tokens: m.tokens ?? null,
+      citations: (m.metadata?.citations as string[]) ?? [],
+      steps: (m.metadata?.steps as { action: string; why: string; effort: "S" | "M" | "L" }[]) ?? [],
     }));
 
   return (

@@ -37,6 +37,13 @@ export interface AIRunResponse {
   error?: string;
 }
 
+/** Side-channel metadata captured during a stream (not part of the text). */
+export interface StreamMeta {
+  tokens?: number | null;
+  /** Source URLs (Perplexity citations). */
+  citations?: string[];
+}
+
 /** The single contract every provider — present and future — must satisfy. */
 export interface AIProvider {
   id: ProviderId;
@@ -55,8 +62,11 @@ export interface AIProvider {
   models(): Promise<string[]>;
   /** Execute one request and return a normalized response. */
   run(req: AIRunRequest): Promise<AIRunResponse>;
-  /** Stream the response. Default providers yield the final text once. */
-  stream(req: AIRunRequest): AsyncGenerator<string, void, unknown>;
+  /** Stream the response, yielding text deltas; onMeta reports usage/citations. */
+  stream(
+    req: AIRunRequest,
+    onMeta?: (meta: StreamMeta) => void
+  ): AsyncGenerator<string, void, unknown>;
 }
 
 /* ── Client-safe provider metadata (for the chat UI) ──────────────────────── */

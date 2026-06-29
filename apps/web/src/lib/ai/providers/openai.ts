@@ -105,7 +105,7 @@ export const openaiProvider: AIProvider = {
     }
   },
 
-  async *stream(req: AIRunRequest) {
+  async *stream(req: AIRunRequest, onMeta) {
     const key = readEnv("OPENAI_API_KEY");
     if (!key) return;
     yield* streamOpenAICompat(
@@ -116,7 +116,9 @@ export const openaiProvider: AIProvider = {
         messages: req.messages,
         temperature: req.temperature ?? 0.7,
         max_tokens: req.maxTokens ?? 1024,
-      }
+        stream_options: { include_usage: true },
+      },
+      onMeta
     );
   },
 };

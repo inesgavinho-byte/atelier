@@ -92,7 +92,7 @@ export const perplexityProvider: AIProvider = {
     }
   },
 
-  async *stream(req: AIRunRequest) {
+  async *stream(req: AIRunRequest, onMeta) {
     const key = readEnv("PERPLEXITY_API_KEY");
     if (!key) return;
     yield* streamOpenAICompat(
@@ -103,7 +103,8 @@ export const perplexityProvider: AIProvider = {
         messages: req.messages,
         temperature: req.temperature ?? 0.7,
         max_tokens: req.maxTokens ?? 1024,
-      }
+      },
+      onMeta
     );
   },
 };

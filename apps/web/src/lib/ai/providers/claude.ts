@@ -124,7 +124,7 @@ export const claudeProvider: AIProvider = {
     }
   },
 
-  async *stream(req: AIRunRequest) {
+  async *stream(req: AIRunRequest, onMeta) {
     const key = readEnv(...KEYS);
     if (!key) return;
     const system = req.messages
@@ -134,12 +134,16 @@ export const claudeProvider: AIProvider = {
     const turns = req.messages
       .filter((m) => m.role !== "system")
       .map((m) => ({ role: m.role, content: m.content }));
-    yield* streamAnthropic(key, {
-      model: req.model || META.defaultModel,
-      max_tokens: req.maxTokens ?? 1024,
-      temperature: req.temperature ?? 0.7,
-      ...(system ? { system } : {}),
-      messages: turns,
-    });
+    yield* streamAnthropic(
+      key,
+      {
+        model: req.model || META.defaultModel,
+        max_tokens: req.maxTokens ?? 1024,
+        temperature: req.temperature ?? 0.7,
+        ...(system ? { system } : {}),
+        messages: turns,
+      },
+      onMeta
+    );
   },
 };

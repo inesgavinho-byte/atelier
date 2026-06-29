@@ -4,6 +4,7 @@ import type {
   AIRunRequest,
   AIRunResponse,
   ProviderId,
+  StreamMeta,
 } from "@/lib/ai/types";
 import { openaiProvider } from "@/lib/ai/providers/openai";
 import { claudeProvider } from "@/lib/ai/providers/claude";
@@ -86,12 +87,13 @@ export class AIGateway {
    * caller should fall back to run() if the stream produced no text.
    */
   async *stream(
-    req: AIRunRequest & { provider: ProviderId }
+    req: AIRunRequest & { provider: ProviderId },
+    onMeta?: (meta: StreamMeta) => void
   ): AsyncGenerator<string> {
     const { provider, ...rest } = req;
     const p = this.get(provider);
     if (!p || !p.available()) return;
-    yield* p.stream(rest);
+    yield* p.stream(rest, onMeta);
   }
 }
 

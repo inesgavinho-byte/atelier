@@ -3,7 +3,10 @@ import { runtime as aiRuntime } from "@/lib/ai-runtime/runtime";
 import {
   prepareWorkspaceTurn,
   persistAssistantTurn,
+  updateMessageMetadata,
 } from "@/lib/workspace-chat";
+import { suggestNextSteps } from "@/lib/ai/next-steps";
+import type { StreamMeta } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,14 +53,20 @@ export async function POST(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let full = "";
+      let meta: StreamMeta = {};
       const t0 = Date.now();
       try {
-        for await (const chunk of gateway.stream({
-          provider: plan.provider,
-          messages: plan.messages,
-          model: plan.model,
-          temperature: plan.temperature,
-        })) {
+        for await (const chunk of gateway.stream(
+          {
+            provider: plan.provider,
+            messages: plan.messages,
+            model: plan.model,
+            temperature: plan.temperature,
+          },
+          (m) => {
+            meta = m;
+          }
+        )) {
           full += chunk;
           controller.enqueue(encoder.encode(chunk));
         }
@@ -72,6 +81,7 @@ export async function POST(
           });
           if (res.ok && res.text) {
             full = res.text;
+            if (res.tokens != null) meta = { ...meta, tokens: res.tokens };
             controller.enqueue(encoder.encode(res.text));
           } else {
             const msg = `\n[O provider ${plan.provider} não respondeu: ${res.error ?? "erro"}]`;
@@ -82,16 +92,52 @@ export async function POST(
         const msg = e instanceof Error ? e.message : String(e);
         controller.enqueue(encoder.encode(`\n[Erro: ${msg}]`));
       } finally {
-        // Persist the assistant turn only when we produced real text.
+        // Persist the assistant turn only when we produced real text, then
+        // enrich it (citations + a cheap "next steps" pass) before closing.
         if (full.trim()) {
-          await persistAssistantTurn(chatId, {
+          const citations =
+            plan.provider === "perplexity" ? (meta.citations ?? []) : [];
+          const messageId = await persistAssistantTurn(chatId, {
             text: full,
             provider: plan.provider,
             model: plan.model ?? plan.provider,
             taskType: plan.taskType,
+            tokens: meta.tokens ?? null,
             latencyMs: Date.now() - t0,
             ctxVersion,
+            metadata: citations.length ? { citations } : {},
           });
+
+          let steps: unknown[] = [];
+          try {
+            steps = await suggestNextSteps([
+              ...plan.messages,
+              { role: "assistant", content: full },
+            ]);
+          } catch {
+            /* next-steps is best-effort */
+          }
+          if (messageId && (steps.length || citations.length)) {
+            await updateMessageMetadata(messageId, {
+              ...(citations.length ? { citations } : {}),
+              ...(steps.length ? { steps } : {}),
+            });
+          }
+
+          // Tell the client about the enrichments in one trailing line so the
+          // message can show tokens/sources/next-steps without a round-trip.
+          controller.enqueue(
+            encoder.encode(
+              "\n[[ATELIER_META]]" +
+                JSON.stringify({
+                  tokens: meta.tokens ?? null,
+                  model: plan.model ?? plan.provider,
+                  taskType: plan.taskType,
+                  citations,
+                  steps,
+                })
+            )
+          );
         }
         controller.close();
       }
