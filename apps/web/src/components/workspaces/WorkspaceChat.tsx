@@ -283,7 +283,7 @@ export default function WorkspaceChat({
                 ? "DECIMUS"
                 : "DECIMA"
               : user?.name ?? "Inês";
-            const userTint = personalColour(user?.colour).tint;
+            const userAccent = personalColour(user?.colour).solid;
             const detail = isAssistant
               ? [
                   m.model,
@@ -300,7 +300,7 @@ export default function WorkspaceChat({
               <div key={m.id} className={`ws-msg ${m.role}`}>
                 {isAssistant ? (
                   <span className="ws-avatar ws-avatar-decimus" aria-hidden>
-                    <span className="ws-decima-glyph">◐</span>
+                    <span className="ws-decima-glyph">◆</span>
                   </span>
                 ) : (
                   <Avatar
@@ -321,7 +321,7 @@ export default function WorkspaceChat({
                   </div>
                   <div
                     className={`ws-msg-bubble ${isAssistant ? "ws-bubble-decimus" : "ws-bubble-ines"}`}
-                    style={isAssistant ? undefined : { background: userTint }}
+                    style={isAssistant ? undefined : { borderLeftColor: userAccent }}
                   >
                   {m.role === "assistant" ? (
                     <>
@@ -424,7 +424,7 @@ export default function WorkspaceChat({
         {pending ? (
           <div className="ws-msg assistant">
             <div className="ws-avatar ws-avatar-decimus" aria-hidden>
-              <span className="ws-decima-glyph">◐</span>
+              <span className="ws-decima-glyph">◆</span>
             </div>
             <div className="ws-msg-main">
               <div className="ws-msg-meta">

@@ -281,17 +281,21 @@
  * reading surfaces (/atelier, /knowledge) or the control room (/admin/system).
  */
 :root {
-  /* ── visionOS / macOS semantic theme tokens — LIGHT (default) ─────────── */
-  --bg: #f5f4f0;
-  --bg-sidebar: rgba(255, 255, 255, 0.85);
-  --panel: rgba(255, 255, 255, 0.7);
-  --panel-strong: rgba(255, 255, 255, 0.85);
-  --surface-card: rgba(10, 10, 15, 0.035);
-  --text: rgba(10, 10, 15, 0.92);
-  --text-secondary: rgba(10, 10, 15, 0.5);
-  --text-muted: rgba(10, 10, 15, 0.35);
-  --border: rgba(0, 0, 0, 0.08);
-  --divider: rgba(0, 0, 0, 0.06);
+  /* ── DECIMA Workspace UI Spec v1.0 — LIGHT (default) ──────────────────────
+     Warm ivory page, near-white surfaces, an always-black sidebar and a
+     warm-grey divider / secondary text. Never pure white. ─────────────────── */
+  --bg: #f7f4ef; /* warm ivory page */
+  --bg-page: #f7f4ef;
+  --bg-surface: #fcfbf8; /* cards, composer, drawer */
+  --bg-sidebar: #0d0d0d; /* almost black, not grey */
+  --panel: #fcfbf8;
+  --panel-strong: #fcfbf8;
+  --surface-card: rgba(23, 23, 23, 0.04);
+  --text: #171717;
+  --text-secondary: #77736b;
+  --text-muted: rgba(23, 23, 23, 0.34);
+  --border: #e8e3da;
+  --divider: #e8e3da;
   --accent: rgba(80, 60, 220, 1);
   --accent-soft: rgba(80, 60, 220, 0.12);
   --accent-text: #ffffff;
@@ -335,6 +339,8 @@
 
 [data-theme="dark"] {
   --bg: #0a0a0f;
+  --bg-page: #0a0a0f;
+  --bg-surface: rgba(255, 255, 255, 0.05);
   --bg-sidebar: rgba(18, 18, 28, 0.92);
   --panel: rgba(255, 255, 255, 0.04);
   --panel-strong: rgba(255, 255, 255, 0.06);
@@ -2598,9 +2604,22 @@
   flex-direction: column;
   padding: 22px 16px 18px;
   background: var(--bg-sidebar);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border-right: 0.5px solid var(--border);
+  border-right: 0.5px solid rgba(255, 255, 255, 0.08);
+  /* The sidebar is always near-black — re-scope the semantic tokens to light
+     so every child (nav, icons, dividers) reads correctly regardless of the
+     app theme. */
+  --text: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.56);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --border: rgba(255, 255, 255, 0.1);
+  --divider: rgba(255, 255, 255, 0.1);
+  --surface-card: rgba(255, 255, 255, 0.06);
+  --panel: rgba(255, 255, 255, 0.06);
+}
+/* Generic active row (non-workspace) — very subtle white wash, not accent. */
+.shell-sidebar .shell-nav-item.active:not(.is-workspace) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .shell-logo {
@@ -3571,14 +3590,10 @@
   color: var(--text-muted);
 }
 
-/* Per-participant message colours (subtle, premium — never bright). */
+/* Per-participant identity accents — the thin 3px bar. Soft, never bright. */
 :root {
-  --ws-ines: #efe6d4;
-  --ws-decimus: #eeeaf8;
-}
-[data-theme="dark"] {
-  --ws-ines: rgba(190, 163, 110, 0.13);
-  --ws-decimus: rgba(143, 122, 229, 0.15);
+  --ws-accent-ines: #b9a36e; /* warm sand */
+  --ws-accent-decimus: #8f7ae5; /* soft lavender */
 }
 
 /* A message is an avatar + an identity/bubble column (all left-aligned). */
@@ -3634,22 +3649,25 @@
   opacity: 0.75;
 }
 
+/* Messages are almost white; identity is a thin 3px coloured bar on the left
+   (never a large coloured card). 1px border, 12px corners. */
 .ws-msg-bubble {
-  border: 0.5px solid var(--border);
-  border-radius: 14px;
-  padding: 16px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--divider);
+  border-left: 3px solid var(--divider);
+  border-radius: 12px;
+  padding: 14px 18px;
   font-size: 14px;
   line-height: 1.6;
   color: var(--text);
 }
 .ws-bubble-ines {
-  background: var(--ws-ines);
+  border-left-color: var(--ws-accent-ines);
 }
-/* Assistant replies read as an editorial card: serif body, generous measure. */
+/* Assistant replies read as editorial annotations (serif body). */
 .ws-bubble-decimus {
-  background: var(--ws-decimus);
-  padding: 22px 26px;
-  box-shadow: 0 12px 36px rgba(20, 18, 14, 0.04);
+  border-left-color: var(--ws-accent-decimus);
+  padding: 18px 22px;
 }
 .ws-msg.assistant .ws-msg-bubble .atelier-prose {
   font-family: var(--font-serif), "Cormorant Garamond", Georgia, serif;
