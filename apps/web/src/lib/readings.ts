@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { Reading } from "@/lib/readings-constants";
 
@@ -38,7 +39,8 @@ const toReading = (r: any): Reading => ({
   updatedAt: r.updated_at,
 });
 
-export async function getReadings(): Promise<Reading[]> {
+export const getReadings = cache(getReadingsUncached);
+async function getReadingsUncached(): Promise<Reading[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
