@@ -17,6 +17,7 @@ import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
 import WorkspaceMoreMenu from "@/components/workspaces/WorkspaceMoreMenu";
+import WorkspaceSearchPill from "@/components/workspaces/WorkspaceSearchPill";
 import { getDocuments } from "@/lib/documents";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
@@ -74,6 +75,13 @@ export default async function WorkspaceDetailPage({
       id: m.id,
       role: m.role as "user" | "assistant",
       content: m.content,
+      time: m.createdAt
+        ? new Date(m.createdAt).toLocaleTimeString("pt-PT", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Europe/Lisbon",
+          })
+        : undefined,
       model: m.model,
       taskType: m.taskType,
       tokens: m.tokens ?? null,
@@ -108,6 +116,8 @@ export default async function WorkspaceDetailPage({
           intent={ws.intent}
           progress={ws.progress}
         />
+        <div className="ws-actionbar-spacer" />
+        <WorkspaceSearchPill />
       </div>
 
       <div className="ws-layout">
