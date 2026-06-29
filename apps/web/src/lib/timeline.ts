@@ -178,6 +178,7 @@ export async function recordTimelineEvent(input: {
   title: string;
   body?: string;
   actor?: string;
+  externalId?: string;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   const admin = getSupabaseAdmin();
@@ -189,6 +190,57 @@ export async function recordTimelineEvent(input: {
     title: input.title,
     body: input.body ?? null,
     actor: input.actor ?? null,
+    external_id: input.externalId ?? null,
     metadata: input.metadata ?? {},
   });
+}
+
+/**
+ * Sync a workspace's GitHub activity into the timeline (commits + PRs). The
+ * repo overview is re-fetched on each view, so events are upserted by a stable
+ * external_id (pr-<n>, commit-<sha>) and duplicates are ignored — calling this
+ * repeatedly is safe and cheap. Deploys await a Netlify deploys feed; the
+ * 'deploy' kind is already wired in the view. Best-effort, service role.
+ */
+export async function syncRepoTimeline(
+  workspaceId: string,
+  overview: {
+    prs?: { number: number; title: string; author?: string; createdAt?: string }[];
+    commits?: { sha: string; message: string; author?: string; date?: string }[];
+  } | null
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  if (!admin || !overview) return;
+
+  const rows: Record<string, unknown>[] = [];
+  for (const pr of overview.prs ?? [])
+    rows.push({
+      workspace_id: workspaceId,
+      kind: "pr",
+      external_id: `pr-${pr.number}`,
+      title: `PR #${pr.number} — ${pr.title}`,
+      actor: pr.author ?? "github",
+      at: pr.createdAt ?? undefined,
+    });
+  for (const c of overview.commits ?? [])
+    rows.push({
+      workspace_id: workspaceId,
+      kind: "commit",
+      external_id: `commit-${c.sha}`,
+      title: snippet(c.message, 100),
+      body: c.sha,
+      actor: c.author ?? "github",
+      at: c.date ?? undefined,
+    });
+  if (!rows.length) return;
+
+  // Idempotent: the unique (workspace_id, kind, external_id) index makes
+  // re-runs no-ops for events already recorded.
+  await admin
+    .from("timeline_events")
+    .upsert(rows, {
+      onConflict: "workspace_id,kind,external_id",
+      ignoreDuplicates: true,
+    })
+    .select("id");
 }

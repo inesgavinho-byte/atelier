@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getInitiativeByIdOrSlug } from "@/lib/mission";
-import { getWorkspaceTimeline } from "@/lib/timeline";
+import { getWorkspaceTimeline, syncRepoTimeline } from "@/lib/timeline";
+import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 import TimelineView from "@/components/workspaces/TimelineView";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,11 @@ export default async function WorkspaceTimelinePage({
 }) {
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
+
+  // Pull recent GitHub activity (commits + PRs) into the timeline first, so it
+  // shows alongside everything else. Idempotent + best-effort.
+  const overview = await getWorkspaceRepoOverview(ws.id).catch(() => null);
+  if (overview) await syncRepoTimeline(ws.id, overview).catch(() => {});
 
   const events = await getWorkspaceTimeline(ws.id);
 
