@@ -8,9 +8,17 @@ import {
   getInitiativeByIdOrSlug,
   getPendingDecisions,
 } from "@/lib/mission";
-import { getChats, getMessages, getWorkspaceContext } from "@/lib/workspaces";
+import {
+  getCanonicalChat,
+  getMessages,
+  getProjects,
+  getWorkspaceContext,
+} from "@/lib/workspaces";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
+import WorkspaceTitle from "@/components/workspaces/WorkspaceTitle";
 import ContextPanel from "@/components/workspaces/ContextPanel";
+import ImportContext from "@/components/workspaces/ImportContext";
+import WorkspaceProjects from "@/components/workspaces/WorkspaceProjects";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +30,15 @@ export default async function WorkspaceDetailPage({
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
 
-  const [allDecisions, pending, artifacts, agents, context, chats] =
+  const [allDecisions, pending, artifacts, agents, context, canonical, projects] =
     await Promise.all([
       getDecisions(),
       getPendingDecisions(),
       getArtifactsForInitiative(ws.id),
       getAgentsForInitiative(ws.id),
       getWorkspaceContext(ws.id),
-      getChats(ws.id),
+      getCanonicalChat(ws.id),
+      getProjects(ws.id),
     ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
@@ -44,8 +53,9 @@ export default async function WorkspaceDetailPage({
     });
 
   // Read-only load of the canonical chat's history for the initial render. We
-  // never create the chat here — sending the first message does that.
-  const canonical = chats.find((c) => !c.projectId);
+  // never create the chat here — sending the first message does that. Uses the
+  // shared getCanonicalChat so this matches exactly the chat the send action
+  // writes to (continuous, persistent conversation).
   const history = canonical ? await getMessages(canonical.id) : [];
   const initial = history
     .filter((m) => m.role === "user" || m.role === "assistant")
@@ -54,6 +64,7 @@ export default async function WorkspaceDetailPage({
       role: m.role as "user" | "assistant",
       content: m.content,
       model: m.model,
+      taskType: m.taskType,
     }));
 
   return (
@@ -63,8 +74,7 @@ export default async function WorkspaceDetailPage({
       </Link>
 
       <header className="ws-header">
-        <h1 className="ws-header-title">{ws.name}</h1>
-        {ws.intent ? <p className="ws-header-intent">{ws.intent}</p> : null}
+        <WorkspaceTitle workspaceId={ws.id} name={ws.name} intent={ws.intent} />
         <div className="ws-header-meta">
           <div className="ws-header-progress">
             <Meter value={ws.progress} />
@@ -74,11 +84,23 @@ export default async function WorkspaceDetailPage({
             {pendingCount}{" "}
             {pendingCount === 1 ? "decisão pendente" : "decisões pendentes"}
           </Link>
+          <ImportContext
+            workspaceId={ws.id}
+            workspaceName={ws.name}
+            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          />
         </div>
       </header>
 
+      <WorkspaceProjects
+        workspaceId={ws.id}
+        workspaceSlug={ws.slug ?? ws.id}
+        projects={projects}
+      />
+
       <div className="ws-layout">
         <WorkspaceChat
+          key={ws.id}
           workspaceId={ws.id}
           workspaceName={ws.name}
           initialMessages={initial}
@@ -86,6 +108,9 @@ export default async function WorkspaceDetailPage({
           contextUpdatedAt={context?.lastUpdatedAt}
         />
         <ContextPanel
+          workspaceId={ws.id}
+          githubRepo={ws.githubRepo}
+          supabaseUrl={ws.supabaseUrl}
           context={context}
           decisions={wsDecisions}
           artifacts={artifacts}

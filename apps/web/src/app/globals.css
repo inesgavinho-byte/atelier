@@ -1645,6 +1645,7 @@
   --eco-amber: #c98a18;
   --eco-red: #9b3f32;
   --eco-blue: #3f6f91;
+  --eco-slate: #5b6472;
 
   background: var(--eco-bg);
 }
@@ -1842,6 +1843,11 @@
 .status-testing {
   color: var(--eco-blue);
   background: rgba(63,111,145,0.12);
+}
+
+.status-oauth {
+  color: var(--eco-slate);
+  background: rgba(91,100,114,0.14);
 }
 
 .connector-used {
@@ -2042,6 +2048,19 @@
   border-bottom: 0;
 }
 
+.drawer-log-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawer-log-list li {
+  word-break: break-word;
+}
+
 .drawer-label {
   color: var(--eco-muted);
 }
@@ -2116,6 +2135,7 @@
   --eco-amber: #e0b84a;
   --eco-red: #e08a7d;
   --eco-blue: #8aa9d8;
+  --eco-slate: #9aa5b5;
 }
 
 [data-theme="dark"] .ecosystem-page .connector-card {
@@ -2636,6 +2656,81 @@
   color: var(--accent);
 }
 
+/* Expandable workspace (projects) */
+.shell-nav-group {
+  display: grid;
+  gap: 2px;
+}
+.shell-nav-group > .shell-nav-item {
+  padding-right: 2px;
+}
+.shell-nav-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.shell-nav-toggle {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  transition: transform 0.15s ease;
+}
+.shell-nav-toggle:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+.shell-nav-toggle.open {
+  transform: rotate(90deg);
+}
+.shell-nav-children {
+  display: grid;
+  gap: 1px;
+  margin: 1px 0 2px 17px;
+  padding-left: 9px;
+  border-left: 1px solid var(--border);
+}
+.shell-nav-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--font-display);
+  text-decoration: none;
+}
+.shell-nav-child:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+.shell-nav-child.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.shell-nav-child-icon,
+.shell-nav-child-bullet {
+  width: 14px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .shell-sidebar-foot {
   display: flex;
   align-items: center;
@@ -3041,6 +3136,67 @@
   font-size: 14px;
   color: var(--text-secondary);
 }
+
+/* Inline rename of the workspace title */
+.ws-title-edit {
+  margin-left: 12px;
+  padding: 2px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.ws-title-block:hover .ws-title-edit,
+.ws-title-edit:focus-visible {
+  opacity: 1;
+}
+.ws-title-edit:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ws-title-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+}
+.ws-title-input,
+.ws-intent-input {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 6px 10px;
+}
+.ws-title-input {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+}
+.ws-intent-input {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.ws-title-input:focus,
+.ws-intent-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.ws-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ws-title-err {
+  font-size: 12px;
+  color: var(--danger, #c0392b);
+}
 .ws-header-meta {
   display: flex;
   align-items: center;
@@ -3075,6 +3231,58 @@
 }
 .ws-header-chip:hover {
   filter: brightness(1.05);
+}
+
+/* Projects section on the workspace page (ADR-0005 F1) */
+.ws-projects {
+  margin-bottom: 18px;
+}
+.ws-projects-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ws-projects-form {
+  margin-bottom: 12px;
+}
+.ws-projects-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.ws-project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+.ws-project-card:hover {
+  border-color: var(--accent);
+}
+.ws-project-name {
+  font-size: 14px;
+  color: var(--text);
+}
+.ws-project-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-project-meta {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .ws-layout {
@@ -3366,6 +3574,167 @@
   font-size: 13px;
   line-height: 1.45;
   color: var(--text-secondary);
+}
+
+/* Repository section (GitHub per workspace) */
+.ctx-repo-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.ctx-repo-link:hover {
+  text-decoration: underline;
+}
+
+.ctx-repo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ctx-repo-input {
+  width: 100%;
+  height: 32px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 13px;
+}
+.ctx-repo-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.ctx-repo-form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ctx-repo-btn {
+  height: 28px;
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-btn);
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 0 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ctx-repo-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ctx-repo-btn-quiet {
+  height: 28px;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ctx-repo-err {
+  margin: 0;
+  font-size: 12px;
+  color: #c2554a;
+}
+
+.ctx-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ctx-repo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ctx-repo-name {
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  word-break: break-all;
+}
+.ctx-repo-name:hover {
+  color: var(--accent);
+}
+.ctx-repo-edit {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.ctx-repo-edit:hover {
+  color: var(--text);
+}
+
+.ctx-ci {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.ctx-ci-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.ctx-ci-success {
+  background: var(--teal);
+}
+.ctx-ci-failure {
+  background: #c2554a;
+}
+.ctx-ci-pending {
+  background: var(--atelier-warning, #d99518);
+}
+.ctx-ci-unknown {
+  background: var(--text-muted);
+}
+.ctx-ci-branch {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ctx-repo-group-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ctx-repo-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ctx-repo-items li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ctx-repo-items a {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text);
+  text-decoration: none;
+}
+.ctx-repo-items a:hover {
+  color: var(--accent);
+}
+.ctx-repo-sub {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 @media (max-width: 1024px) {
@@ -3858,4 +4227,347 @@
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Importar contexto — drawer (workspace). Theme-aware (semantic tokens).
+ * ────────────────────────────────────────────────────────────────────────── */
+.import-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 50;
+}
+.import-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(520px, 100vw);
+  height: 100vh;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 0.5px solid var(--border);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.28);
+}
+.import-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-bottom: 0.5px solid var(--border);
+}
+.import-drawer-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.import-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.import-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.import-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.import-field select,
+.import-field textarea,
+.import-field input[type="file"] {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.import-field select {
+  height: 38px;
+  padding: 0 10px;
+}
+.import-field textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+.import-field textarea:disabled {
+  opacity: 0.5;
+}
+.import-field select:focus,
+.import-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.import-or {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.import-file-name {
+  font-size: 12.5px;
+  color: var(--text);
+}
+.import-file-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.import-msg {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.import-msg-ok {
+  color: var(--teal);
+}
+.import-drawer-footer {
+  padding: 18px 24px;
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+.import-btn {
+  height: 38px;
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-btn);
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 0 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.import-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.import-btn-quiet {
+  background: none;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.import-btn-quiet:hover {
+  color: var(--text);
+}
+
+@media (max-width: 560px) {
+  .import-drawer {
+    width: 100vw;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Importação em batch (/import). Theme-aware (semantic tokens).
+ * ────────────────────────────────────────────────────────────────────────── */
+.import-step-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.import-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.import-err {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #c2554a;
+}
+
+.import-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 200px;
+  padding: 32px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  cursor: pointer;
+  text-align: center;
+}
+.import-dropzone:hover {
+  border-color: var(--accent);
+}
+.import-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.import-dropzone-title {
+  font-size: 16px;
+  color: var(--text);
+}
+.import-dropzone-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.import-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.import-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.import-force {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.import-btn {
+  height: 36px;
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-btn);
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 0 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.import-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.import-btn-soft {
+  height: 36px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.import-btn-soft:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.import-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--panel-strong);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.import-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.import-table-scroll {
+  overflow-x: auto;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.import-table th,
+.import-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--divider);
+  vertical-align: middle;
+}
+.import-table th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.import-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.import-table select {
+  height: 30px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 8px;
+  font-size: 13px;
+  max-width: 200px;
+}
+.import-title {
+  color: var(--text);
+}
+.import-cell-muted {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.import-dup {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--atelier-warning, #d99518);
+}
+
+.import-result-line {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.import-result-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.import-result-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+.import-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.import-dot-ok {
+  background: var(--teal);
+}
+.import-dot-skip {
+  background: var(--text-muted);
+}
+.import-dot-fail {
+  background: #c2554a;
 }

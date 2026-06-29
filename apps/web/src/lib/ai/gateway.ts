@@ -8,6 +8,8 @@ import type {
 import { openaiProvider } from "@/lib/ai/providers/openai";
 import { claudeProvider } from "@/lib/ai/providers/claude";
 import { perplexityProvider } from "@/lib/ai/providers/perplexity";
+import { groqProvider } from "@/lib/ai/providers/groq";
+import { deepseekProvider } from "@/lib/ai/providers/deepseek";
 
 /**
  * ATELIER — AI Gateway.
@@ -84,4 +86,6 @@ export const gateway = new AIGateway([
   openaiProvider,
   claudeProvider,
   perplexityProvider,
+  groqProvider,
+  deepseekProvider,
 ]);

@@ -41,6 +41,9 @@ const toInitiative = (r: any): Initiative => ({
   progress: r.progress,
   focus: r.focus,
   agentIds: r.agent_ids ?? [],
+  githubRepo: r.github_repo ?? undefined,
+  supabaseUrl: r.supabase_url ?? undefined,
+  supabaseProjectId: r.supabase_project_id ?? undefined,
 });
 
 const toAgent = (r: any): Agent => ({

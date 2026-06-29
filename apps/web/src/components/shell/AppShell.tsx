@@ -22,6 +22,10 @@ export interface NavItem {
   /** Workspace name — colours the avatar via workspaceColor(). */
   workspace?: string;
   exact?: boolean;
+  /** Expandable children (e.g. a workspace's projects). */
+  children?: NavItem[];
+  /** Stable key for persisting expand/collapse state (e.g. workspace id). */
+  expandKey?: string;
 }
 
 export interface NavSection {

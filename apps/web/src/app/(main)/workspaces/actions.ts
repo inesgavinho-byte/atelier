@@ -16,6 +16,7 @@ import {
   getProject,
   getWorkspace,
 } from "@/lib/workspaces";
+import { isValidRepo } from "@/lib/github";
 
 const now = () => new Date().toISOString();
 const shortId = (prefix: string) =>
@@ -60,6 +61,68 @@ export async function renameWorkspace(
   return { ok: !error };
 }
 
+/** Slugify a name the same way the DB backfill does (accent-stripped). */
+function slugify(s: string): string {
+  return (
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "workspace"
+  );
+}
+
+/**
+ * Edit a workspace's name and intent. The slug follows the name automatically
+ * — but only while it hasn't been personalised (i.e. it still equals the old
+ * name's slug); a slug the user set by hand is left untouched. Returns the
+ * (possibly new) slug so the caller can navigate to the canonical URL.
+ */
+export async function updateWorkspace(
+  id: string,
+  input: { name: string; intent?: string }
+): Promise<{ ok: boolean; slug?: string; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const name = input.name.trim();
+  if (!name) return { ok: false, message: "Nome em falta." };
+
+  const { data: current } = await sb
+    .from("workspaces")
+    .select("name, slug")
+    .eq("id", id)
+    .maybeSingle();
+
+  const patch: Record<string, unknown> = { name, updated_at: now() };
+  if (input.intent !== undefined) patch.intent = input.intent.trim() || null;
+
+  let resultSlug = (current?.slug as string | null | undefined) ?? undefined;
+  const slugWasAuto =
+    !current?.slug || current.slug === slugify(current.name ?? "");
+  if (slugWasAuto) {
+    const base = slugify(name);
+    // Avoid colliding with another workspace's slug (partial unique index).
+    const { data: clash } = await sb
+      .from("workspaces")
+      .select("id")
+      .eq("slug", base)
+      .neq("id", id)
+      .maybeSingle();
+    const candidate = clash ? `${base}-${id.slice(0, 4)}` : base;
+    patch.slug = candidate;
+    resultSlug = candidate;
+  }
+
+  const { error } = await sb.from("workspaces").update(patch).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/workspaces");
+  revalidatePath(`/workspaces/${id}`);
+  if (resultSlug) revalidatePath(`/workspaces/${resultSlug}`);
+  return { ok: true, slug: resultSlug, message: "Workspace actualizado." };
+}
+
 export async function archiveWorkspace(id: string): Promise<{ ok: boolean }> {
   const sb = getSupabase();
   if (!sb) return { ok: false };
@@ -78,23 +141,94 @@ export async function createProject(input: {
   workspaceId: string;
   name: string;
   description?: string;
+  githubRepo?: string;
 }): Promise<{ ok: boolean; id?: string; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
   const name = input.name.trim();
   if (!name) return { ok: false, message: "Nome em falta." };
+
+  const repo = input.githubRepo?.trim() || "";
+  if (repo && !isValidRepo(repo)) {
+    return { ok: false, message: 'Repositório inválido — usa "owner/repo".' };
+  }
+
+  // Append after the workspace's existing projects.
+  const { data: last } = await sb
+    .from("workspace_projects")
+    .select("sort")
+    .eq("workspace_id", input.workspaceId)
+    .order("sort", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const sort = (last?.sort ?? -1) + 1;
+
   const { data, error } = await sb
     .from("workspace_projects")
     .insert({
       workspace_id: input.workspaceId,
       name,
       description: input.description?.trim() || null,
+      github_repo: repo || null,
+      sort,
     })
     .select("id")
     .single();
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/workspaces/${input.workspaceId}`);
   return { ok: true, id: data?.id, message: "Projeto criado." };
+}
+
+export async function updateProject(input: {
+  id: string;
+  workspaceId: string;
+  name?: string;
+  description?: string;
+  githubRepo?: string;
+}): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+
+  const patch: Record<string, unknown> = { updated_at: now() };
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) return { ok: false, message: "Nome em falta." };
+    patch.name = name;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || null;
+  }
+  if (input.githubRepo !== undefined) {
+    const repo = input.githubRepo.trim();
+    if (repo && !isValidRepo(repo)) {
+      return { ok: false, message: 'Repositório inválido — usa "owner/repo".' };
+    }
+    patch.github_repo = repo || null;
+  }
+
+  const { error } = await sb
+    .from("workspace_projects")
+    .update(patch)
+    .eq("id", input.id);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath(`/workspaces/${input.workspaceId}`);
+  revalidatePath(`/workspaces/${input.workspaceId}/projects/${input.id}`);
+  return { ok: true, message: "Projeto actualizado." };
+}
+
+export async function deleteProject(input: {
+  id: string;
+  workspaceId: string;
+}): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { error } = await sb
+    .from("workspace_projects")
+    .delete()
+    .eq("id", input.id);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath(`/workspaces/${input.workspaceId}`);
+  return { ok: true, message: "Projeto eliminado." };
 }
 
 /* ── Chats ────────────────────────────────────────────────────────────────── */

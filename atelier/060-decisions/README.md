@@ -15,3 +15,4 @@ Registos de Decisões Arquitecturais (ADR — *Architecture Decision Records*). 
 - `ADR-0002-runtime-execucao-council.md` — Runtime de execução: Council + Claude Code CLI (Proposed)
 - `ADR-0003-interface-telegram.md` — Interface Telegram (ATELIER Mobile) (Proposed)
 - `ADR-0004-chat-continuo-workspace.md` — Chat contínuo por workspace com agente de contexto (Proposed)
+- `ADR-0005-sessoes-timeline-chat-interface.md` — Sessões, Timeline e Chat como Interface (Proposed)

@@ -1,4 +1,6 @@
 import { StateTag, ago } from "@/components/mission/bits";
+import RepoPanel from "@/components/workspaces/RepoPanel";
+import DatabasePanel from "@/components/workspaces/DatabasePanel";
 import type { WorkspaceContext } from "@/lib/workspaces";
 import type { Agent, Artifact, Decision } from "@/data/mission";
 
@@ -21,16 +23,26 @@ function decisionDotClass(status: string): string {
 }
 
 export default function ContextPanel({
+  workspaceId,
+  projectId,
+  githubRepo,
+  supabaseUrl,
   context,
   decisions,
   artifacts,
   agents,
 }: {
+  workspaceId: string;
+  /** When set, the panel is scoped to a project (repo + title wording). */
+  projectId?: string;
+  githubRepo?: string;
+  supabaseUrl?: string;
   context: WorkspaceContext | null;
   decisions: Decision[];
   artifacts: Artifact[];
   agents: Agent[];
 }) {
+  const isProject = Boolean(projectId);
   const summary = context?.summary?.trim() ?? "";
   const lessons = (context?.lessons ?? []).filter(
     (l): l is string => typeof l === "string" && l.trim().length > 0
@@ -38,9 +50,11 @@ export default function ContextPanel({
 
   return (
     <aside className="ctx-panel">
-      {/* 1. Workspace context */}
+      {/* 1. Workspace / project context */}
       <section className="ctx-section">
-        <SectionTitle>Contexto do workspace</SectionTitle>
+        <SectionTitle>
+          {isProject ? "Contexto do projecto" : "Contexto do workspace"}
+        </SectionTitle>
         {summary ? (
           <>
             <p className="ctx-summary">{summary}</p>
@@ -58,7 +72,20 @@ export default function ContextPanel({
         )}
       </section>
 
-      {/* 2. Decisions */}
+      {/* 2. Repository (GitHub per workspace or per project) */}
+      <RepoPanel
+        scope={
+          projectId
+            ? { kind: "project", projectId, workspaceId }
+            : { kind: "workspace", workspaceId }
+        }
+        initialRepo={githubRepo}
+      />
+
+      {/* 3. Database (Supabase per workspace) */}
+      <DatabasePanel workspaceId={workspaceId} initialUrl={supabaseUrl} />
+
+      {/* 3. Decisions */}
       <section className="ctx-section">
         <SectionTitle>Decisões</SectionTitle>
         {decisions.length === 0 ? (

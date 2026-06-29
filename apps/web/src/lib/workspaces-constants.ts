@@ -29,6 +29,10 @@ export interface WorkspaceProject {
   name: string;
   description?: string;
   status: string;
+  /** Project-specific GitHub repo, "owner/repo" (optional). */
+  githubRepo?: string;
+  /** Explicit ordering within a workspace (ascending). */
+  sort: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +61,7 @@ export interface WorkspaceMessage {
   provider?: string;
   model?: string;
   skillId?: string;
+  taskType?: string;
   tokens?: number;
   latencyMs?: number;
   createdAt: string;

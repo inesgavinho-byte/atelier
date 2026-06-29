@@ -2,7 +2,7 @@
 id: ADR-0002
 title: Runtime de execução — Council + Claude Code CLI
 version: v0.1
-status: Proposed
+status: Accepted
 owner: Inês Gavinho
 created: 2026-06-28
 updated: 2026-06-28
@@ -18,7 +18,7 @@ impacts:
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 

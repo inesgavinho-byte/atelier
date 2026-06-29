@@ -103,8 +103,8 @@ async function tick(): Promise<void> {
 
 interface ContextSummary {
   summary: string;
-  decisions: string[];
-  artifacts: string[];
+  decisions: { title: string; status: string }[];
+  artifacts: { title: string; kind: string }[];
   lessons: string[];
 }
 
@@ -131,8 +131,9 @@ async function summarise(
       system:
         "És o agente de contexto do ATELIER. Resume a conversa de forma comprimida " +
         "e útil para continuar o trabalho. Responde APENAS com JSON válido, sem texto " +
-        "à volta, com as chaves: summary (string), decisions (string[]), artifacts " +
-        "(string[]), lessons (string[]). Português europeu.",
+        "à volta, com as chaves: summary (string, 2-3 frases sobre o estado do " +
+        "projecto), decisions (array de {title, status}), artifacts (array de " +
+        "{title, kind}), lessons (string[] com aprendizagens chave). Português europeu.",
       messages: [
         {
           role: "user",
@@ -206,12 +207,14 @@ async function contextTick(): Promise<void> {
       .from("workspace_context")
       .select("version")
       .eq("workspace_id", ws.id)
+      .is("project_id", null)
       .maybeSingle();
     const version = (existing?.version ?? 0) + 1;
 
     const { error: upErr } = await sb.from("workspace_context").upsert(
       {
         workspace_id: ws.id,
+        project_id: null,
         summary: result.summary,
         decisions: result.decisions,
         artifacts: result.artifacts,
@@ -219,7 +222,7 @@ async function contextTick(): Promise<void> {
         last_updated_at: now(),
         version,
       },
-      { onConflict: "workspace_id" }
+      { onConflict: "workspace_id,project_id" }
     );
     if (upErr) console.error(`[context] upsert falhou (${ws.name}): ${upErr.message}`);
     else console.log(`[context] ${ws.name} → contexto v${version}`);

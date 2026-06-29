@@ -1,12 +1,28 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import type { ConnectorStatus, ConnectorView } from "@/lib/connectors";
+import { getEnvHint } from "@/lib/connectors";
 import { PROVIDER_META, type ProviderId } from "@/lib/ai/types";
-import { saveConnectorCredential } from "@/app/(main)/ecosystem/actions";
+import {
+  getConnectorLogs,
+  saveConnectorCredential,
+  type ConnectorLog,
+} from "@/app/(main)/ecosystem/actions";
 import StatusBadge from "@/components/ecosystem/StatusBadge";
 import ConnectorIcon from "@/components/ecosystem/ConnectorIcon";
+
+const OAUTH_EXPLANATION =
+  "Esta integração requer autenticação OAuth — disponível em breve.";
+
+/** Format an ISO timestamp in pt-PT, falling back to the raw value. */
+function fmtDate(value: string): string {
+  try {
+    return new Date(value).toLocaleString("pt-PT");
+  } catch {
+    return value;
+  }
+}
 
 /** URL-style credentials (e.g. ICS feeds) are not secret — show them as text. */
 function isUrlKey(envKey: string): boolean {
@@ -47,14 +63,33 @@ export default function ConnectorDrawer({
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
 
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<ConnectorLog[] | null>(null);
+  const [loadingLogs, startLogs] = useTransition();
+
   const meta = PROVIDER_META.find((m) => m.id === (connector.id as ProviderId));
+  const isOAuth = connector.auth === "oauth";
 
   // A live test only makes sense for testable connectors whose credentials are
-  // present. Otherwise the button is disabled (with a reason in its tooltip).
+  // present. OAuth connectors have no key flow at all, so they cannot be tested.
   const canTest =
+    !isOAuth &&
     connector.testable &&
     status !== "Credenciais em falta" &&
     status !== "Não ligado";
+
+  const toggleLogs = () => {
+    setShowLogs((prev) => {
+      const next = !prev;
+      if (next && logs === null) {
+        startLogs(async () => {
+          const rows = await getConnectorLogs(connector.id);
+          setLogs(rows);
+        });
+      }
+      return next;
+    });
+  };
 
   const save = () => {
     setSaveMsg(null);
@@ -104,7 +139,9 @@ export default function ConnectorDrawer({
           {/* Credentials */}
           <section>
             <p className="drawer-section-title">Credenciais</p>
-            {!manageable ? (
+            {isOAuth ? (
+              <p className="meta">{OAUTH_EXPLANATION}</p>
+            ) : !manageable ? (
               <p className="meta">
                 Define SUPABASE_SERVICE_ROLE_KEY no ambiente para gerir
                 credenciais pela UI. Sem ela, as chaves são lidas das variáveis
@@ -114,15 +151,24 @@ export default function ConnectorDrawer({
               <>
                 {!encrypted ? (
                   <p className="meta drawer-warn mb-3">
-                    ATELIER_CRED_KEY não está definida — as credenciais serão
-                    guardadas em texto simples. Define-a no ambiente para as
-                    encriptar em repouso.
+                    Sem ATELIER_CRED_KEY as credenciais são guardadas em texto
+                    simples — define-a no ambiente para encriptar.
                   </p>
                 ) : null}
                 {connector.env
                   .filter((e) => e.required)
                   .map((e) => {
                     const url = isUrlKey(e.name);
+                    const hint = getEnvHint(e.name);
+                    const placeholder =
+                      hint?.placeholder ??
+                      (url
+                        ? e.present
+                          ? "https://… (substituir)"
+                          : "https://exemplo.com/calendario.ics"
+                        : e.present
+                          ? "•••• (substituir)"
+                          : "Colar valor");
                     return (
                       <div key={e.name} className="drawer-field">
                         <label htmlFor={`d-${e.name}`} className="drawer-label">
@@ -134,19 +180,14 @@ export default function ConnectorDrawer({
                           type={url ? "url" : "password"}
                           autoComplete="off"
                           value={values[e.name] ?? ""}
-                          placeholder={
-                            url
-                              ? e.present
-                                ? "https://… (substituir)"
-                                : "https://exemplo.com/calendario.ics"
-                              : e.present
-                                ? "•••• (substituir)"
-                                : "Colar valor"
-                          }
+                          placeholder={placeholder}
                           onChange={(ev) =>
                             setValues((p) => ({ ...p, [e.name]: ev.target.value }))
                           }
                         />
+                        {hint?.helper ? (
+                          <p className="meta mt-1">{hint.helper}</p>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -220,18 +261,38 @@ export default function ConnectorDrawer({
                 ))}
               </div>
             ) : (
-              <p className="meta">Ainda não associado a nenhuma iniciativa.</p>
+              <p className="meta">Ainda não associado a nenhum workspace.</p>
             )}
           </section>
 
-          {/* Recent activity / errors (no source yet) */}
+          {/* Activity log — this connector's credential history (no values) */}
           <section>
-            <p className="drawer-section-title">Atividade recente</p>
-            <p className="meta">Sem atividade registada.</p>
-          </section>
-          <section>
-            <p className="drawer-section-title">Erros recentes</p>
-            <p className="meta">Sem erros registados.</p>
+            <div className="drawer-row">
+              <p className="drawer-section-title">Atividade</p>
+              <button
+                type="button"
+                className="connector-button"
+                onClick={toggleLogs}
+              >
+                {showLogs ? "Ocultar logs" : "Ver logs"}
+              </button>
+            </div>
+            {showLogs ? (
+              loadingLogs && logs === null ? (
+                <p className="meta">A carregar…</p>
+              ) : logs && logs.length ? (
+                <ul className="drawer-log-list">
+                  {logs.map((l) => (
+                    <li key={l.env_key} className="meta font-mono text-[12px]">
+                      {l.env_key} · guardada {fmtDate(l.created_at)} · actualizada{" "}
+                      {fmtDate(l.updated_at)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="meta">Sem actividade registada.</p>
+              )
+            ) : null}
           </section>
         </div>
 
@@ -242,16 +303,18 @@ export default function ConnectorDrawer({
             onClick={onTest}
             disabled={testing || !canTest}
             title={
-              !connector.testable
-                ? "Sem teste activo para este conector."
-                : status === "Credenciais em falta"
-                  ? "Configura as credenciais primeiro."
-                  : undefined
+              isOAuth
+                ? "Requer OAuth"
+                : !connector.testable
+                  ? "Sem teste activo para este conector."
+                  : status === "Credenciais em falta"
+                    ? "Configura as credenciais primeiro."
+                    : undefined
             }
           >
             {testing ? "A testar…" : "Testar ligação"}
           </button>
-          {manageable ? (
+          {manageable && !isOAuth ? (
             <button
               type="button"
               className="connector-button primary"
@@ -269,9 +332,6 @@ export default function ConnectorDrawer({
           >
             Desligar
           </button>
-          <Link href="/admin/system" className="connector-button">
-            Ver logs
-          </Link>
         </footer>
       </aside>
     </>
