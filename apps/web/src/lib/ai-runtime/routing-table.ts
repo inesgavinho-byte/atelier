@@ -37,12 +37,17 @@ export const ROUTING_TABLE: Record<TaskType, ModelRoute> = {
   writing: {
     provider: "anthropic",
     model: "claude-sonnet-4-6",
-    reason: "Melhor qualidade de linguagem",
+    reason: "Mais natural e colaborativo para escrita longa",
   },
   planning: {
     provider: "anthropic",
     model: "claude-sonnet-4-6",
-    reason: "Raciocínio estruturado",
+    reason: "Raciocínio estruturado e multi-passo",
+  },
+  brainstorming: {
+    provider: "openai",
+    model: "gpt-4o",
+    reason: "Melhor para ideação criativa e brainstorming",
   },
   summary: {
     provider: "groq",

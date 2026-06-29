@@ -174,7 +174,7 @@ export async function prepareWorkspaceTurn(
   };
 }
 
-/** Persist the assistant reply and bump the chat's updated_at. */
+/** Persist the assistant reply and bump the chat's updated_at; returns its id. */
 export async function persistAssistantTurn(
   chatId: string,
   reply: {
@@ -185,20 +185,37 @@ export async function persistAssistantTurn(
     tokens?: number | null;
     latencyMs?: number;
     ctxVersion?: number | null;
+    metadata?: Record<string, unknown>;
   }
+): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data } = await sb
+    .from("workspace_messages")
+    .insert({
+      chat_id: chatId,
+      role: "assistant",
+      content: reply.text,
+      provider: reply.provider,
+      model: reply.model,
+      task_type: reply.taskType,
+      tokens: reply.tokens ?? null,
+      latency_ms: reply.latencyMs ?? null,
+      context_version: reply.ctxVersion ?? null,
+      metadata: reply.metadata ?? {},
+    })
+    .select("id")
+    .maybeSingle();
+  await sb.from("workspace_chats").update({ updated_at: now() }).eq("id", chatId);
+  return (data?.id as string) ?? null;
+}
+
+/** Update an existing message's metadata (merge-friendly: caller passes full). */
+export async function updateMessageMetadata(
+  messageId: string,
+  metadata: Record<string, unknown>
 ): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
-  await sb.from("workspace_messages").insert({
-    chat_id: chatId,
-    role: "assistant",
-    content: reply.text,
-    provider: reply.provider,
-    model: reply.model,
-    task_type: reply.taskType,
-    tokens: reply.tokens ?? null,
-    latency_ms: reply.latencyMs ?? null,
-    context_version: reply.ctxVersion ?? null,
-  });
-  await sb.from("workspace_chats").update({ updated_at: now() }).eq("id", chatId);
+  await sb.from("workspace_messages").update({ metadata }).eq("id", messageId);
 }

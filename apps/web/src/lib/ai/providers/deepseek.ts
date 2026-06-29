@@ -106,14 +106,19 @@ export const deepseekProvider: AIProvider = {
     }
   },
 
-  async *stream(req: AIRunRequest) {
+  async *stream(req: AIRunRequest, onMeta) {
     const key = readEnv("DEEPSEEK_API_KEY");
     if (!key) return;
-    yield* streamOpenAICompat(`${BASE}/chat/completions`, key, {
-      model: req.model || META.defaultModel,
-      messages: req.messages,
-      temperature: req.temperature ?? 0.7,
-      max_tokens: req.maxTokens ?? 1024,
-    });
+    yield* streamOpenAICompat(
+      `${BASE}/chat/completions`,
+      key,
+      {
+        model: req.model || META.defaultModel,
+        messages: req.messages,
+        temperature: req.temperature ?? 0.7,
+        max_tokens: req.maxTokens ?? 1024,
+      },
+      onMeta
+    );
   },
 };

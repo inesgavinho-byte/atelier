@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Markdown from "@/components/Markdown";
 import { ago } from "@/components/mission/bits";
+import { estimateCostUSD, formatCostUSD } from "@/lib/ai/cost";
 
 /**
  * WorkspaceChat — the continuous workspace conversation (ADR-0004).
  *
  * A Claude.ai-style window: a scrollable transcript above a fixed input row.
  * The Council picks the model server-side, so there is no provider/model/mode
- * selector here. Sends optimistically, then reconciles with the persisted
- * state via router.refresh().
+ * selector here. Replies stream in token by token via the chat-stream route; a
+ * trailing metadata line carries tokens, Perplexity sources and next steps.
  */
+
+type NextStep = { action: string; why: string; effort: "S" | "M" | "L" };
 
 type ChatMessage = {
   id: string;
@@ -20,7 +23,13 @@ type ChatMessage = {
   content: string;
   model?: string;
   taskType?: string;
+  tokens?: number | null;
+  citations?: string[];
+  steps?: NextStep[];
 };
+
+/** Separates the streamed text from the trailing JSON metadata line. */
+const META_MARKER = "[[ATELIER_META]]";
 
 /** pt-PT labels for each task type (routing is otherwise invisible). */
 const TASK_LABELS: Record<string, string> = {
@@ -28,10 +37,19 @@ const TASK_LABELS: Record<string, string> = {
   code: "código",
   writing: "escrita",
   planning: "planeamento",
+  brainstorming: "brainstorming",
   summary: "resumo",
   reasoning: "análise",
   general: "geral",
 };
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
 export default function WorkspaceChat({
   workspaceId,
@@ -57,13 +75,10 @@ export default function WorkspaceChat({
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Keep the latest turn in view on mount and whenever the transcript grows
-  // or the typing indicator toggles.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages, pending]);
 
-  // Auto-grow the textarea between min and max heights.
   function resizeTextarea() {
     const el = textareaRef.current;
     if (!el) return;
@@ -71,20 +86,17 @@ export default function WorkspaceChat({
     el.style.height = `${Math.min(120, Math.max(40, el.scrollHeight))}px`;
   }
 
-  async function send() {
-    const content = input.trim();
+  async function send(override?: string) {
+    const content = (override ?? input).trim();
     if (!content || pending) return;
 
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content,
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: "user", content },
+    ]);
+    if (override === undefined) setInput("");
     setError(null);
     setPending(true);
-    // Reset the textarea height once cleared.
     requestAnimationFrame(resizeTextarea);
 
     const assistantId = `assistant-${Date.now()}`;
@@ -103,8 +115,6 @@ export default function WorkspaceChat({
 
       const model = res.headers.get("x-model") ?? undefined;
       const taskType = res.headers.get("x-task-type") ?? undefined;
-
-      // Reveal an empty assistant bubble and stop the typing dots; chunks fill it.
       setMessages((prev) => [
         ...prev,
         { id: assistantId, role: "assistant", content: "", model, taskType },
@@ -113,16 +123,50 @@ export default function WorkspaceChat({
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let raw = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        if (!text) continue;
+        raw += decoder.decode(value, { stream: true });
+        // Show only the text before the metadata marker while streaming.
+        const visible = raw.split(META_MARKER)[0];
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantId ? { ...m, content: m.content + text } : m
+            m.id === assistantId ? { ...m, content: visible } : m
           )
         );
+      }
+
+      // Parse the trailing metadata line (tokens / sources / next steps).
+      const idx = raw.indexOf(META_MARKER);
+      if (idx >= 0) {
+        const text = raw.slice(0, idx).trimEnd();
+        try {
+          const meta = JSON.parse(raw.slice(idx + META_MARKER.length)) as {
+            tokens?: number | null;
+            model?: string;
+            taskType?: string;
+            citations?: string[];
+            steps?: NextStep[];
+          };
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    content: text,
+                    tokens: meta.tokens ?? null,
+                    model: meta.model ?? m.model,
+                    taskType: meta.taskType ?? m.taskType,
+                    citations: meta.citations ?? [],
+                    steps: meta.steps ?? [],
+                  }
+                : m
+            )
+          );
+        } catch {
+          /* leave the streamed text as-is */
+        }
       }
     } catch {
       setError("Falha ao enviar a mensagem.");
@@ -150,28 +194,78 @@ export default function WorkspaceChat({
             Começa a conversa com o teu workspace.
           </div>
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className={`ws-msg ${m.role}`}>
-              <div className="ws-msg-bubble">
-                {m.role === "assistant" ? (
-                  <>
-                    <div className="ws-msg-head">
-                      <span className="ws-dot-council" />
-                      <span>
-                        Council{m.model ? ` · ${m.model}` : ""}
-                        {m.taskType && TASK_LABELS[m.taskType]
-                          ? ` · ${TASK_LABELS[m.taskType]}`
-                          : ""}
-                      </span>
-                    </div>
-                    <Markdown content={m.content} />
-                  </>
-                ) : (
-                  <p className="ws-msg-text">{m.content}</p>
-                )}
+          messages.map((m) => {
+            const cost =
+              m.role === "assistant"
+                ? formatCostUSD(estimateCostUSD(m.model, m.tokens))
+                : null;
+            return (
+              <div key={m.id} className={`ws-msg ${m.role}`}>
+                <div className="ws-msg-bubble">
+                  {m.role === "assistant" ? (
+                    <>
+                      <div className="ws-msg-head">
+                        <span className="ws-dot-council" />
+                        <span>
+                          Council{m.model ? ` · ${m.model}` : ""}
+                          {m.taskType && TASK_LABELS[m.taskType]
+                            ? ` · ${TASK_LABELS[m.taskType]}`
+                            : ""}
+                          {m.tokens ? ` · ${m.tokens} tokens` : ""}
+                          {cost ? ` · ${cost}` : ""}
+                        </span>
+                      </div>
+                      <Markdown content={m.content} />
+
+                      {m.citations && m.citations.length > 0 ? (
+                        <details className="ws-sources">
+                          <summary>Fontes ({m.citations.length})</summary>
+                          <ul>
+                            {m.citations.map((url, i) => (
+                              <li key={i}>
+                                <a href={url} target="_blank" rel="noreferrer">
+                                  <span className="ws-source-host">
+                                    {hostOf(url)}
+                                  </span>
+                                  <span className="ws-source-url">{url}</span>
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+
+                      {m.steps && m.steps.length > 0 ? (
+                        <div className="ws-steps">
+                          <p className="ws-steps-title">Próximos passos</p>
+                          {m.steps.map((s, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="ws-step"
+                              onClick={() => void send(s.action)}
+                              disabled={pending}
+                            >
+                              <span className="ws-step-arrow">→</span>
+                              <span className="ws-step-body">
+                                <span className="ws-step-action">{s.action}</span>
+                                {s.why ? (
+                                  <span className="ws-step-why">{s.why}</span>
+                                ) : null}
+                              </span>
+                              <span className="ws-step-effort">{s.effort}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="ws-msg-text">{m.content}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         {pending ? (

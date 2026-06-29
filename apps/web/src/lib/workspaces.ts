@@ -75,6 +75,7 @@ const toMessage = (r: any): WorkspaceMessage => ({
   taskType: r.task_type ?? undefined,
   tokens: r.tokens ?? undefined,
   latencyMs: r.latency_ms ?? undefined,
+  metadata: r.metadata ?? undefined,
   createdAt: r.created_at,
 });
 
