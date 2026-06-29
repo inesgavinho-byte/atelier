@@ -4,6 +4,13 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
 
 ## Documentos de visão
 
+- [`DECIMA-PERSONAL-DECIMIN-v2.md`](DECIMA-PERSONAL-DECIMIN-v2.md) — **Personal
+  Decimin (v2)**. A **versão mais recente** da visão do Personal Decimin — o
+  _Chief of Staff_ pessoal que mantém continuidade cognitiva (modos internos,
+  Conversation Watch, Pending Intelligence, Daily Briefing, Shadow Mode,
+  Cognitive Load, relação com o Mission Engine e o Maestro). **Substitui a v1.**
+  Documento de visão completo; a implementação actual segue o **ADR-0006 (v1
+  scope)** e a v2 será faseada conforme a confiança no sistema cresce.
 - [`DECIMA-WORKSPACE-v2.md`](DECIMA-WORKSPACE-v2.md) — **Foundational
   Architecture (v2)**. A referência de visão **em vigor**: Workspace como
   ambiente operativo, **DECIMA** como plataforma cognitiva, **DECIM001** como
