@@ -3547,6 +3547,23 @@
   font-size: 17px;
   line-height: 1.68;
 }
+/* The shared Markdown component hard-codes `text-charcoal` (a fixed dark
+   colour) on its prose, which is unreadable on the dark chat card. Re-map the
+   reply text to theme tokens so it stays legible in both light and dark. */
+.ws-msg.assistant .ws-msg-bubble .atelier-prose,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose p,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose li,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose strong,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose blockquote,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose code,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose h1,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose h2,
+.ws-msg.assistant .ws-msg-bubble .atelier-prose h3 {
+  color: var(--text);
+}
+.ws-msg.assistant .ws-msg-bubble .atelier-prose h4 {
+  color: var(--text-muted);
+}
 
 .ws-msg-text {
   margin: 0;
