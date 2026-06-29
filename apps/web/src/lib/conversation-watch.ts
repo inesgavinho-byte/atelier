@@ -81,3 +81,14 @@ export async function getRecentPendingItems(limit = 30): Promise<PendingItem[]> 
     createdAt: r.created_at,
   }));
 }
+
+/** Count of all still-pending items — used for the sidebar badge. */
+export async function countPendingItems(): Promise<number> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return 0;
+  const { count } = await admin
+    .from("telegram_pending_items")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
