@@ -4587,3 +4587,206 @@
 .import-dot-fail {
   background: #c2554a;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Minions (EPIC-003). Theme-aware (semantic tokens).
+ * ────────────────────────────────────────────────────────────────────────── */
+.minion-pending {
+  margin-bottom: 24px;
+  padding: 14px;
+  border: 0.5px solid rgba(255, 180, 50, 0.45);
+  border-radius: var(--radius-card);
+  background: rgba(255, 180, 50, 0.06);
+}
+.minion-pending-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.minion-pending-head .ctx-section-title {
+  margin: 0;
+  flex: 1;
+}
+.minion-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  background: rgba(255, 180, 50, 0.9);
+  color: #1a1205;
+}
+.minion-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.minion-sig {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.minion-sig-red {
+  border-left: 2px solid rgba(220, 50, 50, 0.7);
+}
+.minion-sig-amber {
+  border-left: 2px solid rgba(255, 180, 50, 0.8);
+}
+.minion-sig-violet {
+  border-left: 2px solid rgba(120, 100, 255, 0.6);
+}
+.minion-signal-meta {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.minion-sig-title {
+  font-size: 14px;
+  color: var(--text);
+}
+.minion-sig-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.minion-sig-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.minion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.minion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 0.5px solid var(--border);
+  border-left-width: 2px;
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.minion-card:hover {
+  border-color: var(--accent);
+}
+.minion-tone-green {
+  border-left-color: rgba(40, 170, 110, 0.7);
+}
+.minion-tone-amber {
+  border-left-color: rgba(255, 180, 50, 0.8);
+}
+.minion-tone-red {
+  border-left-color: rgba(220, 50, 50, 0.7);
+}
+.minion-tone-grey {
+  border-left-color: var(--text-muted);
+}
+.minion-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.minion-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.minion-tone-green .minion-status-dot {
+  color: rgba(40, 170, 110, 0.9);
+}
+.minion-tone-amber .minion-status-dot {
+  color: rgba(255, 180, 50, 0.95);
+}
+.minion-tone-red .minion-status-dot {
+  color: rgba(220, 50, 50, 0.9);
+}
+.minion-tone-grey .minion-status-dot {
+  color: var(--text-muted);
+}
+.minion-card-name {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text);
+}
+.minion-card-state {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.minion-card-mission {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.minion-card-meta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.minion-card-signals {
+  margin: 0;
+  font-size: 12px;
+  color: var(--atelier-warning);
+}
+.minion-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.minion-card-level {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.minion-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.minion-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.minion-dot.on {
+  background: var(--accent);
+}
+.minion-autonomy-row {
+  display: flex;
+  gap: 6px;
+}
+.minion-autonomy-btn {
+  width: 30px;
+  height: 30px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.minion-autonomy-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.minion-drawer-actions {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
