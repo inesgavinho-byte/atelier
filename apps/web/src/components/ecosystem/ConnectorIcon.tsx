@@ -82,6 +82,60 @@ function initials(name: string): string {
   );
 }
 
+/**
+ * Inline brand marks for connectors Simple Icons doesn't serve (Microsoft 365
+ * apps, LinkedIn, Groq). Brand-coloured app-style tiles: a rounded square in
+ * the brand colour with a white glyph (the official LinkedIn "in", a OneDrive
+ * cloud, or the brand letter). Bundled locally, so they always render — no CDN.
+ */
+interface Tile {
+  color: string;
+  /** A short label, or "cloud"/"in" for the bespoke glyphs. */
+  label: string;
+}
+const TILES: Record<string, Tile> = {
+  "outlook-email": { color: "#0F6CBD", label: "O" },
+  "outlook-calendar": { color: "#0F6CBD", label: "O" },
+  teams: { color: "#4B53BC", label: "T" },
+  sharepoint: { color: "#038387", label: "S" },
+  onedrive: { color: "#0364B8", label: "cloud" },
+  linkedin: { color: "#0A66C2", label: "in" },
+  groq: { color: "#F55036", label: "G" },
+};
+
+function TileIcon({ tile, size }: { tile: Tile; size: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      role="img"
+      aria-hidden="true"
+    >
+      <rect width="24" height="24" rx="5" fill={tile.color} />
+      {tile.label === "cloud" ? (
+        <path
+          d="M7.4 17.5a3.4 3.4 0 0 1-.5-6.76 4.7 4.7 0 0 1 8.86-1.2 3.6 3.6 0 0 1 .74 7.96H7.4z"
+          fill="#fff"
+        />
+      ) : (
+        <text
+          x="12"
+          y="12.5"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          fontSize={tile.label.length > 1 ? 8.5 : 12}
+          fontWeight="700"
+          fill="#fff"
+          fontFamily="system-ui, -apple-system, sans-serif"
+        >
+          {tile.label}
+        </text>
+      )}
+    </svg>
+  );
+}
+
 export default function ConnectorIcon({
   connectorId,
   name,
@@ -94,6 +148,19 @@ export default function ConnectorIcon({
   const slug = SLUGS[connectorId] ?? null;
   const [failed, setFailed] = useState(false);
   const brand = BRAND[connectorId] ?? "currentColor";
+
+  // Bundled brand tile (Microsoft 365, LinkedIn, Groq) — takes precedence.
+  const tile = TILES[connectorId];
+  if (tile) {
+    return (
+      <span
+        className="connector-icon connector-icon-tile"
+        style={{ width: size, height: size }}
+      >
+        <TileIcon tile={tile} size={size} />
+      </span>
+    );
+  }
 
   if (!slug || failed) {
     return (

@@ -2263,6 +2263,12 @@
   background: rgba(255,255,255,0.12);
 }
 
+/* Brand tiles are already coloured — no white backing circle/padding. */
+[data-theme="dark"] .connector-icon-tile {
+  background: transparent;
+  padding: 0;
+}
+
 /* Responsive */
 
 /* The compact grid uses auto-fill/minmax, so it reflows without fixed-column
