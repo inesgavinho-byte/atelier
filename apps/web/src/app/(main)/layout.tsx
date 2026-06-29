@@ -6,6 +6,7 @@ import {
 } from "@/lib/mission";
 import { getAllProjects } from "@/lib/workspaces";
 import { countUnreadReadings } from "@/lib/readings";
+import { countPendingSignals } from "@/lib/minions";
 import { gateEnabled } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +24,15 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [corpus, initiatives, projects, unread, pending] = await Promise.all([
-    getSearchCorpus(),
-    getInitiatives(),
-    getAllProjects(),
-    countUnreadReadings(),
-    getPendingDecisions(),
-  ]);
+  const [corpus, initiatives, projects, unread, pending, pendingSignals] =
+    await Promise.all([
+      getSearchCorpus(),
+      getInitiatives(),
+      getAllProjects(),
+      countUnreadReadings(),
+      getPendingDecisions(),
+      countPendingSignals(),
+    ]);
 
   const pendingDecisions = pending.length;
 
@@ -107,6 +110,12 @@ export default async function MainLayout({
         { label: "Ecossistema", href: "/ecosystem", icon: "⌘" },
         { label: "Importar", href: "/import", icon: "↧" },
         { label: "Jobs", href: "/jobs", icon: "▦" },
+        {
+          label: "Minions",
+          href: "/minions",
+          icon: "◉",
+          badge: pendingSignals || undefined,
+        },
         { label: "Sistema", href: "/admin/system", icon: "⚙" },
       ],
     },
