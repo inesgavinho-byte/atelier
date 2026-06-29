@@ -49,6 +49,9 @@ export default function DocumentsPanel({
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  // Compact by default: the dropzone + search only appear once the user opens
+  // the panel via "Carregar", so Documentos stays a single discreet line.
+  const [expanded, setExpanded] = useState(false);
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
@@ -111,81 +114,100 @@ export default function DocumentsPanel({
       router.refresh();
     });
 
+  const hasDocs = documents.length > 0;
+
   return (
-    <section className="ws-docs">
-      <h2 className="eyebrow mb-3">Documentos</h2>
-
-      <div
-        className={`ws-docs-drop${dragging ? " dragging" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          hidden
-          onChange={onPick}
-        />
-        <p className="ws-docs-drop-title">
-          {busy ? "A processar…" : "Arrasta ficheiros ou clica para carregar"}
-        </p>
-        <p className="ws-docs-drop-sub">
-          .txt .md .csv .json processados já; PDF/Word/Excel convertidos pelo
-          MarkItDown (ou em fila se o serviço estiver desligado).
-        </p>
-      </div>
-      {msg ? <p className="meta mt-2">{msg}</p> : null}
-
-      {/* Search */}
-      <div className="ws-docs-search">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") runSearch();
-          }}
-          placeholder="Procurar nos documentos…"
-          className="ws-docs-search-input"
-        />
+    <section className="ws-docs-compact">
+      {/* Discreet single-line bar */}
+      <div className="ws-docs-bar">
+        {hasDocs ? (
+          <span className="ws-docs-bar-label">
+            Documentos <span className="ws-docs-count">{documents.length}</span>
+          </span>
+        ) : (
+          <span className="ws-docs-bar-label ws-docs-bar-empty">
+            Ainda não há documentos
+          </span>
+        )}
         <button
           type="button"
-          className="action"
-          onClick={runSearch}
-          disabled={searching}
+          className="ws-docs-load"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
         >
-          {searching ? "…" : "Procurar"}
+          {expanded ? "Fechar" : hasDocs ? "Carregar" : "Carregar →"}
         </button>
       </div>
 
-      {hits !== null ? (
-        hits.length === 0 ? (
-          <p className="ctx-empty mt-2">Sem resultados.</p>
-        ) : (
-          <ul className="ws-docs-hits">
-            {hits.map((h, i) => (
-              <li key={`${h.documentId}-${h.idx}-${i}`} className="ws-docs-hit">
-                <span className="ws-docs-hit-doc">{h.documentTitle}</span>
-                <span className="ws-docs-hit-text">{h.content.slice(0, 240)}…</span>
-              </li>
-            ))}
-          </ul>
-        )
+      {/* Upload + search — hidden until "Carregar" */}
+      {expanded ? (
+        <div className="ws-docs-expand">
+          <div
+            className={`ws-docs-drop${dragging ? " dragging" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+          >
+            <input ref={inputRef} type="file" multiple hidden onChange={onPick} />
+            <p className="ws-docs-drop-title">
+              {busy ? "A processar…" : "Arrasta ficheiros ou clica para carregar"}
+            </p>
+            <p className="ws-docs-drop-sub">
+              .txt .md .csv .json processados já; PDF/Word/Excel convertidos pelo
+              MarkItDown (ou em fila se o serviço estiver desligado).
+            </p>
+          </div>
+          {msg ? <p className="meta mt-2">{msg}</p> : null}
+
+          <div className="ws-docs-search">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runSearch();
+              }}
+              placeholder="Procurar nos documentos…"
+              className="ws-docs-search-input"
+            />
+            <button
+              type="button"
+              className="action"
+              onClick={runSearch}
+              disabled={searching}
+            >
+              {searching ? "…" : "Procurar"}
+            </button>
+          </div>
+
+          {hits !== null ? (
+            hits.length === 0 ? (
+              <p className="ctx-empty mt-2">Sem resultados.</p>
+            ) : (
+              <ul className="ws-docs-hits">
+                {hits.map((h, i) => (
+                  <li key={`${h.documentId}-${h.idx}-${i}`} className="ws-docs-hit">
+                    <span className="ws-docs-hit-doc">{h.documentTitle}</span>
+                    <span className="ws-docs-hit-text">
+                      {h.content.slice(0, 240)}…
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null}
+        </div>
       ) : null}
 
-      {/* Library */}
-      {documents.length === 0 ? (
-        <p className="ctx-empty mt-3">Ainda não há documentos.</p>
-      ) : (
-        <ul className="ws-docs-list">
+      {/* Compact library list (when there are documents) */}
+      {hasDocs ? (
+        <ul className="ws-docs-list ws-docs-list-compact">
           {documents.map((d) => (
             <li key={d.id} className="ws-docs-item">
               <span className="ws-docs-item-main">
@@ -209,7 +231,7 @@ export default function DocumentsPanel({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }
