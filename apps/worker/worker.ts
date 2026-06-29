@@ -520,11 +520,180 @@ async function minionLoop(): Promise<void> {
   }
 }
 
+/* ── Telegram (ADR-0003) ──────────────────────────────────────────────────── */
+
+// Degrades gracefully: without TELEGRAM_BOT_TOKEN the loop never starts.
+// TELEGRAM_CHAT_ID restricts who can command the bot and is the target for
+// proactive notifications. Long-poll updates; notify on a slower beat.
+const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_NOTIFY_MS = Number(process.env.WORKER_TELEGRAM_NOTIFY_MS ?? 60_000);
+
+async function tg(method: string, body: Record<string, unknown>): Promise<any> {
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json().catch(() => null);
+}
+
+function tgSend(chatId: number | string, text: string, extra: Record<string, unknown> = {}) {
+  return tg("sendMessage", { chat_id: chatId, text, parse_mode: "HTML", ...extra });
+}
+
+/** A pending decision's inline approve/review keyboard. */
+function decisionKeyboard(id: string) {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✓ Aprovar", callback_data: `approve:${id}` },
+        { text: "↻ Rever", callback_data: `review:${id}` },
+      ],
+    ],
+  };
+}
+
+async function tgPendingDecisions(): Promise<{ id: string; title: string }[]> {
+  const { data } = await sb
+    .from("decisions")
+    .select("id, title")
+    .eq("status", "pendente")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  return (data ?? []) as { id: string; title: string }[];
+}
+
+async function handleTelegramText(chatId: number, text: string): Promise<void> {
+  const cmd = text.trim().toLowerCase();
+
+  if (cmd === "/start" || cmd === "/ajuda" || cmd === "/help") {
+    await tgSend(
+      chatId,
+      "<b>ATELIER</b>\n/hoje — decisões pendentes\n/decisoes — aprovar/rever\nQualquer outra mensagem é guardada como captura."
+    );
+    return;
+  }
+
+  if (cmd === "/hoje" || cmd === "/decisoes" || cmd === "/decisões") {
+    const pending = await tgPendingDecisions();
+    if (!pending.length) {
+      await tgSend(chatId, "Sem decisões pendentes. ✨");
+      return;
+    }
+    await tgSend(chatId, `<b>${pending.length} decisão(ões) pendente(s)</b>`);
+    for (const d of pending) {
+      await tgSend(chatId, `• ${d.title}`, { reply_markup: decisionKeyboard(d.id) });
+    }
+    return;
+  }
+
+  // Anything else → capture (nothing is lost).
+  await sb.from("captures").insert({ kind: "texto", value: text });
+  await tgSend(chatId, "Capturado. ✓");
+}
+
+async function handleTelegramCallback(cb: any): Promise<void> {
+  const data = String(cb.data ?? "");
+  const chatId = cb.message?.chat?.id;
+  const [action, id] = data.split(":");
+  if ((action === "approve" || action === "review") && id) {
+    const status = action === "approve" ? "aprovada" : "revisão";
+    await sb.from("decisions").update({ status, updated_at: now() }).eq("id", id);
+    await tg("answerCallbackQuery", {
+      callback_query_id: cb.id,
+      text: action === "approve" ? "Aprovada" : "Em revisão",
+    });
+    if (chatId)
+      await tgSend(chatId, `Decisão ${action === "approve" ? "aprovada ✓" : "em revisão ↻"}.`);
+  } else {
+    await tg("answerCallbackQuery", { callback_query_id: cb.id, text: "" });
+  }
+}
+
+/** Whether a chat is allowed to command the bot (when a chat id is configured). */
+function tgAllowed(chatId: number | string | undefined): boolean {
+  if (!TELEGRAM_CHAT_ID) return true; // not locked down yet
+  return String(chatId) === String(TELEGRAM_CHAT_ID);
+}
+
+async function telegramLoop(): Promise<void> {
+  if (!TELEGRAM_TOKEN) {
+    console.log("[telegram] TELEGRAM_BOT_TOKEN em falta — bot inactivo.");
+    return;
+  }
+  console.log("[telegram] bot activo (long-poll).");
+  let offset = 0;
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    try {
+      const r = await tg("getUpdates", { offset, timeout: 25 });
+      for (const u of r?.result ?? []) {
+        offset = u.update_id + 1;
+        try {
+          if (u.callback_query && tgAllowed(u.callback_query.message?.chat?.id)) {
+            await handleTelegramCallback(u.callback_query);
+          } else if (u.message?.text && tgAllowed(u.message.chat?.id)) {
+            await handleTelegramText(u.message.chat.id, u.message.text);
+          }
+        } catch (e) {
+          console.error("[telegram] update falhou:", e);
+        }
+      }
+    } catch (e) {
+      console.error("[telegram] getUpdates falhou:", e);
+      await sleep(5000);
+    }
+  }
+}
+
+/** Proactive notifications: new pending decisions + minion signals → the chat. */
+async function telegramNotifyLoop(): Promise<void> {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
+  // Start the watermark at "now" so we only notify about genuinely new items.
+  let since = now();
+  console.log(`[telegram] notificações a cada ${TELEGRAM_NOTIFY_MS} ms.`);
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    await sleep(TELEGRAM_NOTIFY_MS);
+    const checkpoint = now();
+    try {
+      const { data: decs } = await sb
+        .from("decisions")
+        .select("id, title")
+        .eq("status", "pendente")
+        .gt("created_at", since)
+        .limit(10);
+      for (const d of decs ?? [])
+        await tgSend(
+          TELEGRAM_CHAT_ID,
+          `🟠 Nova decisão pendente:\n${d.title}`,
+          { reply_markup: decisionKeyboard(d.id) }
+        );
+
+      const { data: sigs } = await sb
+        .from("minion_signals")
+        .select("signal, kind")
+        .eq("approval_required", true)
+        .gt("created_at", since)
+        .limit(10);
+      for (const s of sigs ?? [])
+        await tgSend(TELEGRAM_CHAT_ID, `🤖 Minion (${s.kind}):\n${s.signal}`);
+
+      since = checkpoint;
+    } catch (e) {
+      console.error("[telegram] notify falhou:", e);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
-  // Context agent and minions run in parallel with the jobs loop.
+  // Context agent, minions and the Telegram bot run in parallel with jobs.
   void contextAgentLoop();
   void minionLoop();
+  void telegramLoop();
+  void telegramNotifyLoop();
   // eslint-disable-next-line no-constant-condition
   for (;;) {
     try {
