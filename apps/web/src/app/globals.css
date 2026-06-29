@@ -5750,3 +5750,101 @@ a.ctx-card:hover {
   font-size: 12px;
   color: var(--text-secondary);
 }
+
+/* ── Conversation Watch (ADR-0006) ─────────────────────────────────────────── */
+.cw {
+  margin-top: 0;
+}
+.cw-head {
+  margin-bottom: 12px;
+}
+.cw-groups {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cw-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cw-group-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cw-group-title {
+  font-weight: 500;
+}
+.cw-group-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cw-select {
+  flex: 0 0 auto;
+  max-width: 50%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.cw-subhead {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+}
+.cw-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cw-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cw-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cw-item-kind {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.cw-item-desc {
+  font-size: 14px;
+}
+.cw-item-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cw-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}

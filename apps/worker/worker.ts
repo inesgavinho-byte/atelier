@@ -527,6 +527,9 @@ async function minionLoop(): Promise<void> {
 // proactive notifications. Long-poll updates; notify on a slower beat.
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// Conversation Watch (ADR-0006): the daily briefing goes to Inês's own chat.
+// Falls back to TELEGRAM_CHAT_ID, which is already her chat in the common setup.
+const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || TELEGRAM_CHAT_ID;
 const TELEGRAM_NOTIFY_MS = Number(process.env.WORKER_TELEGRAM_NOTIFY_MS ?? 60_000);
 
 async function tg(method: string, body: Record<string, unknown>): Promise<any> {
@@ -565,12 +568,19 @@ async function tgPendingDecisions(): Promise<{ id: string; title: string }[]> {
 }
 
 async function handleTelegramText(chatId: number, text: string): Promise<void> {
-  const cmd = text.trim().toLowerCase();
+  const trimmed = text.trim();
+  const [token, ...rest] = trimmed.split(/\s+/);
+  const cmd = token.toLowerCase();
+  const arg = rest.join(" ").trim();
 
   if (cmd === "/start" || cmd === "/ajuda" || cmd === "/help") {
     await tgSend(
       chatId,
-      "<b>ATELIER</b>\n/hoje — decisões pendentes\n/decisoes — aprovar/rever\nQualquer outra mensagem é guardada como captura."
+      "<b>ATELIER</b>\n/hoje — decisões pendentes\n/decisoes — aprovar/rever\n" +
+        "/pendentes — pedidos por responder (Conversation Watch)\n" +
+        "/resolver <i>código</i> — marca um pendente como resolvido\n" +
+        "/grupos — grupos observados\n" +
+        "Qualquer outra mensagem é guardada como captura."
     );
     return;
   }
@@ -585,6 +595,20 @@ async function handleTelegramText(chatId: number, text: string): Promise<void> {
     for (const d of pending) {
       await tgSend(chatId, `• ${d.title}`, { reply_markup: decisionKeyboard(d.id) });
     }
+    return;
+  }
+
+  // —— Conversation Watch commands (ADR-0006) ——
+  if (cmd === "/pendentes") {
+    await tgSend(chatId, await formatPendingBriefing(false));
+    return;
+  }
+  if (cmd === "/resolver") {
+    await tgSend(chatId, await resolvePendingItem(arg));
+    return;
+  }
+  if (cmd === "/grupos") {
+    await tgSend(chatId, await formatGroupsList());
     return;
   }
 
@@ -631,8 +655,16 @@ async function telegramLoop(): Promise<void> {
       for (const u of r?.result ?? []) {
         offset = u.update_id + 1;
         try {
-          if (u.callback_query && tgAllowed(u.callback_query.message?.chat?.id)) {
+          const chatType = u.message?.chat?.type ?? u.my_chat_member?.chat?.type;
+          const isGroup = chatType === "group" || chatType === "supergroup";
+          if (u.my_chat_member) {
+            // Bot added to / removed from a group (Conversation Watch, ADR-0006).
+            await handleMyChatMember(u.my_chat_member);
+          } else if (u.callback_query && tgAllowed(u.callback_query.message?.chat?.id)) {
             await handleTelegramCallback(u.callback_query);
+          } else if (u.message?.text && isGroup) {
+            // Observe a group the bot was explicitly added to — no commands here.
+            await processGroupMessage(u.message);
           } else if (u.message?.text && tgAllowed(u.message.chat?.id)) {
             await handleTelegramText(u.message.chat.id, u.message.text);
           }
@@ -687,6 +719,333 @@ async function telegramNotifyLoop(): Promise<void> {
   }
 }
 
+/* ── Conversation Watch (ADR-0006, Personal Decimin) ──────────────────────────
+ * The Telegram bot's first Personal Decimin capability: observe groups it was
+ * explicitly added to, extract pending items (requests, commitments, promised
+ * files, deadlines, unanswered questions) via Claude Haiku, and deliver a daily
+ * briefing. No automatic replies; no invisible monitoring (the bot is a named,
+ * visible member). Groups must have autonomy_level ≥ 2 to be analysed.
+ */
+
+interface WatchSignal {
+  kind: string;
+  description: string;
+  from_person?: string | null;
+  to_person?: string | null;
+  due_date?: string | null;
+}
+
+interface WatchGroup {
+  id: string;
+  workspace_id: string | null;
+  project_id: string | null;
+  autonomy_level: number;
+  active: boolean;
+}
+
+/** Analyse one group message with Haiku. Returns [] when nothing is relevant. */
+async function analyzeGroupMessage(sender: string, text: string): Promise<WatchSignal[]> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return [];
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.WORKER_WATCH_MODEL ?? "claude-haiku-4-5-20251001",
+      max_tokens: 700,
+      system:
+        "Analisa esta mensagem de um grupo de trabalho. Detecta: pedidos não " +
+        "respondidos, compromissos assumidos, ficheiros prometidos, prazos " +
+        "mencionados, perguntas sem resposta. Responde APENAS com JSON válido, " +
+        'sem texto à volta: { "signals": [{ "kind", "description", "from_person", ' +
+        '"to_person", "due_date" }] }. kind tem de ser um de ' +
+        "'request'|'commitment'|'promised_file'|'deadline'|'unanswered_question'|'decision'|'risk'. " +
+        "due_date em formato YYYY-MM-DD ou null. Português europeu. Se não houver " +
+        'nada relevante, responde { "signals": [] }.',
+      messages: [{ role: "user", content: `${sender}: ${text}` }],
+    }),
+  });
+  if (!res.ok) {
+    console.error(`[watch] Anthropic HTTP ${res.status}`);
+    return [];
+  }
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const raw = (data.content ?? [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("")
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(raw) as { signals?: WatchSignal[] };
+    const signals = Array.isArray(parsed.signals) ? parsed.signals : [];
+    return signals
+      .filter((s) => s && s.kind && s.description)
+      .map((s) => ({
+        kind: String(s.kind),
+        description: String(s.description),
+        from_person: s.from_person ? String(s.from_person) : null,
+        to_person: s.to_person ? String(s.to_person) : null,
+        due_date:
+          s.due_date && /^\d{4}-\d{2}-\d{2}$/.test(String(s.due_date))
+            ? String(s.due_date)
+            : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Find or lazily register the group (being a member ⇒ explicitly added). */
+async function ensureGroup(chat: {
+  id: number;
+  title?: string;
+}): Promise<WatchGroup | null> {
+  const { data: existing } = await sb
+    .from("telegram_groups")
+    .select("id, workspace_id, project_id, autonomy_level, active")
+    .eq("telegram_chat_id", chat.id)
+    .maybeSingle();
+  if (existing) return existing as WatchGroup;
+  const { data } = await sb
+    .from("telegram_groups")
+    .insert({ telegram_chat_id: chat.id, title: chat.title ?? "Grupo" })
+    .select("id, workspace_id, project_id, autonomy_level, active")
+    .maybeSingle();
+  if (data) console.log(`[watch] grupo registado: ${chat.title ?? chat.id}`);
+  return (data as WatchGroup) ?? null;
+}
+
+/** Bot added to / removed from a group — keep telegram_groups in sync. */
+async function handleMyChatMember(ev: any): Promise<void> {
+  const chat = ev.chat;
+  const status = ev.new_chat_member?.status;
+  if (!chat || (chat.type !== "group" && chat.type !== "supergroup")) return;
+  if (status === "member" || status === "administrator") {
+    const { data: existing } = await sb
+      .from("telegram_groups")
+      .select("id")
+      .eq("telegram_chat_id", chat.id)
+      .maybeSingle();
+    if (existing) {
+      await sb
+        .from("telegram_groups")
+        .update({ active: true, title: chat.title ?? "Grupo" })
+        .eq("id", existing.id);
+    } else {
+      await sb
+        .from("telegram_groups")
+        .insert({ telegram_chat_id: chat.id, title: chat.title ?? "Grupo" });
+    }
+    console.log(`[watch] bot adicionado a ${chat.title ?? chat.id}`);
+    if (TELEGRAM_USER_ID)
+      await tgSend(
+        TELEGRAM_USER_ID,
+        `👀 Conversation Watch activo em <b>${chat.title ?? "grupo"}</b>.`
+      );
+  } else if (status === "left" || status === "kicked") {
+    await sb
+      .from("telegram_groups")
+      .update({ active: false })
+      .eq("telegram_chat_id", chat.id);
+    console.log(`[watch] bot removido de ${chat.title ?? chat.id}`);
+  }
+}
+
+/** Observe one group message: analyse, then store pending items (+ Inbox). */
+async function processGroupMessage(msg: any): Promise<void> {
+  const text = String(msg.text ?? "").trim();
+  // Skip commands and very short chatter — keeps the Haiku budget on substance.
+  if (!text || text.startsWith("/") || text.length < 12) return;
+  const group = await ensureGroup(msg.chat);
+  if (!group || !group.active || group.autonomy_level < 2) return;
+
+  const sender =
+    [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") ||
+    msg.from?.username ||
+    "Alguém";
+  const signals = await analyzeGroupMessage(sender, text);
+  if (!signals.length) return;
+
+  for (const s of signals) {
+    await sb.from("telegram_pending_items").insert({
+      group_id: group.id,
+      workspace_id: group.workspace_id ?? null,
+      kind: s.kind,
+      description: s.description,
+      from_person: s.from_person ?? sender,
+      to_person: s.to_person ?? null,
+      due_date: s.due_date ?? null,
+      source_message_id: msg.message_id ?? null,
+      source_message_text: text.slice(0, 2000),
+    });
+    // Personal Inbox: every signal also lands as a capture (captures is global).
+    await sb.from("captures").insert({ kind: "pending", value: s.description });
+  }
+  console.log(`[watch] ${signals.length} sinal(is) de ${sender}`);
+}
+
+interface PendingRow {
+  id: string;
+  description: string;
+  from_person: string | null;
+  kind: string;
+  workspace_id: string | null;
+  group_id: string;
+}
+
+const shortCode = (id: string) => id.slice(0, 8);
+
+async function fetchPending(daily: boolean): Promise<PendingRow[]> {
+  let q = sb
+    .from("telegram_pending_items")
+    .select("id, description, from_person, kind, workspace_id, group_id")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(60);
+  if (daily) q = q.gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString());
+  const { data } = await q;
+  return (data ?? []) as PendingRow[];
+}
+
+/** Build {workspaceId→name, groupId→title} maps for the pending rows. */
+async function labelMaps(rows: PendingRow[]) {
+  const wsIds = Array.from(
+    new Set(rows.map((r) => r.workspace_id).filter(Boolean))
+  ) as string[];
+  const grpIds = Array.from(new Set(rows.map((r) => r.group_id)));
+  const ws = new Map<string, string>();
+  const grp = new Map<string, string>();
+  if (wsIds.length) {
+    const { data } = await sb.from("workspaces").select("id, name").in("id", wsIds);
+    for (const w of data ?? []) ws.set(w.id as string, w.name as string);
+  }
+  if (grpIds.length) {
+    const { data } = await sb
+      .from("telegram_groups")
+      .select("id, title")
+      .in("id", grpIds);
+    for (const g of data ?? []) grp.set(g.id as string, g.title as string);
+  }
+  return { ws, grp };
+}
+
+/** The pending briefing, grouped by workspace/group. "" when empty (no noise). */
+async function formatPendingBriefing(daily: boolean): Promise<string> {
+  const rows = await fetchPending(daily);
+  if (!rows.length) return daily ? "" : "Sem pedidos pendentes. ✨";
+  const { ws, grp } = await labelMaps(rows);
+  const grouped = new Map<string, PendingRow[]>();
+  for (const r of rows) {
+    const label = r.workspace_id
+      ? ws.get(r.workspace_id) ?? "Workspace"
+      : grp.get(r.group_id) ?? "Pessoal";
+    const arr = grouped.get(label);
+    if (arr) arr.push(r);
+    else grouped.set(label, [r]);
+  }
+  const lines = [`📋 ${rows.length} pedido(s) pendente(s)`];
+  for (const [label, items] of grouped) {
+    lines.push(`\n<b>${label}</b>:`);
+    for (const it of items) {
+      const who = it.from_person ? ` (${it.from_person})` : "";
+      lines.push(`  • [${shortCode(it.id)}] ${it.description}${who}`);
+    }
+  }
+  lines.push("\nResolver: /resolver &lt;código&gt;");
+  return lines.join("\n");
+}
+
+/** Mark a pending item resolved by the short code shown in /pendentes. */
+async function resolvePendingItem(code: string): Promise<string> {
+  const c = code.trim().toLowerCase();
+  if (c.length < 4)
+    return "Usa: /resolver &lt;código&gt; (os 8 caracteres mostrados em /pendentes).";
+  const { data } = await sb
+    .from("telegram_pending_items")
+    .select("id, description")
+    .eq("status", "pending")
+    .limit(200);
+  const match = (data ?? []).find((r: any) => String(r.id).toLowerCase().startsWith(c));
+  if (!match) return `Não encontrei nenhum pendente a começar por "${c}".`;
+  await sb
+    .from("telegram_pending_items")
+    .update({ status: "resolved", resolved_at: now() })
+    .eq("id", match.id);
+  return `Resolvido ✓ — ${match.description}`;
+}
+
+/** List the observed groups and their linked workspaces. */
+async function formatGroupsList(): Promise<string> {
+  const { data } = await sb
+    .from("telegram_groups")
+    .select("title, active, autonomy_level, workspace_id")
+    .order("created_at", { ascending: true });
+  const rows = (data ?? []) as any[];
+  if (!rows.length) return "O bot ainda não foi adicionado a nenhum grupo.";
+  const wsIds = Array.from(new Set(rows.map((r) => r.workspace_id).filter(Boolean))) as string[];
+  const ws = new Map<string, string>();
+  if (wsIds.length) {
+    const { data: wss } = await sb.from("workspaces").select("id, name").in("id", wsIds);
+    for (const w of wss ?? []) ws.set(w.id as string, w.name as string);
+  }
+  const lines = ["<b>Grupos observados</b>"];
+  for (const g of rows) {
+    const link = g.workspace_id ? ws.get(g.workspace_id) ?? "—" : "Pessoal";
+    const st = g.active ? `nível ${g.autonomy_level}` : "inactivo";
+    lines.push(`• ${g.title} — ${link} (${st})`);
+  }
+  return lines.join("\n");
+}
+
+/** Current Europe/Lisbon wall-clock time as seconds since midnight (DST-safe). */
+function lisbonSecondsOfDay(): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Lisbon",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date());
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? "0");
+  return get("hour") * 3600 + get("minute") * 60 + get("second");
+}
+
+function msUntilNextBriefing(): number {
+  const target = 9 * 3600; // 09:00 Lisboa
+  let delta = target - lisbonSecondsOfDay();
+  if (delta <= 0) delta += 24 * 3600;
+  return delta * 1000;
+}
+
+async function sendDailyBriefing(): Promise<void> {
+  if (!TELEGRAM_USER_ID) return;
+  const text = await formatPendingBriefing(true);
+  if (!text) return; // nothing pending in the last 24h → stay quiet
+  await tgSend(TELEGRAM_USER_ID, `<b>Resumo diário</b>\n${text}`);
+}
+
+async function telegramBriefingLoop(): Promise<void> {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_USER_ID) return;
+  console.log("[watch] briefing diário às 09:00 Europe/Lisbon.");
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    await sleep(msUntilNextBriefing());
+    try {
+      await sendDailyBriefing();
+    } catch (e) {
+      console.error("[watch] briefing falhou:", e);
+    }
+    await sleep(60_000); // step past 09:00 so we don't fire twice in the minute
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
   // Context agent, minions and the Telegram bot run in parallel with jobs.
@@ -694,6 +1053,7 @@ async function main(): Promise<void> {
   void minionLoop();
   void telegramLoop();
   void telegramNotifyLoop();
+  void telegramBriefingLoop();
   // eslint-disable-next-line no-constant-condition
   for (;;) {
     try {
