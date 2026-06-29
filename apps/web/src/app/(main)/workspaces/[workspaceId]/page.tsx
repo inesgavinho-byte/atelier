@@ -78,6 +78,7 @@ export default async function WorkspaceDetailPage({
       tokens: m.tokens ?? null,
       citations: (m.metadata?.citations as string[]) ?? [],
       steps: (m.metadata?.steps as { action: string; why: string; effort: "S" | "M" | "L" }[]) ?? [],
+      debate: (m.metadata?.debate as { provider: string; label: string; model: string; text: string }[]) ?? [],
     }));
 
   return (
