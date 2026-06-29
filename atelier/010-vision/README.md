@@ -2,16 +2,25 @@
 
 Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
 
-## Visão fundacional actual
+## Documentos de visão
 
-- [`DECIMA-WORKSPACE-v2.md`](DECIMA-WORKSPACE-v2.md) — **DECIMA Workspace —
-  Foundational Architecture v2**.
-
-  É a referência de visão em vigor: o Workspace como ambiente operativo diário,
-  **DECIMA** como plataforma cognitiva (onde vive o conhecimento) e **DECIM001**
-  como Cognitive Engine. Define Spaces, Projects, Sessions, Timeline, o pipeline
-  de documentos, o AI Runtime, o Maestro e os Decimins, e os princípios
+- [`DECIMA-WORKSPACE-v2.md`](DECIMA-WORKSPACE-v2.md) — **Foundational
+  Architecture (v2)**. A referência de visão **em vigor**: Workspace como
+  ambiente operativo, **DECIMA** como plataforma cognitiva, **DECIM001** como
+  Cognitive Engine. Define Spaces, Projects, Sessions (Team/Private), Timeline,
+  o pipeline de documentos, o AI Runtime, o Maestro, os Decimins e os princípios
   fundacionais (ownership, visibility, knowledge, learning, decimin).
+- [`DECIMA-WORKSPACE-v1.md`](DECIMA-WORKSPACE-v1.md) — **Foundational
+  Architecture (v1)**. A primeira articulação da arquitectura fundacional,
+  mantida como registo histórico. A v2 estende-a e substitui-a como referência
+  actual.
+- [`DECIMA-LIVING-ARTIFACTS.md`](DECIMA-LIVING-ARTIFACTS.md) — **Living Artifacts
+  Architecture**. Estende a visão ao tratamento de documentos: a DECIMA não gera
+  ficheiros descartáveis, mantém **Living Artifacts** (objectos permanentes que
+  evoluem por revisões), com integração Google Workspace, *templates*,
+  *canonical Markdown* e o pipeline de ingestão.
+
+A **v2** é a visão fundacional actual.
 
 ## Relação com outros documentos
 
