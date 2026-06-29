@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ago } from "@/components/mission/bits";
 import {
   setGroupWorkspace,
+  setGroupAutonomy,
   setPendingItemStatus,
 } from "@/app/(main)/minions/actions";
 import type { TelegramGroup, PendingItem } from "@/lib/conversation-watch";
@@ -26,6 +27,16 @@ const KIND_LABELS: Record<string, string> = {
   risk: "risco",
 };
 
+/** Autonomy levels per ADR-0006 (Personal Decimin). */
+const AUTONOMY_LABELS = [
+  "Desligado",
+  "Resumir",
+  "Detectar pendentes",
+  "Lembrar",
+  "Sugerir resposta",
+  "Responder c/ aprovação",
+];
+
 export default function ConversationWatch({
   groups,
   items,
@@ -38,10 +49,20 @@ export default function ConversationWatch({
   const router = useRouter();
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  // Live autonomy value while dragging; falls back to the persisted level.
+  const [levels, setLevels] = useState<Record<string, number>>({});
+  const levelOf = (g: TelegramGroup) => levels[g.id] ?? g.autonomyLevel;
 
   const link = (groupId: string, workspaceId: string) =>
     start(async () => {
       const r = await setGroupWorkspace(groupId, workspaceId || null);
+      setMsg(r.message);
+      router.refresh();
+    });
+
+  const commitAutonomy = (groupId: string, level: number) =>
+    start(async () => {
+      const r = await setGroupAutonomy(groupId, level);
       setMsg(r.message);
       router.refresh();
     });
@@ -77,24 +98,48 @@ export default function ConversationWatch({
               <div className="cw-group-main">
                 <span className="cw-group-title">{g.title}</span>
                 <span className="cw-group-meta">
-                  {g.active ? `nível ${g.autonomyLevel}` : "inactivo"}
-                  {g.pendingCount > 0 ? ` · ${g.pendingCount} pendente(s)` : ""}
+                  {g.pendingCount > 0 ? `${g.pendingCount} pendente(s)` : "sem pendentes"}
                 </span>
               </div>
-              <select
-                className="cw-select"
-                value={g.workspaceId ?? ""}
-                disabled={busy}
-                onChange={(e) => link(g.id, e.target.value)}
-                aria-label={`Ligar ${g.title} a um workspace`}
-              >
-                <option value="">Pessoal (Inbox)</option>
-                {workspaces.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
+              <div className="cw-group-controls">
+                <select
+                  className="cw-select"
+                  value={g.workspaceId ?? ""}
+                  disabled={busy}
+                  onChange={(e) => link(g.id, e.target.value)}
+                  aria-label={`Ligar ${g.title} a um workspace`}
+                >
+                  <option value="">Pessoal (Inbox)</option>
+                  {workspaces.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="cw-autonomy">
+                  <input
+                    type="range"
+                    min={0}
+                    max={5}
+                    step={1}
+                    value={levelOf(g)}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setLevels((p) => ({ ...p, [g.id]: Number(e.target.value) }))
+                    }
+                    onMouseUp={(e) =>
+                      commitAutonomy(g.id, Number((e.target as HTMLInputElement).value))
+                    }
+                    onKeyUp={(e) =>
+                      commitAutonomy(g.id, Number((e.target as HTMLInputElement).value))
+                    }
+                    aria-label={`Autonomia de ${g.title}`}
+                  />
+                  <span className="cw-autonomy-label">
+                    {levelOf(g)} · {AUTONOMY_LABELS[levelOf(g)]}
+                  </span>
+                </label>
+              </div>
             </li>
           ))}
         </ul>

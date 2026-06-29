@@ -107,10 +107,14 @@ const toArtifact = (r: any): Artifact => ({
 export async function getInitiatives(): Promise<Initiative[]> {
   const sb = getSupabase();
   if (!sb) return [];
+  // Deterministic, complete ordering: sort first, then name as a stable
+  // tie-breaker (many rows share the same sort value), so every workspace
+  // always appears in a predictable position in the sidebar.
   const { data } = await sb
     .from("workspaces")
     .select("*")
-    .order("sort");
+    .order("sort", { nullsFirst: false })
+    .order("name");
   return (data ?? []).map(toInitiative);
 }
 

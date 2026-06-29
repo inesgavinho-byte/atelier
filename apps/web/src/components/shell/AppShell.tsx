@@ -49,9 +49,6 @@ export default function AppShell({
   sections: NavSection[];
   /** When the access gate is on, show a Sair (logout) control. */
   gated?: boolean;
-  /** Badge counts; folded into the sections by the layout. */
-  pendingDecisions?: number;
-  unread?: number;
   children: React.ReactNode;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
