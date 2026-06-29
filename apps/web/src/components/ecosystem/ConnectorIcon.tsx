@@ -126,6 +126,16 @@ const TILES: Record<string, Tile> = {
   sharepoint: { color: "#038387", label: "S" },
 };
 
+/**
+ * Remote logo URLs for connectors with no bundled/official SVG (loaded by the
+ * browser). Falls back to the brand tile via onError/onLoad if the host is
+ * unreachable. Kept minimal — bundled logos are preferred.
+ */
+const REMOTE_ICONS: Record<string, string> = {
+  sharepoint:
+    "https://msicons.com/icons/sharepoint/microsoft-office-sharepoint-2025.svg",
+};
+
 function LogoIcon({ logo, size }: { logo: Logo; size: number }) {
   return (
     <svg
@@ -182,6 +192,31 @@ export default function ConnectorIcon({
         style={{ width: size, height: size }}
       >
         <LogoIcon logo={logo} size={size} />
+      </span>
+    );
+  }
+
+  // Remote logo (browser-loaded), falling back to the tile on any failure.
+  const remote = REMOTE_ICONS[connectorId];
+  if (remote && !failed) {
+    return (
+      <span
+        className="connector-icon connector-icon-tile"
+        style={{ width: size, height: size }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="connector-icon-img"
+          src={remote}
+          alt={`${name} logótipo`}
+          width={size}
+          height={size}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          onLoad={(e) => {
+            if (e.currentTarget.naturalWidth === 0) setFailed(true);
+          }}
+        />
       </span>
     );
   }
