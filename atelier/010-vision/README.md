@@ -4,6 +4,14 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
 
 ## Documentos de visão
 
+- [`DECIMA-PHILOSOPHY-v2.md`](DECIMA-PHILOSOPHY-v2.md) — **The Philosophy of
+  Organisational Intelligence (v2)**. O **documento filosófico fundacional** da
+  DECIMA: a plataforma como _Continuity Engine_ para o juízo organizacional —
+  observar a realidade, compreender, lembrar, julgar, coordenar, executar,
+  aprender e continuar. É o **critério de avaliação de todas as decisões de
+  produto e arquitectura** (ver _The New Product Test_: cada funcionalidade tem
+  de aumentar compreensão, simplificar, melhorar o juízo, preservar
+  continuidade e reduzir carga cognitiva — caso contrário, remove-se).
 - [`DECIMA-WORKSPACE-v2.md`](DECIMA-WORKSPACE-v2.md) — **Foundational
   Architecture (v2)**. A referência de visão **em vigor**: Workspace como
   ambiente operativo, **DECIMA** como plataforma cognitiva, **DECIM001** como
