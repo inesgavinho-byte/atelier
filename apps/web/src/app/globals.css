@@ -6295,3 +6295,54 @@ a.ctx-card:hover {
   max-height: 220px;
   overflow-y: auto;
 }
+
+/* ── Sessions with intent (ADR-0005 F2) ────────────────────────────────────── */
+.sess-head {
+  margin-bottom: 8px;
+}
+.sess-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.sess-input,
+.sess-skill {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.sess-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sess-state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: 0 0 auto;
+}
+.sess-active .sess-state-dot {
+  background: rgba(40, 170, 110, 0.95);
+}
+.sess-completed .sess-state-dot {
+  background: var(--text-muted);
+}
+.sess-archived {
+  opacity: 0.6;
+}
+.sess-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.sess-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
