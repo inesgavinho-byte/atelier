@@ -4,7 +4,7 @@ import { login } from "./actions";
 import LoginParams from "./LoginParams";
 
 export const metadata: Metadata = {
-  title: "Entrar — ATELIER",
+  title: "Entrar — DECIMA",
   robots: { index: false, follow: false },
 };
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
   return (
     <main className="login-screen">
       <form action={login} className="login-card">
-        <h1 className="login-title">ATELIER</h1>
+        <h1 className="login-title">DECIMA</h1>
         <p className="login-sub">Espaço privado. Introduz a palavra-passe.</p>
 
         <input
