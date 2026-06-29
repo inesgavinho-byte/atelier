@@ -132,6 +132,7 @@ export default async function WorkspaceDetailPage({
           initialMessages={initial}
           contextVersion={context?.version}
           contextUpdatedAt={context?.lastUpdatedAt}
+          artifacts={artifacts.map((a) => ({ id: a.id, title: a.title }))}
         />
         <ContextPanel
           workspaceId={ws.id}

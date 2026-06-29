@@ -7,6 +7,7 @@ import { ago } from "@/components/mission/bits";
 import { estimateCostUSD, formatCostUSD } from "@/lib/ai/cost";
 import { isComplexQuestion } from "@/lib/ai-runtime/classifier";
 import { sendCouncilDebate } from "@/app/(main)/workspaces/[workspaceId]/actions";
+import ArtifactSaveControls from "@/components/workspaces/ArtifactSaveControls";
 
 /**
  * WorkspaceChat — the continuous workspace conversation (ADR-0004).
@@ -65,6 +66,7 @@ export default function WorkspaceChat({
   initialMessages,
   contextVersion,
   contextUpdatedAt,
+  artifacts = [],
 }: {
   workspaceId: string;
   workspaceName: string;
@@ -73,6 +75,8 @@ export default function WorkspaceChat({
   initialMessages: ChatMessage[];
   contextVersion?: number;
   contextUpdatedAt?: string | null;
+  /** Existing artifacts, for the "Actualizar artefacto" picker (Bloco E). */
+  artifacts?: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -343,6 +347,14 @@ export default function WorkspaceChat({
                             </button>
                           ))}
                         </div>
+                      ) : null}
+
+                      {m.content.trim() ? (
+                        <ArtifactSaveControls
+                          workspaceId={workspaceId}
+                          content={m.content}
+                          artifacts={artifacts}
+                        />
                       ) : null}
                     </>
                   ) : (

@@ -24,6 +24,7 @@ import { StateTag, ago } from "@/components/mission/bits";
 import RepoPanel from "@/components/workspaces/RepoPanel";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
 import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
+import ArtifactDrawer from "@/components/workspaces/ArtifactDrawer";
 import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
 import { NewProjectForm } from "@/components/workspaces/WorkspaceForms";
 import type { WorkspaceContext } from "@/lib/workspaces";
@@ -118,6 +119,7 @@ export default function ContextPanel({
   const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>({});
   const [collapsed, setCollapsed] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [openArtifact, setOpenArtifact] = useState<string | null>(null);
   const openKey = `atelier-ctx-${workspaceId}`;
   const collapsedKey = `atelier-ctx-collapsed-${workspaceId}`;
 
@@ -277,12 +279,17 @@ export default function ContextPanel({
         ) : (
           <div className="ctx-cards">
             {artifacts.map((a) => (
-              <div key={a.id} className="ctx-card">
+              <button
+                key={a.id}
+                type="button"
+                className="ctx-card ctx-card-button"
+                onClick={() => setOpenArtifact(a.id)}
+              >
                 <span className="ctx-card-row">
                   <span className="ctx-dot ctx-dot-violet" />
                   <span className="ctx-card-title">{a.title}</span>
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         ),
@@ -394,9 +401,18 @@ export default function ContextPanel({
 
   const visible = sections.filter((s) => s.show);
 
+  const drawer = openArtifact ? (
+    <ArtifactDrawer
+      artifactId={openArtifact}
+      workspaceId={workspaceId}
+      onClose={() => setOpenArtifact(null)}
+    />
+  ) : null;
+
   // ── Collapsed: a slim vertical tab (toggle + section icons) ────────────────
   if (collapsed) {
     return (
+      <>
       <aside className="ctx-panel ctx-collapsed" aria-label="Contexto (recolhido)">
         <button
           type="button"
@@ -423,11 +439,14 @@ export default function ContextPanel({
           ))}
         </div>
       </aside>
+      {drawer}
+      </>
     );
   }
 
   // ── Expanded: the full drawer card ─────────────────────────────────────────
   return (
+    <>
     <aside className="ctx-panel ctx-expanded" aria-label="Contexto do workspace">
       <div className="ctx-drawer-card">
         <div className="ctx-drawer-head">
@@ -504,5 +523,7 @@ export default function ContextPanel({
         ) : null}
       </div>
     </aside>
+    {drawer}
+    </>
   );
 }
