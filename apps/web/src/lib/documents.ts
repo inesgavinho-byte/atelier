@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
+import { embedText, cosineSimilarity } from "@/lib/ai/embeddings";
 
 /**
  * ATELIER — document pipeline (Bloco 5, Node-first).
@@ -161,16 +162,14 @@ function queryTerms(query: string, max = 8): string[] {
 }
 
 /**
- * Retrieve the document chunks most relevant to a question (v1 RAG — lexical,
- * no embeddings yet). Candidate chunks are those containing any query term;
- * they are scored by how many distinct terms they contain and the top K are
- * returned. Used to ground the Council's answers in the workspace's own
- * documents (item 19). Returns [] when nothing matches.
+ * Lexical fallback: candidate chunks contain a query term, scored by how many
+ * distinct terms they contain. Used when embeddings are unavailable (no
+ * OPENAI_API_KEY, or chunks ingested before RAG v2).
  */
-export async function retrieveRelevantChunks(
+async function keywordRetrieveChunks(
   workspaceId: string,
   query: string,
-  k = 5
+  k: number
 ): Promise<ChunkHit[]> {
   const sb = getSupabase();
   if (!sb) return [];
@@ -203,6 +202,59 @@ export async function retrieveRelevantChunks(
       idx,
       content,
     }));
+}
+
+// Below this cosine score a chunk is treated as not relevant enough to inject.
+const SEMANTIC_FLOOR = 0.2;
+
+/**
+ * Retrieve the document chunks most relevant to a question (RAG v2 — semantic).
+ * Embeds the query and ranks the workspace's embedded chunks by cosine
+ * similarity; falls back to keyword retrieval when embeddings aren't available
+ * (no key, or chunks ingested before embeddings existed). Grounds the Council's
+ * answers in the workspace's own documents. Returns [] when nothing matches.
+ */
+export async function retrieveRelevantChunks(
+  workspaceId: string,
+  query: string,
+  k = 5
+): Promise<ChunkHit[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const queryVec = await embedText(query);
+  if (queryVec) {
+    const { data } = await sb
+      .from("document_chunks")
+      .select("document_id, idx, content, embedding, documents(title)")
+      .eq("workspace_id", workspaceId)
+      .not("embedding", "is", null)
+      .limit(500);
+    const scored = (data ?? [])
+      .map((r: any) => {
+        const emb = Array.isArray(r.embedding) ? (r.embedding as number[]) : null;
+        return {
+          documentId: r.document_id,
+          documentTitle: r.documents?.title ?? "(documento)",
+          idx: r.idx,
+          content: r.content as string,
+          score: emb ? cosineSimilarity(queryVec, emb) : 0,
+        };
+      })
+      .filter((x) => x.score >= SEMANTIC_FLOOR)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k);
+    if (scored.length)
+      return scored.map(({ documentId, documentTitle, idx, content }) => ({
+        documentId,
+        documentTitle,
+        idx,
+        content,
+      }));
+    // Nothing semantically close — fall through to keyword.
+  }
+
+  return keywordRetrieveChunks(workspaceId, query, k);
 }
 
 /** Keyword search over a workspace's document chunks (ILIKE; v1). */
