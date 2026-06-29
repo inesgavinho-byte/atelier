@@ -41,6 +41,12 @@ Este gabinete contém a **visão fundacional actual** do ATELIER / DECIMA.
   de Telegram como primeiro canal) detecta pedidos, compromissos, ficheiros
   prometidos e perguntas sem resposta, e encaminha sinais para o Space certo.
   Formalizado em [`../060-decisions/ADR-0006-personal-decimin-conversation-watch.md`](../060-decisions/ADR-0006-personal-decimin-conversation-watch.md).
+- [`DECIMA-DESIGN-PRINCIPLES.md`](DECIMA-DESIGN-PRINCIPLES.md) — **Design
+  Inspiration Principles**. Os princípios de design da DECIMA destilados a
+  partir de grandes sistemas/equipas da ficção (JARVIS, Alfred, Sherlock,
+  Moneyball, Apollo 13, Ocean's Eleven, The West Wing…): reduzir carga
+  cognitiva e amplificar o juízo humano em vez de o substituir — a DECIMA não é
+  o herói, o utilizador é.
 
 A **v2** é a visão fundacional actual.
 
