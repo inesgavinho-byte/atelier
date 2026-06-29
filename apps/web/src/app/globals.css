@@ -3149,13 +3149,9 @@
 }
 
 @media (max-width: 1024px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
-  .shell-sidebar {
-    position: relative;
-    height: auto;
-  }
+  /* The sidebar stays a fixed vertical left column at every width (DECIMA spec:
+     "Sidebar — Fixed. Never collapses automatically."). Only the page content
+     below reflows. */
   .home-quick-row {
     grid-template-columns: 1fr;
   }
