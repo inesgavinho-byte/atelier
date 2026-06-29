@@ -86,7 +86,7 @@ export default function AppShell({
         />
 
         <div className="shell-main">
-          <Topbar onSearch={openSearch} onCapture={openCapture} />
+          <Topbar onCapture={openCapture} />
           <div className="shell-content">{children}</div>
         </div>
 

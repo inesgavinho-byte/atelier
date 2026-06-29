@@ -1,27 +1,13 @@
 "use client";
 
-/** Sticky translucent top bar: centered search trigger + Capturar action. */
-export default function Topbar({
-  onSearch,
-  onCapture,
-}: {
-  onSearch: () => void;
-  onCapture: () => void;
-}) {
+/**
+ * Sticky translucent top bar. Search now lives on the workspace action row (and
+ * the sidebar / ⌘K), so the header only carries spacing + the Capturar action.
+ */
+export default function Topbar({ onCapture }: { onCapture: () => void }) {
   return (
     <div className="shell-topbar">
-      <button
-        type="button"
-        className="shell-search-trigger"
-        onClick={onSearch}
-        aria-label="Pesquisar"
-      >
-        <span className="shell-search-icon" aria-hidden>
-          ⌕
-        </span>
-        <span>Pesquisar</span>
-        <kbd className="shell-search-kbd">⌘K</kbd>
-      </button>
+      <div className="shell-topbar-spacer" />
       <button type="button" className="btn-primary" onClick={onCapture}>
         Capturar
       </button>
