@@ -10,6 +10,7 @@ import {
   type ImportSource,
 } from "@/lib/context-import";
 import { mergeWorkspaceContext } from "@/lib/context-merge";
+import { recordTimelineEvent } from "@/lib/timeline";
 
 export interface ImportResult {
   ok: boolean;
@@ -82,6 +83,14 @@ export async function importContext(input: {
   }
 
   await mergeWorkspaceContext(workspaceId, extracted, projectId);
+  await recordTimelineEvent({
+    workspaceId,
+    projectId,
+    kind: "import",
+    title: `Contexto importado de ${source}`,
+    body: `${extracted.decisions.length} decisões · ${extracted.artifacts.length} artefactos`,
+    actor: "user",
+  }).catch(() => {});
   revalidatePath(`/workspaces/${workspaceId}`);
   if (projectId)
     revalidatePath(`/workspaces/${workspaceId}/projects/${projectId}`);

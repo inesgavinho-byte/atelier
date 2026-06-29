@@ -10,6 +10,7 @@ import {
   searchDocumentChunks,
   type ChunkHit,
 } from "@/lib/documents";
+import { recordTimelineEvent } from "@/lib/timeline";
 
 /**
  * Add a document to a workspace (Bloco 5). Text-like content is converted to
@@ -81,6 +82,15 @@ export async function addDocument(input: {
       if (!chunkErr) chunks = rows.length;
     }
   }
+
+  await recordTimelineEvent({
+    workspaceId: input.workspaceId,
+    projectId: input.projectId || null,
+    kind: "document",
+    title: `Documento: ${title}`,
+    body: status === "ready" ? `${chunks} secções` : "conversão pendente",
+    actor: "user",
+  }).catch(() => {});
 
   revalidatePath(`/workspaces/${input.workspaceId}`);
   return {
