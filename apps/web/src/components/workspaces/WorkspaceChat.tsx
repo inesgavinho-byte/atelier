@@ -25,6 +25,8 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Pre-formatted HH:MM (from the server for history; local for live turns). */
+  time?: string;
   model?: string;
   taskType?: string;
   tokens?: number | null;
@@ -33,6 +35,18 @@ type ChatMessage = {
   steps?: NextStep[];
   debate?: Perspective[];
 };
+
+/** Local HH:MM for live turns (history times come pre-formatted from the server). */
+function nowTime(): string {
+  try {
+    return new Date().toLocaleTimeString("pt-PT", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
 
 /** Separates the streamed text from the trailing JSON metadata line. */
 const META_MARKER = "[[ATELIER_META]]";
@@ -99,7 +113,7 @@ export default function WorkspaceChat({
 
     setMessages((prev) => [
       ...prev,
-      { id: `user-${Date.now()}`, role: "user", content },
+      { id: `user-${Date.now()}`, role: "user", content, time: nowTime() },
     ]);
     if (override === undefined) setInput("");
     setError(null);
@@ -124,7 +138,7 @@ export default function WorkspaceChat({
       const taskType = res.headers.get("x-task-type") ?? undefined;
       setMessages((prev) => [
         ...prev,
-        { id: assistantId, role: "assistant", content: "", model, taskType },
+        { id: assistantId, role: "assistant", content: "", model, taskType, time: nowTime() },
       ]);
       setPending(false);
 
@@ -192,7 +206,7 @@ export default function WorkspaceChat({
 
     setMessages((prev) => [
       ...prev,
-      { id: `user-${Date.now()}`, role: "user", content },
+      { id: `user-${Date.now()}`, role: "user", content, time: nowTime() },
     ]);
     setInput("");
     setError(null);
@@ -208,6 +222,7 @@ export default function WorkspaceChat({
             id: `assistant-${Date.now()}`,
             role: "assistant",
             content: r.synthesis ?? "",
+            time: nowTime(),
             model: r.model,
             taskType: "complex",
             debate: r.perspectives ?? [],
@@ -245,28 +260,52 @@ export default function WorkspaceChat({
           </div>
         ) : (
           messages.map((m) => {
-            const cost =
-              m.role === "assistant"
-                ? formatCostUSD(estimateCostUSD(m.model, m.tokens))
-                : null;
+            const isAssistant = m.role === "assistant";
+            const cost = isAssistant
+              ? formatCostUSD(estimateCostUSD(m.model, m.tokens))
+              : null;
+            const name = isAssistant
+              ? m.taskType === "complex"
+                ? "DECIMUS"
+                : "DECIMA"
+              : "Inês";
+            const detail = isAssistant
+              ? [
+                  m.model,
+                  m.taskType && TASK_LABELS[m.taskType]
+                    ? TASK_LABELS[m.taskType]
+                    : null,
+                  m.tokens ? `${m.tokens} tokens` : null,
+                  cost,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "";
             return (
               <div key={m.id} className={`ws-msg ${m.role}`}>
-                <div className="ws-msg-bubble">
+                <div
+                  className={`ws-avatar ${isAssistant ? "ws-avatar-decimus" : "ws-avatar-ines"}`}
+                  aria-hidden
+                >
+                  {isAssistant ? (
+                    <span className="ws-decima-glyph">◐</span>
+                  ) : (
+                    "IG"
+                  )}
+                </div>
+                <div className="ws-msg-main">
+                  <div className="ws-msg-meta">
+                    <span className="ws-msg-name">{name}</span>
+                    {m.time ? <span className="ws-msg-time">{m.time}</span> : null}
+                    {detail ? (
+                      <span className="ws-msg-detail">{detail}</span>
+                    ) : null}
+                  </div>
+                  <div
+                    className={`ws-msg-bubble ${isAssistant ? "ws-bubble-decimus" : "ws-bubble-ines"}`}
+                  >
                   {m.role === "assistant" ? (
                     <>
-                      <div className="ws-msg-head">
-                        <span className="ws-dot-council" />
-                        <span>
-                          {m.taskType === "complex" ? "DECIMUS" : "DECIMA"}
-                          {m.model ? ` · ${m.model}` : ""}
-                          {m.taskType && TASK_LABELS[m.taskType]
-                            ? ` · ${TASK_LABELS[m.taskType]}`
-                            : ""}
-                          {m.tokens ? ` · ${m.tokens} tokens` : ""}
-                          {cost ? ` · ${cost}` : ""}
-                        </span>
-                      </div>
-
                       {m.debate && m.debate.length > 0 ? (
                         <details className="ws-debate" open>
                           <summary>
@@ -348,6 +387,7 @@ export default function WorkspaceChat({
                   ) : (
                     <p className="ws-msg-text">{m.content}</p>
                   )}
+                  </div>
                 </div>
               </div>
             );
@@ -356,15 +396,19 @@ export default function WorkspaceChat({
 
         {pending ? (
           <div className="ws-msg assistant">
-            <div className="ws-msg-bubble">
-              <div className="ws-msg-head">
-                <span className="ws-dot-council" />
-                <span>DECIMA</span>
+            <div className="ws-avatar ws-avatar-decimus" aria-hidden>
+              <span className="ws-decima-glyph">◐</span>
+            </div>
+            <div className="ws-msg-main">
+              <div className="ws-msg-meta">
+                <span className="ws-msg-name">DECIMA</span>
               </div>
-              <div className="ws-typing" aria-label="a pensar">
-                <span />
-                <span />
-                <span />
+              <div className="ws-msg-bubble ws-bubble-decimus">
+                <div className="ws-typing" aria-label="a pensar">
+                  <span />
+                  <span />
+                  <span />
+                </div>
               </div>
             </div>
           </div>
