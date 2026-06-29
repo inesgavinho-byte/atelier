@@ -3609,6 +3609,62 @@
 .ws-docs {
   margin-bottom: 18px;
 }
+
+/* Compact Documentos — a discreet line above the chat, expandable on demand. */
+.ws-docs-compact {
+  margin-bottom: 10px;
+}
+.ws-docs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+.ws-docs-bar-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.ws-docs-bar-empty {
+  color: var(--text-muted);
+}
+.ws-docs-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--panel-strong);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.ws-docs-load {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ws-docs-load:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ws-docs-expand {
+  margin-top: 8px;
+}
+/* Cap the inline library so it never crowds out the chat. */
+.ws-docs-list-compact {
+  max-height: 132px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
 .ws-docs-drop {
   border: 1px dashed var(--border);
   border-radius: var(--radius-card);
