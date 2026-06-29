@@ -18,6 +18,7 @@ import {
   IconMenu2,
   IconPlus,
   IconUpload,
+  IconClock,
   type Icon,
 } from "@tabler/icons-react";
 import { StateTag, ago } from "@/components/mission/bits";
@@ -25,6 +26,8 @@ import RepoPanel from "@/components/workspaces/RepoPanel";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
 import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
 import ArtifactDrawer from "@/components/workspaces/ArtifactDrawer";
+import SessionsPanel from "@/components/workspaces/SessionsPanel";
+import type { WorkspaceSession } from "@/lib/sessions-constants";
 import HomeDecisionActions from "@/components/shell/HomeDecisionActions";
 import { NewProjectForm } from "@/components/workspaces/WorkspaceForms";
 import type { WorkspaceContext } from "@/lib/workspaces";
@@ -45,6 +48,7 @@ import type { Agent, Artifact, Decision } from "@/data/mission";
 
 type SectionId =
   | "contexto"
+  | "sessoes"
   | "repo"
   | "db"
   | "decisoes"
@@ -72,6 +76,7 @@ export default function ContextPanel({
   agents,
   projects,
   documents,
+  sessions,
   overview,
 }: {
   workspaceId: string;
@@ -84,6 +89,8 @@ export default function ContextPanel({
   decisions: Decision[];
   artifacts: Artifact[];
   agents: Agent[];
+  /** Intentful sessions enable the "Sessões" section (ADR-0005 F2). */
+  sessions?: WorkspaceSession[];
   /** Projects enable the "Projectos" section + "Novo projecto" (workspace scope). */
   projects?: WorkspaceProject[];
   /** Documents enable the "Documentos" section + "Carregar documentos". */
@@ -101,11 +108,14 @@ export default function ContextPanel({
   const openPRs = overview?.prs ?? [];
   const hasProjects = projects !== undefined;
   const hasDocuments = documents !== undefined;
+  const hasSessions = sessions !== undefined;
+  const activeSessions = (sessions ?? []).filter((s) => s.state === "active");
 
   // Default open/closed per section. Decisões opens itself when something is
   // pending; Repositório opens itself when there are open PRs.
   const defaults: Record<SectionId, boolean> = {
     contexto: false,
+    sessoes: activeSessions.length > 0,
     repo: openPRs.length > 0,
     db: false,
     decisoes: pendingDecisions.length > 0,
@@ -201,6 +211,21 @@ export default function ContextPanel({
         </>
       ) : (
         <p className="ctx-empty">Sem memória ainda.</p>
+      ),
+    },
+    {
+      id: "sessoes",
+      label: "Sessões",
+      Icon: IconClock,
+      hint: activeSessions.length
+        ? `${activeSessions.length} activa${activeSessions.length === 1 ? "" : "s"}`
+        : sessions?.length
+          ? `${sessions.length}`
+          : undefined,
+      badge: activeSessions.length || undefined,
+      show: hasSessions && !isProject,
+      body: (
+        <SessionsPanel workspaceId={workspaceId} sessions={sessions ?? []} />
       ),
     },
     {

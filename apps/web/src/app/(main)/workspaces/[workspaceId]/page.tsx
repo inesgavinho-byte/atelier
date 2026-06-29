@@ -21,6 +21,7 @@ import WorkspaceSearchPill from "@/components/workspaces/WorkspaceSearchPill";
 import MissionEngine from "@/components/workspaces/MissionEngine";
 import { getDocuments } from "@/lib/documents";
 import { getMissionState } from "@/lib/mission-engine";
+import { getSessions } from "@/lib/sessions";
 import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export default async function WorkspaceDetailPage({
     projects,
     overview,
     documents,
+    sessions,
   ] = await Promise.all([
     getDecisions(),
     getPendingDecisions(),
@@ -53,6 +55,7 @@ export default async function WorkspaceDetailPage({
     getProjects(ws.id),
     getWorkspaceRepoOverview(ws.id).catch(() => null),
     getDocuments(ws.id).catch(() => []),
+    getSessions(ws.id).catch(() => []),
   ]);
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
@@ -155,6 +158,7 @@ export default async function WorkspaceDetailPage({
           agents={agents}
           projects={projects}
           documents={documents}
+          sessions={sessions}
           overview={overview}
         />
       </div>
