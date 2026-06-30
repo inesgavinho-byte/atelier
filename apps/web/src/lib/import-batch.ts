@@ -82,16 +82,18 @@ export function parseUpload(filename: string, bytes: Uint8Array): ParsedUpload |
 
 /* ── Batch persistence + preview ──────────────────────────────────────────── */
 
-/** Store a parsed batch and return its id. */
-export async function storeBatch(parsed: ParsedUpload): Promise<string | null> {
+/** Store a parsed batch and return its id. Throws with the DB error on failure
+ *  so the caller can surface a real message instead of an opaque 500. */
+export async function storeBatch(parsed: ParsedUpload): Promise<string> {
   const admin = getSupabaseAdmin();
-  if (!admin) return null;
+  if (!admin) throw new Error("Service role indisponível.");
   const { data, error } = await admin
     .from("import_batches")
     .insert({ source: parsed.source, conversations: parsed.conversations })
     .select("id")
     .single();
-  return error ? null : (data.id as string);
+  if (error) throw new Error(`Falha ao guardar o lote (import_batches): ${error.message}`);
+  return data.id as string;
 }
 
 async function loadBatch(
