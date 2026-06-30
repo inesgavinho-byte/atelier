@@ -15,7 +15,15 @@ export type SignalKind =
   | "warning"
   | "decision_required"
   | "opportunity"
-  | "risk";
+  | "risk"
+  | "pattern";
+
+/** Structured metadata for a cross-Space pattern signal (Pattern Decimin). */
+export interface PatternMeta {
+  spaces?: string[];
+  confidence?: number;
+  type?: string;
+}
 export type SignalStatus = "pending" | "reviewed" | "actioned" | "dismissed";
 
 export interface Minion {
@@ -45,6 +53,8 @@ export interface MinionSignal {
   approvalRequired: boolean;
   status: SignalStatus;
   createdAt: string;
+  /** Structured metadata (pattern signals carry spaces/confidence/type). */
+  metadata: PatternMeta;
 }
 
 const toSignal = (r: any): MinionSignal => ({
@@ -59,6 +69,8 @@ const toSignal = (r: any): MinionSignal => ({
   approvalRequired: Boolean(r.approval_required),
   status: r.status,
   createdAt: r.created_at,
+  metadata:
+    r.metadata && typeof r.metadata === "object" ? (r.metadata as PatternMeta) : {},
 });
 
 /** All minions with a count of their still-pending signals. */

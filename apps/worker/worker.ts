@@ -829,8 +829,261 @@ async function runMinionLLM(
   }
 }
 
+/* ── Pattern Decimin (Sprint 4) — detecção transversal entre Spaces ─────────
+ * Ao contrário dos outros minions (um workspace de cada vez), o Pattern Decimin
+ * recebe dados de TODOS os workspaces em simultâneo, enriquece com retrieval
+ * semântico cross-Space (pgvector), e procura padrões invisíveis: repetidos,
+ * relações inesperadas, sinais fracos, oportunidades e riscos transversais.
+ * Corre 1×/dia (1440 min). Emite sinais kind='pattern', workspace_id=null, com
+ * metadata { spaces, confidence, type }.
+ */
+
+interface DetectedPattern {
+  type: string;
+  spaces: string[];
+  summary: string;
+  evidence: string[];
+  confidence: number;
+  recommendation: string;
+}
+
+/** Canonical pattern types (LLM may answer in EN/PT — normalised here). */
+const PATTERN_TYPE_MAP: Record<string, string> = {
+  repeated: "repeated",
+  repetido: "repeated",
+  relation: "relation",
+  relação: "relation",
+  relacao: "relation",
+  signal: "signal",
+  sinal: "signal",
+  opportunity: "opportunity",
+  oportunidade: "opportunity",
+  risk: "risk",
+  risco: "risk",
+};
+
+/** Top-3 chunks most relevant to a workspace's own summary (best-effort RAG). */
+async function patternRagForWorkspace(
+  workspaceId: string,
+  summary: string
+): Promise<string[]> {
+  if (!process.env.OPENAI_API_KEY || !summary.trim()) return [];
+  try {
+    const vecs = await embedTexts([summary.slice(0, 2000)]);
+    if (!vecs) return [];
+    const { data, error } = await sb.rpc("match_document_chunks", {
+      query_embedding: vecs[0],
+      match_workspace: workspaceId,
+      match_project: null,
+      match_floor: 0.2,
+      match_count: 3,
+    });
+    if (error || !Array.isArray(data)) return [];
+    return (data as any[]).map((r) => String(r.content ?? "").slice(0, 400));
+  } catch {
+    return [];
+  }
+}
+
+/** Aggregate cross-Space data into one structured, per-workspace context. */
+async function gatherPatternContext(): Promise<string> {
+  const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const since7 = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  const { data: workspaces } = await sb.from("workspaces").select("id, name");
+  if (!workspaces || !workspaces.length) return "";
+
+  const [decs, pends, arts, ctxs, acts] = await Promise.all([
+    sb.from("decisions").select("title, status, workspace_id").gte("updated_at", since30).limit(300),
+    sb.from("telegram_pending_items").select("description, kind, workspace_id").eq("status", "pending").limit(300),
+    sb.from("artifacts").select("title, kind, workspace_id").gte("updated_at", since30).limit(300),
+    sb.from("workspace_context").select("workspace_id, summary").is("project_id", null),
+    sb.from("activity").select("title, kind, workspace_id").gte("at", since7).limit(300),
+  ]);
+
+  const byWs = <T extends { workspace_id?: string | null }>(rows: T[] | null) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows ?? []) {
+      const k = r.workspace_id ?? "";
+      if (!k) continue;
+      const arr = m.get(k);
+      if (arr) arr.push(r);
+      else m.set(k, [r]);
+    }
+    return m;
+  };
+  const decMap = byWs(decs.data as any[]);
+  const pendMap = byWs(pends.data as any[]);
+  const artMap = byWs(arts.data as any[]);
+  const actMap = byWs(acts.data as any[]);
+  const summaryOf = new Map<string, string>();
+  for (const c of (ctxs.data ?? []) as any[])
+    if (c.workspace_id) summaryOf.set(c.workspace_id, String(c.summary ?? ""));
+
+  const blocks: string[] = [];
+  for (const ws of workspaces as { id: string; name: string }[]) {
+    const summary = summaryOf.get(ws.id) ?? "";
+    const decisions = (decMap.get(ws.id) ?? []).map((d: any) => `${d.title} (${d.status})`);
+    const pendentes = (pendMap.get(ws.id) ?? []).map((p: any) => `${p.description} [${p.kind}]`);
+    const artefactos = (artMap.get(ws.id) ?? []).map((a: any) => `${a.title} (${a.kind})`);
+    const actividade = (actMap.get(ws.id) ?? []).map((a: any) => `[${a.kind}] ${a.title}`);
+    const chunks = await patternRagForWorkspace(ws.id, summary);
+
+    // Skip near-empty Spaces — nothing to correlate.
+    if (
+      !summary &&
+      !decisions.length &&
+      !pendentes.length &&
+      !artefactos.length &&
+      !actividade.length
+    )
+      continue;
+
+    const lines = [`## ${ws.name}`];
+    if (summary) lines.push(`Resumo: ${summary.slice(0, 600)}`);
+    if (decisions.length) lines.push(`Decisões (30d): ${decisions.slice(0, 12).join("; ")}`);
+    if (pendentes.length) lines.push(`Pendentes Telegram: ${pendentes.slice(0, 12).join("; ")}`);
+    if (artefactos.length) lines.push(`Artefactos (30d): ${artefactos.slice(0, 12).join("; ")}`);
+    if (actividade.length) lines.push(`Actividade (7d): ${actividade.slice(0, 12).join("; ")}`);
+    if (chunks.length) lines.push(`Excertos relevantes:\n- ${chunks.join("\n- ")}`);
+    blocks.push(lines.join("\n"));
+  }
+
+  return blocks.join("\n\n");
+}
+
+/** Run the cross-Space pattern detection through Claude Haiku. */
+async function detectPatterns(context: string): Promise<DetectedPattern[]> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    console.error("[pattern] ANTHROPIC_API_KEY em falta — Pattern Decimin inactivo.");
+    return [];
+  }
+  const res = await fetchRetry("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.WORKER_PATTERN_MODEL ?? "claude-haiku-4-5-20251001",
+      max_tokens: 1500,
+      system:
+        "És o Pattern Decimin do ATELIER. O teu papel é detectar padrões " +
+        "invisíveis entre múltiplos Spaces de trabalho. Analisa os dados de todos " +
+        "os Spaces e identifica:\n" +
+        "1. PADRÕES REPETIDOS: o mesmo problema, erro ou tipo de decisão em " +
+        "múltiplos Spaces.\n" +
+        "2. RELAÇÕES INESPERADAS: uma ideia num Space que se relaciona com algo " +
+        "noutro Space de forma não óbvia.\n" +
+        "3. SINAIS FRACOS: tendências emergentes que isoladas parecem " +
+        "insignificantes mas juntas revelam algo.\n" +
+        "4. OPORTUNIDADES: situações que beneficiariam de acção coordenada entre " +
+        "Spaces.\n" +
+        "5. RISCOS TRANSVERSAIS: um risco num Space que pode afectar outros.\n\n" +
+        "Para cada padrão indica: type ('repeated'|'relation'|'signal'|" +
+        "'opportunity'|'risk'), spaces (mínimo 2 nomes), summary (1 frase), " +
+        "evidence (array, cita dados concretos), confidence (0-100), " +
+        "recommendation. Só reporta padrões com evidência real e que envolvam " +
+        "pelo menos 2 Spaces. Português europeu. Responde APENAS com JSON válido, " +
+        'sem texto à volta: { "patterns": [{ "type", "spaces", "summary", ' +
+        '"evidence", "confidence", "recommendation" }] }. Se não houver padrões ' +
+        'claros, devolve { "patterns": [] }.',
+      messages: [{ role: "user", content: `Dados dos Spaces:\n\n${context}` }],
+    }),
+  });
+  if (!res.ok) {
+    console.error(`[pattern] Anthropic HTTP ${res.status}`);
+    return [];
+  }
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const raw = (data.content ?? [])
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("")
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(raw) as { patterns?: any[] };
+    const out: DetectedPattern[] = [];
+    for (const p of parsed.patterns ?? []) {
+      const spaces = Array.isArray(p.spaces) ? p.spaces.map(String).filter(Boolean) : [];
+      const summary = String(p.summary ?? p.recommendation ?? "").trim();
+      if (spaces.length < 2 || !summary) continue; // must be genuinely cross-Space
+      out.push({
+        type: PATTERN_TYPE_MAP[String(p.type ?? "").toLowerCase()] ?? "signal",
+        spaces,
+        summary,
+        evidence: Array.isArray(p.evidence) ? p.evidence.map(String) : [],
+        confidence: Math.max(0, Math.min(100, Math.round(Number(p.confidence) || 0))),
+        recommendation: String(p.recommendation ?? ""),
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** The Pattern Decimin run: aggregate → enrich → detect → emit pattern signals. */
+async function runPatternDecimin(minion: Minion): Promise<void> {
+  const nextRun = new Date(
+    Date.now() + minion.frequency_minutes * 60_000
+  ).toISOString();
+  try {
+    const context = await gatherPatternContext();
+    const patterns = context ? await detectPatterns(context) : [];
+
+    for (const p of patterns) {
+      await sb.from("minion_signals").insert({
+        minion_id: minion.id,
+        workspace_id: null, // transversal — não pertence a um Space
+        kind: "pattern",
+        signal: p.summary.slice(0, 400),
+        evidence: p.evidence,
+        interpretation: null,
+        recommended_action: p.recommendation,
+        approval_required: false,
+        metadata: { spaces: p.spaces, confidence: p.confidence, type: p.type },
+      });
+    }
+
+    await sb
+      .from("minions")
+      .update({
+        last_run_at: now(),
+        next_run_at: nextRun,
+        last_signal: { patterns: patterns.length },
+        state: "active",
+        last_error: null,
+        updated_at: now(),
+      })
+      .eq("id", minion.id);
+    console.log(`[pattern] ${patterns.length} padrão(ões) transversal(is) detectado(s).`);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await sb
+      .from("minions")
+      .update({
+        last_run_at: now(),
+        next_run_at: nextRun,
+        state: "error",
+        last_error: message,
+        updated_at: now(),
+      })
+      .eq("id", minion.id);
+    console.error(`[pattern] erro: ${message}`);
+  }
+}
+
 /** Execute one minion: gather → analyse → store signal (+ decision/activity). */
 async function runMinion(minion: Minion): Promise<void> {
+  // Pattern Decimin is transversal — its own cross-Space path.
+  if (minion.slug === "pattern") return runPatternDecimin(minion);
+
   const nextRun = new Date(
     Date.now() + minion.frequency_minutes * 60_000
   ).toISOString();
