@@ -48,6 +48,8 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 const MAX_SELECTED = 100;
 const CHUNK = 5;
+/** Netlify synchronous functions cap the request body at ~6 MB. */
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 
 function fmtDate(iso: string): string {
   try {
@@ -84,14 +86,44 @@ export default function ImportClient({
     const file = e.target.files?.[0];
     if (!file) return;
     setErr(null);
+
+    // The serverless function (Netlify) rejects request bodies over ~6 MB
+    // *before* our handler runs, so the response isn't our JSON and the real
+    // reason gets swallowed. Catch oversized files up front with a clear path
+    // forward — a full Claude/ChatGPT export ZIP often exceeds this.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setErr(
+        `Ficheiro demasiado grande (${mb} MB). O limite do servidor é ~6 MB. ` +
+          `Exporta um intervalo menor, ou abre o ZIP e envia só o ` +
+          `conversations.json (sem o resto do export).`
+      );
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/import", { method: "POST", body: fd });
-      const data = await res.json();
+      // Read as text first: a platform-level rejection (size, gateway) returns
+      // an HTML/empty body, and res.json() would throw and hide the status.
+      const raw = await res.text();
+      let data: { error?: string } & Partial<BatchPreview> = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        /* non-JSON body (platform error page) — handled below via status */
+      }
       if (!res.ok) {
-        setErr(data.error ?? "Falha no upload.");
+        setErr(
+          data.error ??
+            (res.status === 413 || res.status === 400
+              ? "Ficheiro demasiado grande ou inválido para o servidor (~6 MB). " +
+                "Envia só o conversations.json, ou um intervalo menor."
+              : `Falha no upload (HTTP ${res.status}).`)
+        );
         return;
       }
       const b = data as BatchPreview;
@@ -106,7 +138,7 @@ export default function ImportClient({
       );
       setStep("preview");
     } catch {
-      setErr("Falha no upload.");
+      setErr("Falha no upload — verifica a ligação e tenta novamente.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -179,6 +211,8 @@ export default function ImportClient({
           </span>
           <span className="import-dropzone-sub">
             Claude.ai / ChatGPT → Settings → Export data · Perplexity → Export
+            <br />
+            Máx. ~6 MB — se o export for maior, envia só o conversations.json.
           </span>
         </label>
         {err ? <p className="import-err">{err}</p> : null}
