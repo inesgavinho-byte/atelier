@@ -1,14 +1,30 @@
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
+import { spawn } from "node:child_process";
+import { mkdir, rm, readdir, readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 
 /**
- * ATELIER execution worker (ADR-0002, POC).
+ * ATELIER execution worker (ADR-0002).
  *
- * Polls the `jobs` queue and "runs" each queued job. In this proof of concept
- * the execution is SIMULATED (a delay + mock output) — the real step will shell
- * out to the Claude Code CLI in an isolated workspace. Runs on Railway, never
- * on Netlify. Uses the SERVICE ROLE key only (the jobs table is RLS-locked to
- * it); the anon key is never used here.
+ * Polls the `jobs` queue and runs each queued job for real: it shells out to the
+ * Claude Code CLI (`claude --print`) inside an isolated, throwaway working
+ * directory under /tmp, collects whatever files the run produced as artifacts,
+ * and streams a progress log the /jobs UI polls. Runs on Railway, never on
+ * Netlify. Uses the SERVICE ROLE key only (the jobs table is RLS-locked to it);
+ * the anon key is never used here.
+ *
+ * Security (ADR-0002): the subprocess gets a MINIMAL env — only PATH, HOME and
+ * ANTHROPIC_API_KEY (the CLI cannot authenticate without it). Every other secret
+ * (Supabase service role, Telegram, OpenAI) is withheld, so a prompt-injected
+ * run cannot exfiltrate them. The workdir is isolated from /home and the ATELIER
+ * source, each step has a hard 5-minute timeout, and the run is told it has no
+ * network beyond the Anthropic API.
+ *
+ * Graceful degradation: if the Claude Code CLI is not installed/authenticated,
+ * jobs stay `queued` (never error, never crash) with an explanatory message, and
+ * every other worker loop (Decimins, Telegram, context, embeddings) keeps
+ * working untouched.
  */
 
 const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,8 +42,25 @@ const sb = createClient(url, serviceKey, {
 });
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 5000);
-const SIMULATE_MS = Number(process.env.WORKER_SIMULATE_MS ?? 3000);
 const BATCH = 5;
+
+/* ── Job runtime (ADR-0002) ───────────────────────────────────────────────── */
+
+// Where each job's isolated workdir lives. /tmp is outside /home and the ATELIER
+// source tree, so a run can't reach the codebase or the user's files.
+const JOBS_ROOT = process.env.WORKER_JOBS_DIR ?? "/tmp/atelier-jobs";
+// Hard ceiling per step (ADR-0002): 5 minutes. The subprocess is killed past it.
+const STEP_TIMEOUT_MS = Number(process.env.WORKER_STEP_TIMEOUT_MS ?? 300_000);
+// How many turns the CLI may take autonomously before stopping.
+const CLAUDE_MAX_TURNS = Number(process.env.WORKER_CLAUDE_MAX_TURNS ?? 10);
+// The CLI binary. Installed globally in the Dockerfile.
+const CLAUDE_BIN = process.env.WORKER_CLAUDE_BIN ?? "claude";
+// Remove finished workdirs older than this (1h) so /tmp doesn't grow unbounded.
+const WORKDIR_TTL_MS = Number(process.env.WORKER_WORKDIR_TTL_MS ?? 3_600_000);
+
+// Set once at startup by checkClaudeCli(). When false, jobs stay queued instead
+// of running — the worker never crashes for a missing CLI.
+let claudeAvailable = false;
 
 // Context agent (ADR-0004): how often to compress each active workspace, and
 // how far back "active" reaches. Defaults to hourly.
@@ -85,27 +118,316 @@ async function claim(job: Job): Promise<boolean> {
   return Boolean(data && data.length);
 }
 
+/**
+ * Probe the Claude Code CLI once at startup. Spawns `claude --version` with the
+ * minimal env and a short timeout. Never throws — on any failure the worker just
+ * marks the CLI unavailable and jobs stay queued.
+ */
+async function checkClaudeCli(): Promise<void> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log(
+      "[jobs] ANTHROPIC_API_KEY em falta — runtime de execução inactivo."
+    );
+    claudeAvailable = false;
+    return;
+  }
+  claudeAvailable = await new Promise<boolean>((resolve) => {
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
+    try {
+      const child = spawn(CLAUDE_BIN, ["--version"], {
+        env: minimalEnv(JOBS_ROOT),
+        stdio: "ignore",
+      });
+      const t = setTimeout(() => {
+        child.kill("SIGKILL");
+        done(false);
+      }, 15_000);
+      child.on("error", () => {
+        clearTimeout(t);
+        done(false);
+      });
+      child.on("close", (code) => {
+        clearTimeout(t);
+        done(code === 0);
+      });
+    } catch {
+      done(false);
+    }
+  });
+  console.log(
+    claudeAvailable
+      ? `[jobs] Claude Code CLI disponível (${CLAUDE_BIN}).`
+      : "[jobs] Claude Code CLI não disponível — instalar e autenticar."
+  );
+}
+
+/** The isolated working directory for a job. */
+function getJobWorkdir(id: string): string {
+  return join(JOBS_ROOT, id);
+}
+
+/**
+ * Minimal environment for the subprocess (ADR-0002 security). Only PATH, HOME
+ * and ANTHROPIC_API_KEY are passed through — the CLI needs the key to
+ * authenticate, but every other secret (SUPABASE_SERVICE_ROLE_KEY, TELEGRAM_*,
+ * OPENAI_*) is deliberately withheld so a prompt-injected run can't read them.
+ */
+function minimalEnv(cwd: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
+    HOME: cwd,
+    CLAUDE_PROJECT_DIR: cwd,
+  };
+  if (process.env.ANTHROPIC_API_KEY)
+    env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  return env;
+}
+
+/** Append a line to a job's progress_log (read-modify-write; best effort). */
+async function pushProgress(id: string, line: string): Promise<void> {
+  const { data } = await sb
+    .from("jobs")
+    .select("progress_log")
+    .eq("id", id)
+    .maybeSingle();
+  const log = Array.isArray(data?.progress_log) ? (data!.progress_log as string[]) : [];
+  log.push(`${now()} · ${line}`);
+  await sb.from("jobs").update({ progress_log: log, updated_at: now() }).eq("id", id);
+}
+
+interface ExecResult {
+  ok: boolean;
+  output: string;
+  error: string | null;
+}
+
+/**
+ * Run one job's prompt through the Claude Code CLI in its isolated workdir.
+ * `claude --print` runs non-interactively and writes any files it's asked to
+ * make into `cwd`. Hard timeout via spawn's `timeout` (SIGKILL). The env is
+ * minimal (see minimalEnv) so the run can't reach ATELIER's secrets.
+ */
+function executeJob(job: Job, cwd: string): Promise<ExecResult> {
+  return new Promise<ExecResult>((resolve) => {
+    const child = spawn(
+      CLAUDE_BIN,
+      [
+        "--print",
+        "--output-format",
+        "text",
+        "--max-turns",
+        String(CLAUDE_MAX_TURNS),
+        "--permission-mode",
+        "acceptEdits",
+        job.prompt,
+      ],
+      {
+        cwd,
+        env: minimalEnv(cwd),
+        timeout: STEP_TIMEOUT_MS,
+        killSignal: "SIGKILL",
+      }
+    );
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const finish = (r: ExecResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(r);
+    };
+    child.stdout?.on("data", (b) => {
+      stdout += b.toString();
+      if (stdout.length > 200_000) stdout = stdout.slice(-200_000);
+    });
+    child.stderr?.on("data", (b) => {
+      stderr += b.toString();
+      if (stderr.length > 40_000) stderr = stderr.slice(-40_000);
+    });
+    child.on("error", (e) =>
+      finish({ ok: false, output: stdout, error: e.message })
+    );
+    child.on("close", (code, signal) => {
+      if (signal === "SIGKILL")
+        finish({
+          ok: false,
+          output: stdout,
+          error: `Step excedeu o limite de ${Math.round(STEP_TIMEOUT_MS / 1000)}s e foi terminado.`,
+        });
+      else if (code === 0) finish({ ok: true, output: stdout.trim(), error: null });
+      else
+        finish({
+          ok: false,
+          output: stdout,
+          error: stderr.trim() || `claude saiu com código ${code}.`,
+        });
+    });
+  });
+}
+
+interface Artifact {
+  path: string;
+  bytes: number;
+  preview: string;
+}
+
+/**
+ * Collect the files a run produced under its workdir as artifacts. Walks the
+ * tree (skipping CLI dotfiles), caps total count and per-file preview size, and
+ * returns a compact JSON-serialisable list for jobs.artifacts.
+ */
+async function collectArtifacts(cwd: string): Promise<Artifact[]> {
+  const out: Artifact[] = [];
+  const MAX_FILES = 50;
+  const MAX_PREVIEW = 4000;
+
+  async function walk(dir: string, rel: string): Promise<void> {
+    if (out.length >= MAX_FILES) return;
+    let entries: Awaited<ReturnType<typeof readdir>>;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (out.length >= MAX_FILES) return;
+      // Skip the CLI's own state and any VCS dirs.
+      if (e.name.startsWith(".")) continue;
+      const abs = join(dir, e.name);
+      const relPath = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        await walk(abs, relPath);
+      } else if (e.isFile()) {
+        try {
+          const st = await stat(abs);
+          let preview = "";
+          if (st.size <= 1_000_000) {
+            const buf = await readFile(abs);
+            // Only keep a textual preview; binary files get an empty preview.
+            const text = buf.toString("utf8");
+            // Binary files (containing a NUL byte) get no textual preview.
+            if (!text.slice(0, 4000).includes("\u0000"))
+              preview = text.slice(0, MAX_PREVIEW);
+          }
+          out.push({ path: relPath, bytes: st.size, preview });
+        } catch {
+          /* unreadable file — skip */
+        }
+      }
+    }
+  }
+
+  await walk(cwd, "");
+  return out;
+}
+
 async function runJob(job: Job): Promise<void> {
+  // Without a working CLI we leave the job queued (don't claim it) with a clear
+  // message, so it runs automatically once the CLI is installed/authenticated.
+  if (!claudeAvailable) {
+    await sb
+      .from("jobs")
+      .update({
+        output: "Claude Code CLI não disponível — instalar e autenticar.",
+        updated_at: now(),
+      })
+      .eq("id", job.id)
+      .eq("status", "queued");
+    return;
+  }
+
   if (!(await claim(job))) return; // already taken / gone
 
+  const cwd = getJobWorkdir(job.id);
   try {
-    // —— Simulated execution. Replace with the Claude Code CLI subprocess. ——
-    await sleep(SIMULATE_MS);
-    const output = `Mock output para prompt: ${job.prompt.slice(0, 100)}`;
+    await mkdir(cwd, { recursive: true });
+    await pushProgress(job.id, `Step ${job.step} iniciado.`);
 
+    const result = await executeJob(job, cwd);
+    const artifacts = await collectArtifacts(cwd);
+
+    if (!result.ok) {
+      await pushProgress(job.id, `Erro: ${result.error ?? "desconhecido"}`);
+      await sb
+        .from("jobs")
+        .update({
+          status: "error",
+          error: result.error ?? "Execução falhou.",
+          output: result.output || null,
+          artifacts,
+          updated_at: now(),
+        })
+        .eq("id", job.id);
+      console.error(`[jobs] job ${job.id} erro: ${result.error}`);
+      return;
+    }
+
+    await pushProgress(
+      job.id,
+      `Concluído. ${artifacts.length} ficheiro(s) produzido(s).`
+    );
     const { error } = await sb
       .from("jobs")
-      .update({ status: "done", output, updated_at: now() })
+      .update({
+        status: "done",
+        output: result.output,
+        artifacts,
+        updated_at: now(),
+      })
       .eq("id", job.id);
     if (error) throw new Error(error.message);
-    console.log(`[worker] job ${job.id} (${job.task_id}#${job.step}) done`);
+    console.log(
+      `[jobs] job ${job.id} (${job.task_id}#${job.step}) done — ${artifacts.length} artefacto(s)`
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await sb
       .from("jobs")
       .update({ status: "error", error: message, updated_at: now() })
       .eq("id", job.id);
-    console.error(`[worker] job ${job.id} error: ${message}`);
+    console.error(`[jobs] job ${job.id} error: ${message}`);
+  }
+}
+
+/**
+ * Remove finished job workdirs older than WORKDIR_TTL_MS so /tmp doesn't grow
+ * unbounded. Best-effort; runs hourly. Never touches running jobs' dirs because
+ * those are younger than the TTL (and re-created on demand anyway).
+ */
+async function cleanupWorkdirsTick(): Promise<void> {
+  let entries: Awaited<ReturnType<typeof readdir>>;
+  try {
+    entries = await readdir(JOBS_ROOT, { withFileTypes: true });
+  } catch {
+    return; // root doesn't exist yet — nothing to clean
+  }
+  const cutoff = Date.now() - WORKDIR_TTL_MS;
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const abs = join(JOBS_ROOT, e.name);
+    try {
+      const st = await stat(abs);
+      if (st.mtimeMs < cutoff) await rm(abs, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
+async function cleanupWorkdirsLoop(): Promise<void> {
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    try {
+      await cleanupWorkdirsTick();
+    } catch (e) {
+      console.error("[jobs] cleanup falhou:", e);
+    }
+    await sleep(WORKDIR_TTL_MS);
   }
 }
 
@@ -1298,8 +1620,11 @@ async function embeddingBackfillLoop(): Promise<void> {
 
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
+  // Probe the Claude Code CLI once; jobs stay queued if it's unavailable.
+  await checkClaudeCli();
   // Context agent, minions and the Telegram bot run in parallel with jobs.
   void contextAgentLoop();
+  void cleanupWorkdirsLoop();
   void minionLoop();
   void telegramLoop();
   void telegramNotifyLoop();
