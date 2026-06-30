@@ -179,7 +179,7 @@ export default function Sidebar({
       <Link href="/" className="shell-logo" aria-label="DECIMA">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/brand/decima-wordmark-dark.png"
+          src="/brand/decima-wordmark-light.png"
           alt="DECIMA"
           className="shell-logo-img"
         />
