@@ -7060,8 +7060,24 @@ a.ctx-card:hover {
 .cl-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
   margin-bottom: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+.cl-head-icon {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.cl-head-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--text-muted);
 }
 .cl-eyebrow {
   font-size: 11px;
