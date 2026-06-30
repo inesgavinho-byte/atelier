@@ -6821,3 +6821,34 @@ a.ctx-card:hover {
   gap: 6px;
   flex: 0 0 auto;
 }
+
+/* ── Confidence score (Personal Decimin v2) ────────────────────────────────── */
+.pi-item-kindrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pi-conf {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: help;
+}
+.pi-conf-high {
+  color: rgba(40, 150, 95, 0.95);
+  background: rgba(40, 170, 110, 0.12);
+  border-color: rgba(40, 170, 110, 0.3);
+}
+.pi-conf-mid {
+  color: rgba(190, 140, 40, 0.95);
+  background: rgba(230, 180, 60, 0.12);
+  border-color: rgba(230, 180, 60, 0.3);
+}
+.pi-conf-low {
+  color: var(--text-muted);
+  background: var(--surface);
+  border-color: var(--border);
+}

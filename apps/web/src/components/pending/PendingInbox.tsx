@@ -20,7 +20,16 @@ export interface PendingInboxItem {
   description: string;
   fromPerson: string | null;
   dueDate: string | null;
+  confidence: number | null;
+  confidenceReason: string | null;
   createdAt: string;
+}
+
+/** Confidence band → label + class (Personal Decimin v2). */
+function confidenceBand(c: number): { pct: string; cls: string } {
+  const pct = `${Math.round(c * 100)}%`;
+  const cls = c >= 0.8 ? "pi-conf-high" : c >= 0.5 ? "pi-conf-mid" : "pi-conf-low";
+  return { pct, cls };
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -84,8 +93,23 @@ export default function PendingInbox({ items }: { items: PendingInboxItem[] }) {
               return (
                 <li key={it.id} className="pi-item">
                   <div className="pi-item-main">
-                    <span className="pi-item-kind">
-                      {KIND_LABELS[it.kind] ?? it.kind}
+                    <span className="pi-item-kindrow">
+                      <span className="pi-item-kind">
+                        {KIND_LABELS[it.kind] ?? it.kind}
+                      </span>
+                      {it.confidence !== null
+                        ? (() => {
+                            const { pct, cls } = confidenceBand(it.confidence!);
+                            return (
+                              <span
+                                className={`pi-conf ${cls}`}
+                                title={it.confidenceReason ?? "Confiança do Personal Decimin"}
+                              >
+                                {pct}
+                              </span>
+                            );
+                          })()
+                        : null}
                     </span>
                     <span className="pi-item-desc">{it.description}</span>
                     <span className="pi-item-meta">

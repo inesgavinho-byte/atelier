@@ -30,6 +30,8 @@ export interface PendingItem {
   fromPerson: string | null;
   toPerson: string | null;
   dueDate: string | null;
+  confidence: number | null;
+  confidenceReason: string | null;
   status: string;
   createdAt: string;
 }
@@ -77,6 +79,8 @@ export async function getRecentPendingItems(limit = 30): Promise<PendingItem[]> 
     fromPerson: r.from_person ?? null,
     toPerson: r.to_person ?? null,
     dueDate: r.due_date ?? null,
+    confidence: typeof r.confidence === "number" ? r.confidence : null,
+    confidenceReason: r.confidence_reason ?? null,
     status: r.status,
     createdAt: r.created_at,
   }));

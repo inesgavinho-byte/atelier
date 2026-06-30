@@ -49,6 +49,8 @@ export default async function PendingPage() {
     description: it.description,
     fromPerson: it.fromPerson,
     dueDate: it.dueDate,
+    confidence: it.confidence,
+    confidenceReason: it.confidenceReason,
     createdAt: it.createdAt,
   }));
 

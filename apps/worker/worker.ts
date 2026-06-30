@@ -733,6 +733,8 @@ interface WatchSignal {
   from_person?: string | null;
   to_person?: string | null;
   due_date?: string | null;
+  confidence?: number | null;
+  confidence_reason?: string | null;
 }
 
 interface WatchGroup {
@@ -762,9 +764,12 @@ async function analyzeGroupMessage(sender: string, text: string): Promise<WatchS
         "respondidos, compromissos assumidos, ficheiros prometidos, prazos " +
         "mencionados, perguntas sem resposta. Responde APENAS com JSON válido, " +
         'sem texto à volta: { "signals": [{ "kind", "description", "from_person", ' +
-        '"to_person", "due_date" }] }. kind tem de ser um de ' +
+        '"to_person", "due_date", "confidence", "confidence_reason" }] }. kind tem de ser um de ' +
         "'request'|'commitment'|'promised_file'|'deadline'|'unanswered_question'|'decision'|'risk'. " +
-        "due_date em formato YYYY-MM-DD ou null. Português europeu. Se não houver " +
+        "due_date em formato YYYY-MM-DD ou null. confidence é um número entre 0 e 1 " +
+        "que indica o quão certo estás de que isto é mesmo um pendente real " +
+        "(1 = explícito e inequívoco; 0.5 = redacção ambígua). confidence_reason é " +
+        "uma frase curta a justificar. Português europeu. Se não houver " +
         'nada relevante, responde { "signals": [] }.',
       messages: [{ role: "user", content: `${sender}: ${text}` }],
     }),
@@ -796,6 +801,13 @@ async function analyzeGroupMessage(sender: string, text: string): Promise<WatchS
           s.due_date && /^\d{4}-\d{2}-\d{2}$/.test(String(s.due_date))
             ? String(s.due_date)
             : null,
+        confidence:
+          typeof s.confidence === "number"
+            ? Math.max(0, Math.min(1, s.confidence))
+            : null,
+        confidence_reason: s.confidence_reason
+          ? String(s.confidence_reason)
+          : null,
       }));
   } catch {
     return [];
@@ -882,6 +894,8 @@ async function processGroupMessage(msg: any): Promise<void> {
       from_person: s.from_person ?? sender,
       to_person: s.to_person ?? null,
       due_date: s.due_date ?? null,
+      confidence: s.confidence ?? null,
+      confidence_reason: s.confidence_reason ?? null,
       source_message_id: msg.message_id ?? null,
       source_message_text: text.slice(0, 2000),
     });
