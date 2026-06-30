@@ -26,8 +26,10 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkspaceDetailPage({
   params,
+  searchParams,
 }: {
   params: { workspaceId: string };
+  searchParams?: { session?: string };
 }) {
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
@@ -67,11 +69,16 @@ export default async function WorkspaceDetailPage({
       return ap - bp;
     });
 
-  // Read-only load of the canonical chat's history for the initial render. We
-  // never create the chat here — sending the first message does that. Uses the
-  // shared getCanonicalChat so this matches exactly the chat the send action
-  // writes to (continuous, persistent conversation).
-  const history = canonical ? await getMessages(canonical.id) : [];
+  // Session routing (ADR-0005 F2): when ?session=<id> points to a session of
+  // this workspace, the chat reads/writes that session; otherwise it's the
+  // continuous canonical chat. We never create the chat here — sending the
+  // first message does that.
+  const activeSession =
+    searchParams?.session
+      ? sessions.find((s) => s.id === searchParams.session) ?? null
+      : null;
+  const chatSourceId = activeSession?.id ?? canonical?.id ?? null;
+  const history = chatSourceId ? await getMessages(chatSourceId) : [];
   const initial = history
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({
@@ -123,11 +130,24 @@ export default async function WorkspaceDetailPage({
         <WorkspaceSearchPill />
       </div>
 
+      {activeSession ? (
+        <div className="ws-session-banner">
+          <span>
+            Sessão: <strong>{activeSession.objective}</strong>
+            {activeSession.skill ? ` · ${activeSession.skill}` : ""}
+          </span>
+          <Link href={`/workspaces/${slug}`} className="action-quiet">
+            ← conversa contínua
+          </Link>
+        </div>
+      ) : null}
+
       <div className="ws-layout">
         <WorkspaceChat
-          key={ws.id}
+          key={activeSession?.id ?? ws.id}
           workspaceId={ws.id}
           workspaceName={ws.name}
+          sessionId={activeSession?.id}
           initialMessages={initial}
           contextVersion={context?.version}
           contextUpdatedAt={context?.lastUpdatedAt}

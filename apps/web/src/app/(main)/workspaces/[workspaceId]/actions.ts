@@ -134,7 +134,8 @@ export async function getProjectRepoOverview(
 export async function sendWorkspaceMessage(
   workspaceId: string,
   content: string,
-  projectId?: string
+  projectId?: string,
+  sessionId?: string
 ): Promise<{
   ok: boolean;
   text?: string;
@@ -144,7 +145,7 @@ export async function sendWorkspaceMessage(
   taskType?: string;
   error?: string;
 }> {
-  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId);
+  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId, sessionId);
 
   const revalidate = () => {
     revalidatePath(`/workspaces/${workspaceId}`);
@@ -199,7 +200,8 @@ export async function sendWorkspaceMessage(
 export async function sendCouncilDebate(
   workspaceId: string,
   content: string,
-  projectId?: string
+  projectId?: string,
+  sessionId?: string
 ): Promise<{
   ok: boolean;
   synthesis?: string;
@@ -208,7 +210,7 @@ export async function sendCouncilDebate(
   model?: string;
   error?: string;
 }> {
-  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId);
+  const prepared = await prepareWorkspaceTurn(workspaceId, content, projectId, sessionId);
 
   const revalidate = () => {
     revalidatePath(`/workspaces/${workspaceId}`);
