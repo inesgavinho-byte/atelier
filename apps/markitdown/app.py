@@ -23,19 +23,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
 
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
-
-# markitdown is imported lazily-tolerantly so /health still answers if the
-# dependency failed to install — the error surfaces clearly on /convert.
-try:
-    from markitdown import MarkItDown
-
-    _MD_IMPORT_ERROR: str | None = None
-except Exception as exc:  # pragma: no cover - import-time guard
-    MarkItDown = None  # type: ignore[assignment]
-    _MD_IMPORT_ERROR = str(exc)
 
 # A generous cap so a runaway upload can't exhaust memory. The web app caps far
 # lower (Netlify payload limits); this is the backstop for direct callers.
@@ -44,9 +35,30 @@ TOKEN = os.environ.get("MARKITDOWN_TOKEN")
 
 app = FastAPI(title="ATELIER MarkItDown", version="1.0.0")
 
-# A single converter instance is reused across requests. Plugins are disabled
-# for predictable, sandboxed behaviour.
-_converter = MarkItDown(enable_plugins=False) if MarkItDown else None
+# markitdown (with its optional extractors) is heavy to import. Loading it at
+# module import delayed uvicorn's bind long enough that Railway's /health check
+# timed out and the deploy failed. So we import it LAZILY on the first /convert:
+# the server binds and answers /health immediately, and the conversion engine
+# warms up only when first needed. A single converter instance is then reused.
+_converter = None  # type: ignore[var-annotated]
+_MD_IMPORT_ERROR: str | None = None
+_md_lock = threading.Lock()
+
+
+def _get_converter():
+    """Import markitdown and build the converter on first use (thread-safe)."""
+    global _converter, _MD_IMPORT_ERROR
+    if _converter is not None or _MD_IMPORT_ERROR is not None:
+        return _converter
+    with _md_lock:
+        if _converter is None and _MD_IMPORT_ERROR is None:
+            try:
+                from markitdown import MarkItDown
+
+                _converter = MarkItDown(enable_plugins=False)
+            except Exception as exc:  # pragma: no cover - import guard
+                _MD_IMPORT_ERROR = str(exc)
+    return _converter
 
 
 def _check_auth(authorization: str | None) -> None:
@@ -60,9 +72,12 @@ def _check_auth(authorization: str | None) -> None:
 
 @app.get("/health")
 def health() -> dict:
+    # Liveness only — never imports markitdown, so the server is ready
+    # immediately and Railway's healthcheck passes without waiting for the
+    # heavy optional extractors to load.
     return {
-        "ok": _converter is not None,
-        "markitdown": _converter is not None,
+        "ok": True,
+        "markitdown_loaded": _converter is not None,
         "error": _MD_IMPORT_ERROR,
         "max_bytes": MAX_BYTES,
         "auth": bool(TOKEN),
@@ -76,7 +91,8 @@ async def convert(
 ) -> JSONResponse:
     _check_auth(authorization)
 
-    if _converter is None:
+    converter = _get_converter()
+    if converter is None:
         raise HTTPException(
             status_code=503,
             detail=f"markitdown indisponível: {_MD_IMPORT_ERROR}",
@@ -100,7 +116,7 @@ async def convert(
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
-        result = _converter.convert(tmp_path)
+        result = converter.convert(tmp_path)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Conversão falhou: {exc}")
     finally:
