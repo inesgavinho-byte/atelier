@@ -85,6 +85,8 @@ export interface Artifact {
   workspaceId: string;
   state: string;
   updatedAt: string;
+  /** Current revision number (Living Artifacts). */
+  revision: number;
 }
 
 export interface Decision {

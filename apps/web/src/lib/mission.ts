@@ -101,6 +101,7 @@ const toArtifact = (r: any): Artifact => ({
   workspaceId: r.workspace_id,
   state: r.state,
   updatedAt: r.updated_at,
+  revision: r.revision ?? 1,
 });
 
 /* ── Initiatives ─────────────────────────────────────────────────────────── */
