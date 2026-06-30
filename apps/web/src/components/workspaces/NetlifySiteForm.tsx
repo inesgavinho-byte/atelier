@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setWorkspaceNetlifySite } from "@/app/(main)/workspaces/[workspaceId]/actions";
 
@@ -19,6 +19,12 @@ export default function NetlifySiteForm({
   const [value, setValue] = useState(current ?? "");
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Keep the field in sync when the server re-renders with a fresh value
+  // (e.g. after router.refresh following a save), even without a remount.
+  useEffect(() => {
+    setValue(current ?? "");
+  }, [current]);
 
   const save = () =>
     start(async () => {

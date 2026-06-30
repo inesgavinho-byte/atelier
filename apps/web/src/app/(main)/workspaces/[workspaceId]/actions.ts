@@ -61,7 +61,11 @@ export async function setWorkspaceNetlifySite(
     .update({ netlify_site_id: clean || null, updated_at: now() })
     .eq("id", workspaceId);
   if (error) return { ok: false, message: error.message };
-  revalidatePath(`/workspaces/${workspaceId}/timeline`);
+  // Revalidate by route pattern (not the concrete id path) so the cache is
+  // busted for the slug URL too — the Timeline is usually reached by slug
+  // (/workspaces/<slug>/timeline), so an id-based path would miss it and the
+  // form would re-render with the stale (empty) value on the next visit.
+  revalidatePath("/workspaces/[workspaceId]/timeline", "page");
   return { ok: true, message: clean ? "Site Netlify ligado." : "Site removido." };
 }
 
