@@ -199,8 +199,7 @@ export async function recordTimelineEvent(input: {
  * Sync a workspace's GitHub activity into the timeline (commits + PRs). The
  * repo overview is re-fetched on each view, so events are upserted by a stable
  * external_id (pr-<n>, commit-<sha>) and duplicates are ignored — calling this
- * repeatedly is safe and cheap. Deploys await a Netlify deploys feed; the
- * 'deploy' kind is already wired in the view. Best-effort, service role.
+ * repeatedly is safe and cheap. Best-effort, service role.
  */
 export async function syncRepoTimeline(
   workspaceId: string,
@@ -236,6 +235,42 @@ export async function syncRepoTimeline(
 
   // Idempotent: the unique (workspace_id, kind, external_id) index makes
   // re-runs no-ops for events already recorded.
+  await admin
+    .from("timeline_events")
+    .upsert(rows, {
+      onConflict: "workspace_id,kind,external_id",
+      ignoreDuplicates: true,
+    })
+    .select("id");
+}
+
+/**
+ * Sync a workspace's Netlify deploys into the timeline (Bloco F). Same
+ * idempotent upsert by external_id (deploy-<id>); re-runs are no-ops. The
+ * deploy state (ready/building/error) rides in the title. Best-effort.
+ */
+export async function syncDeployTimeline(
+  workspaceId: string,
+  deploys: {
+    id: string;
+    state: string;
+    branch?: string | null;
+    title?: string | null;
+    createdAt?: string;
+  }[]
+): Promise<void> {
+  const admin = getSupabaseAdmin();
+  if (!admin || !deploys.length) return;
+  const rows = deploys.map((d) => ({
+    workspace_id: workspaceId,
+    kind: "deploy",
+    external_id: `deploy-${d.id}`,
+    title: `Deploy ${d.state}${d.branch ? ` · ${d.branch}` : ""}${
+      d.title ? ` — ${snippet(d.title, 80)}` : ""
+    }`,
+    actor: "netlify",
+    at: d.createdAt ?? undefined,
+  }));
   await admin
     .from("timeline_events")
     .upsert(rows, {

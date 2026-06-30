@@ -14,6 +14,7 @@ import {
   isValidRepo,
   type RepoOverview,
 } from "@/lib/github";
+import { getSiteDeploys, type NetlifyDeploy } from "@/lib/netlify";
 
 const now = () => new Date().toISOString();
 
@@ -43,6 +44,45 @@ export async function setWorkspaceGithubRepo(
     ok: true,
     message: clean ? "Repositório ligado." : "Repositório removido.",
   };
+}
+
+/* ── Netlify per workspace (Bloco F — deploys na Timeline) ──────────────────── */
+
+/** Persist a workspace's associated Netlify site id. */
+export async function setWorkspaceNetlifySite(
+  workspaceId: string,
+  siteId: string
+): Promise<{ ok: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const clean = siteId.trim();
+  const { error } = await sb
+    .from("workspaces")
+    .update({ netlify_site_id: clean || null, updated_at: now() })
+    .eq("id", workspaceId);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath(`/workspaces/${workspaceId}/timeline`);
+  return { ok: true, message: clean ? "Site Netlify ligado." : "Site removido." };
+}
+
+/**
+ * Recent Netlify deploys for a workspace's configured site. Reads the site id
+ * server-side from the workspace row, so the client cannot point our token at
+ * an arbitrary site. Returns [] when none is configured / no token.
+ */
+export async function getWorkspaceNetlifyDeploys(
+  workspaceId: string
+): Promise<NetlifyDeploy[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("workspaces")
+    .select("netlify_site_id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  const siteId = data?.netlify_site_id as string | null | undefined;
+  if (!siteId) return [];
+  return getSiteDeploys(siteId);
 }
 
 /**
