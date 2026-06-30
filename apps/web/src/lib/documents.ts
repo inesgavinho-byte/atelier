@@ -150,7 +150,9 @@ export async function getDocuments(
       : q.is("project_id", null);
   }
   const { data } = await q.order("created_at", { ascending: false });
-  return (data ?? []).map(toDoc);
+  // Artifacts mirrored into `documents` for RAG (kind='artifact') are not user
+  // uploads — keep them out of the Documentos panel.
+  return (data ?? []).map(toDoc).filter((d) => d.kind !== "artifact");
 }
 
 // Common pt-PT / en stopwords; combined with a length filter to keep only

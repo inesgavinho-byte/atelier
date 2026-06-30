@@ -6611,6 +6611,36 @@ a.ctx-card:hover {
   color: var(--text-muted);
 }
 
+/* Chat: "↓ Artefacto" panel (create form / update suggestion) */
+.ws-artifact-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.ws-artifact-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ws-artifact-suggest select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  max-width: 200px;
+}
+.ws-artifact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
 /* Chat: create-artifact form (title + type) */
 .ws-artifact-create {
   display: inline-flex;
