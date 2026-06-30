@@ -27,7 +27,54 @@ const KIND_LABELS: Record<string, string> = {
   decision_required: "Decisão",
   opportunity: "Oportunidade",
   risk: "Risco",
+  pattern: "Padrão",
 };
+
+/** Cross-Space pattern types → label + colour family (Pattern Decimin). */
+const PATTERN_TYPE: Record<string, { label: string; tone: string }> = {
+  repeated: { label: "Repetido", tone: "amber" },
+  relation: { label: "Relação", tone: "violet" },
+  signal: { label: "Sinal fraco", tone: "blue" },
+  opportunity: { label: "Oportunidade", tone: "green" },
+  risk: { label: "Risco", tone: "red" },
+};
+
+/** A detected cross-Space pattern as a card with expandable evidence. */
+function PatternCard({ s }: { s: MinionSignal }) {
+  const [open, setOpen] = useState(false);
+  const meta = s.metadata ?? {};
+  const t = PATTERN_TYPE[meta.type ?? ""] ?? { label: "Padrão", tone: "violet" };
+  const spaces = meta.spaces ?? [];
+  return (
+    <div className={`pattern-card pattern-${t.tone}`}>
+      <div className="pattern-card-head">
+        <span className={`pattern-badge pattern-badge-${t.tone}`}>{t.label}</span>
+        {spaces.length ? (
+          <span className="pattern-spaces">{spaces.join(" · ")}</span>
+        ) : null}
+        {typeof meta.confidence === "number" ? (
+          <span className="pattern-conf">{meta.confidence}%</span>
+        ) : null}
+      </div>
+      <span className="minion-sig-title">{s.signal}</span>
+      {s.recommendedAction ? (
+        <span className="minion-sig-sub">{s.recommendedAction}</span>
+      ) : null}
+      {s.evidence.length ? (
+        <details className="pattern-evidence" open={open}>
+          <summary onClick={() => setOpen((v) => !v)}>
+            Evidência ({s.evidence.length})
+          </summary>
+          <ul>
+            {s.evidence.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </div>
+  );
+}
 
 /** Derive the status colour family for a minion card. */
 function minionTone(m: Minion): "green" | "amber" | "red" | "grey" {
@@ -255,11 +302,23 @@ export default function MinionsBoard({
                 )}
               </div>
 
-              {/* Recent signals */}
+              {/* Recent signals — pattern cards for the Pattern Decimin */}
               <div className="import-field">
-                <span className="import-label">Sinais recentes</span>
+                <span className="import-label">
+                  {open.slug === "pattern" ? "Padrões detectados" : "Sinais recentes"}
+                </span>
                 {(signalsByMinion[open.id] ?? []).length === 0 ? (
-                  <p className="ctx-empty">Ainda sem sinais.</p>
+                  <p className="ctx-empty">
+                    {open.slug === "pattern"
+                      ? "Ainda sem padrões. Corre «Executar agora» para testar."
+                      : "Ainda sem sinais."}
+                  </p>
+                ) : open.slug === "pattern" ? (
+                  <div className="minion-cards">
+                    {(signalsByMinion[open.id] ?? []).map((s) => (
+                      <PatternCard key={s.id} s={s} />
+                    ))}
+                  </div>
                 ) : (
                   <div className="minion-cards">
                     {(signalsByMinion[open.id] ?? []).map((s) => (
