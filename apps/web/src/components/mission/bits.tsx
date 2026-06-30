@@ -97,7 +97,10 @@ export function SectionHead({
 export function ago(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  // Pin the timezone so server (UTC) and client (browser-local) render the same
+  // string — otherwise the date hydrates as a mismatch (React #425/#422).
   return d.toLocaleString("pt-PT", {
+    timeZone: "Europe/Lisbon",
     day: "numeric",
     month: "short",
     hour: "2-digit",
