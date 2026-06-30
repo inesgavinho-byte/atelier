@@ -1194,6 +1194,81 @@ async function markitdownKeepAliveLoop(): Promise<void> {
   }
 }
 
+/* ── Embeddings backfill (RAG v2) ─────────────────────────────────────────────
+ * Document chunks ingested before RAG v2 (or while OPENAI_API_KEY was unset)
+ * have no embedding and are invisible to semantic search. This loop embeds them
+ * in batches so they become searchable. Degrades: without OPENAI_API_KEY it
+ * stays idle. Uses OpenAI embeddings directly (the gateway is web-side).
+ */
+const EMBED_BACKFILL_MS = Number(process.env.WORKER_EMBED_BACKFILL_MS ?? 600_000);
+const EMBED_MODEL = process.env.OPENAI_EMBED_MODEL ?? "text-embedding-3-small";
+const EMBED_BATCH = 50;
+
+async function embedTexts(texts: string[]): Promise<number[][] | null> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !texts.length) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
+    });
+    if (!res.ok) {
+      console.error(`[embed] OpenAI HTTP ${res.status}`);
+      return null;
+    }
+    const data = (await res.json()) as {
+      data?: { embedding: number[]; index: number }[];
+    };
+    const rows = data.data ?? [];
+    if (rows.length !== texts.length) return null;
+    const out: number[][] = new Array(texts.length);
+    for (const r of rows) out[r.index] = r.embedding;
+    return out.every(Boolean) ? out : null;
+  } catch (e) {
+    console.error("[embed] falhou:", e);
+    return null;
+  }
+}
+
+async function embeddingBackfillTick(): Promise<void> {
+  if (!process.env.OPENAI_API_KEY) return;
+  const { data, error } = await sb
+    .from("document_chunks")
+    .select("id, content")
+    .is("embedding", null)
+    .limit(EMBED_BATCH);
+  if (error || !data || !data.length) return;
+  const vectors = await embedTexts(data.map((r: any) => String(r.content ?? "")));
+  if (!vectors) return;
+  let done = 0;
+  for (let i = 0; i < data.length; i++) {
+    const { error: upErr } = await sb
+      .from("document_chunks")
+      .update({ embedding: vectors[i] })
+      .eq("id", (data[i] as any).id);
+    if (!upErr) done++;
+  }
+  if (done) console.log(`[embed] backfill: ${done} chunk(s) indexado(s).`);
+}
+
+async function embeddingBackfillLoop(): Promise<void> {
+  if (!process.env.OPENAI_API_KEY) {
+    console.log("[embed] OPENAI_API_KEY em falta — backfill de embeddings inactivo.");
+    return;
+  }
+  console.log(`[embed] backfill de embeddings a cada ${EMBED_BACKFILL_MS} ms.`);
+  // eslint-disable-next-line no-constant-condition
+  for (;;) {
+    try {
+      await embeddingBackfillTick();
+    } catch (e) {
+      console.error("[embed] tick falhou:", e);
+    }
+    await sleep(EMBED_BACKFILL_MS);
+  }
+}
+
 async function main(): Promise<void> {
   console.log(`[worker] iniciado — poll a cada ${POLL_MS} ms.`);
   // Context agent, minions and the Telegram bot run in parallel with jobs.
@@ -1203,6 +1278,7 @@ async function main(): Promise<void> {
   void telegramNotifyLoop();
   void telegramBriefingLoop();
   void markitdownKeepAliveLoop();
+  void embeddingBackfillLoop();
   // eslint-disable-next-line no-constant-condition
   for (;;) {
     try {
