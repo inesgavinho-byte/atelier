@@ -162,6 +162,9 @@ export default function ConversationWatch({
                   {it.groupTitle}
                   {it.fromPerson ? ` · ${it.fromPerson}` : ""}
                   {it.dueDate ? ` · prazo ${it.dueDate}` : ""}
+                  {it.confidence !== null
+                    ? ` · ${Math.round(it.confidence * 100)}% confiança`
+                    : ""}
                   {` · ${ago(it.createdAt)}`}
                 </span>
               </div>
