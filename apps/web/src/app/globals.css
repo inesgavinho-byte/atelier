@@ -6927,3 +6927,88 @@ a.ctx-card:hover {
   max-height: 260px;
   overflow-y: auto;
 }
+
+/* ── Cognitive Load (Personal Decimin v2) ──────────────────────────────────── */
+.cl {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.cl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cl-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.cl-band {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.cl-baixa .cl-band {
+  color: rgba(40, 150, 95, 0.95);
+  border-color: rgba(40, 170, 110, 0.35);
+}
+.cl-média .cl-band {
+  color: rgba(190, 140, 40, 0.95);
+  border-color: rgba(230, 180, 60, 0.35);
+}
+.cl-alta .cl-band {
+  color: rgba(210, 90, 70, 0.95);
+  border-color: rgba(220, 110, 80, 0.4);
+}
+.cl-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.cl-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.cl-baixa .cl-bar-fill {
+  background: rgba(40, 170, 110, 0.8);
+}
+.cl-média .cl-bar-fill {
+  background: rgba(230, 180, 60, 0.85);
+}
+.cl-alta .cl-bar-fill {
+  background: rgba(220, 110, 80, 0.9);
+}
+.cl-metrics {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+.cl-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cl-metric-value {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cl-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.cl-reco {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin: 0;
+}
