@@ -37,8 +37,8 @@ export default async function JobsPage() {
         <p className="atelier-date">Ferramentas</p>
         <h1 className="atelier-title">Jobs</h1>
         <p className="atelier-subtitle">
-          Fila de execução do runtime (ADR-0002). O ATELIER enfileira; o worker
-          executa.
+          Fila de execução do runtime. Tarefas enviadas ao worker para
+          processamento — base para a execução autónoma do Council (ADR-0002).
         </p>
       </header>
 
