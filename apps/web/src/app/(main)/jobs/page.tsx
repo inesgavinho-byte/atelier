@@ -24,11 +24,31 @@ export default async function JobsPage() {
   if (admin) {
     const { data, error } = await admin
       .from("jobs")
-      .select("id, task_id, step, status, prompt, output, error, created_at")
+      .select(
+        "id, task_id, step, status, prompt, output, error, created_at, progress_log, artifacts, requires_approval, approved_at"
+      )
       .order("created_at", { ascending: false })
       .limit(20);
     if (error) readError = error.message;
     else jobs = (data ?? []) as Job[];
+
+    // Attach each gated job's approval decision (kind='job-step') so the UI can
+    // show its status, link to it, and offer a one-click "Aprovar step".
+    const ids = jobs.map((j) => j.id);
+    if (ids.length) {
+      const { data: decs } = await admin
+        .from("decisions")
+        .select("id, status, job_id")
+        .eq("kind", "job-step")
+        .in("job_id", ids);
+      const byJob = new Map<string, { id: string; status: string }>();
+      for (const d of decs ?? [])
+        if (d.job_id) byJob.set(d.job_id as string, { id: d.id, status: d.status });
+      jobs = jobs.map((j) => {
+        const dec = byJob.get(j.id);
+        return dec ? { ...j, decision_id: dec.id, decision_status: dec.status } : j;
+      });
+    }
   }
 
   return (
