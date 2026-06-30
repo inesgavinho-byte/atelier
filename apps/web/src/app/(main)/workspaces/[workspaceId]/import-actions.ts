@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { hydrateCredentialOverrides } from "@/lib/credentials-store";
@@ -59,6 +60,22 @@ export async function importContext(input: {
     };
   }
 
+  // Idempotência (4c): conteúdo idêntico (mesma fonte + transcript) → mesmo
+  // external_id. Se já foi importado para este workspace, não reprocessa nem
+  // duplica (poupa a chamada ao Haiku).
+  const externalId = createHash("sha256")
+    .update(`${source}:${transcript}`)
+    .digest("hex");
+  const { data: dup } = await admin
+    .from("context_imports")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (dup) {
+    return { ok: true, message: "Já importado (conteúdo idêntico) — ignorado." };
+  }
+
   await hydrateCredentialOverrides();
   const outcome = await extractContextDetailed(transcript);
   const extracted = outcome.ok ? outcome.data : null;
@@ -68,6 +85,7 @@ export async function importContext(input: {
     workspace_id: workspaceId,
     source,
     raw_content: transcript,
+    external_id: externalId,
     processed: Boolean(extracted),
     extracted: extracted ?? {},
   });

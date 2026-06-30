@@ -11,7 +11,13 @@ import {
 } from "@/lib/ai-runtime/routing-table";
 
 /** Fallback preference order when the routed provider isn't available. */
-const FALLBACK_ORDER: ProviderId[] = ["claude", "openai", "perplexity"];
+const FALLBACK_ORDER: ProviderId[] = [
+  "claude",
+  "openai",
+  "perplexity",
+  "groq",
+  "deepseek",
+];
 
 /**
  * ATELIER — AI Runtime.
