@@ -120,6 +120,12 @@ export default function PendingInbox({ items }: { items: PendingInboxItem[] }) {
                         {` · há ${d === 0 ? "menos de 1 dia" : `${d} dia${d === 1 ? "" : "s"}`}`}
                       </span>
                     </span>
+                    {it.confidence !== null && it.confidenceReason ? (
+                      <span className="pi-conf-reason">
+                        <strong>{Math.round(it.confidence * 100)}%</strong> —{" "}
+                        {it.confidenceReason}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="pi-item-actions">
                     <button

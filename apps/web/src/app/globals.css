@@ -7191,3 +7191,14 @@ a.ctx-card:hover {
   background: var(--surface);
   font-size: 13px;
 }
+
+/* Confidence reason inline (Personal Decimin v2 — /pending) */
+.pi-conf-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.pi-conf-reason strong {
+  font-style: normal;
+  color: var(--text-primary);
+}
