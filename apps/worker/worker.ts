@@ -1038,11 +1038,74 @@ function msUntilNextBriefing(): number {
   return delta * 1000;
 }
 
+/**
+ * Advanced Daily Briefing (Personal Decimin v2). A morning summary of what
+ * changed since yesterday — new vs resolved vs still-open pendings, how many
+ * are stale — plus a single recommended follow-up (the most-confident, oldest
+ * open item), then the grouped list. Stays quiet when there's nothing.
+ */
 async function sendDailyBriefing(): Promise<void> {
   if (!TELEGRAM_USER_ID) return;
-  const text = await formatPendingBriefing(true);
-  if (!text) return; // nothing pending in the last 24h → stay quiet
-  await tgSend(TELEGRAM_USER_ID, `<b>Resumo diário</b>\n${text}`);
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const cutoff3d = new Date(Date.now() - 3 * 86_400_000).toISOString();
+
+  const [newRes, resolvedRes, openRes] = await Promise.all([
+    sb
+      .from("telegram_pending_items")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .gte("created_at", since),
+    sb
+      .from("telegram_pending_items")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "resolved")
+      .gte("resolved_at", since),
+    sb
+      .from("telegram_pending_items")
+      .select("description, from_person, confidence, created_at")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(100),
+  ]);
+
+  const newCount = newRes.count ?? 0;
+  const resolvedCount = resolvedRes.count ?? 0;
+  const open = (openRes.data ?? []) as {
+    description: string;
+    from_person: string | null;
+    confidence: number | null;
+    created_at: string;
+  }[];
+
+  // Nothing moved and nothing open → stay quiet (no noise).
+  if (!open.length && !newCount && !resolvedCount) return;
+
+  const stale = open.filter((r) => r.created_at < cutoff3d).length;
+
+  // Recommended follow-up: most-confident, then oldest.
+  const ranked = [...open].sort((a, b) => {
+    const ca = a.confidence ?? 0.5;
+    const cb = b.confidence ?? 0.5;
+    if (cb !== ca) return cb - ca;
+    return a.created_at < b.created_at ? -1 : 1;
+  });
+  const top = ranked[0];
+
+  const lines = ["🌅 <b>Bom dia.</b>", "", "Desde ontem:"];
+  lines.push(`• ${newCount} novo(s) pendente(s)`);
+  lines.push(`• ${resolvedCount} resolvido(s)`);
+  lines.push(
+    `• ${open.length} ainda por responder${stale ? ` (${stale} há mais de 3 dias)` : ""}`
+  );
+  if (top) {
+    const who = top.from_person ? ` (${top.from_person})` : "";
+    lines.push("", "Sugestão de follow-up:", `→ ${top.description}${who}`);
+  }
+
+  const list = await formatPendingBriefing(false);
+  if (list && list !== "Sem pedidos pendentes. ✨") lines.push("", list);
+
+  await tgSend(TELEGRAM_USER_ID, lines.join("\n"));
 }
 
 async function telegramBriefingLoop(): Promise<void> {
