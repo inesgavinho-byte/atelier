@@ -53,7 +53,7 @@ export function councilSystemMessage(
   workspaceName: string | undefined,
   ctx: WorkspaceContext | null,
   decisions: { title: string; status: string }[],
-  artifacts: { title: string; kind: string }[],
+  artifacts: { title: string; kind: string; revision: number }[],
   project?: { name: string; ctx: WorkspaceContext | null }
 ): string {
   const place = project
@@ -79,7 +79,13 @@ export function councilSystemMessage(
   }
   if (artifacts.length) {
     parts.push(
-      "## Artefactos\n" + artifacts.map((a) => `- ${a.title} (${a.kind})`).join("\n")
+      "## Artefactos\n" +
+        artifacts
+          .map((a) => `- ${a.title} (${a.kind}, v${a.revision})`)
+          .join("\n") +
+        "\nSão objectos vivos com histórico de revisões. Quando propões uma " +
+        "edição, refere o artefacto pelo nome — ex.: «Posso actualizar o " +
+        "artefacto “" + artifacts[0].title + "” com isto?». Propões; não editas sozinho."
     );
   }
   const allLessons = [
@@ -160,7 +166,11 @@ export async function prepareWorkspaceTurn(
         d.status !== "rejeitada"
     )
     .map((d) => ({ title: d.title, status: d.status }));
-  const artifactList = artifacts.map((a) => ({ title: a.title, kind: a.kind }));
+  const artifactList = artifacts.map((a) => ({
+    title: a.title,
+    kind: a.kind,
+    revision: a.revision,
+  }));
 
   // Persist the user turn first so it survives a failed model call.
   await sb.from("workspace_messages").insert({

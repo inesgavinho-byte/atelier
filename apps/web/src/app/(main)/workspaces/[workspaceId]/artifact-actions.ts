@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase";
 import {
   getArtifactDetail,
   summariseArtifactChange,
+  indexArtifactForRag,
   type ArtifactDetail,
 } from "@/lib/artifacts";
 
@@ -50,6 +51,7 @@ export async function createArtifact(input: {
     summary: "Revisão inicial",
     created_by: author,
   });
+  await indexArtifactForRag(id);
   revalidatePath(`/workspaces/${input.workspaceId}`);
   return { ok: true, id, message: "Artefacto guardado." };
 }
@@ -96,6 +98,7 @@ export async function updateArtifact(input: {
     .eq("id", input.id);
   if (error) return { ok: false, message: error.message };
 
+  await indexArtifactForRag(input.id);
   if (input.workspaceId) revalidatePath(`/workspaces/${input.workspaceId}`);
   return {
     ok: true,
