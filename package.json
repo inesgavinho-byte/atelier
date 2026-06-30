@@ -12,6 +12,7 @@
     "build": "npm run build --workspace @atelier/web",
     "start": "npm run start --workspace @atelier/web",
     "lint": "npm run lint --workspace @atelier/web",
-    "typecheck": "npm run typecheck --workspace @atelier/web"
+    "typecheck": "npm run typecheck --workspace @atelier/web",
+    "test": "npm run test --workspace @atelier/web"
   }
 }
