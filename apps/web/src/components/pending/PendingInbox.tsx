@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ago } from "@/components/mission/bits";
-import { setPendingItemStatus } from "@/app/(main)/minions/actions";
+import { setPendingItemStatus } from "@/app/(main)/decimins/actions";
 
 /**
  * Pending Intelligence (Personal Decimin v2). A living list of what was asked

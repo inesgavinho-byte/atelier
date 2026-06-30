@@ -129,8 +129,8 @@ export default async function MainLayout({
         { label: "Importar", href: "/import", icon: "↧" },
         { label: "Jobs", href: "/jobs", icon: "▦" },
         {
-          label: "Minions",
-          href: "/minions",
+          label: "Decimins",
+          href: "/decimins",
           icon: "◉",
           badge: pendingSignals || undefined,
         },

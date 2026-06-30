@@ -7,7 +7,7 @@ import {
   setGroupWorkspace,
   setGroupAutonomy,
   setPendingItemStatus,
-} from "@/app/(main)/minions/actions";
+} from "@/app/(main)/decimins/actions";
 import type { TelegramGroup, PendingItem } from "@/lib/conversation-watch";
 
 /**

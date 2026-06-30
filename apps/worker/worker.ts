@@ -273,23 +273,23 @@ const minionShortId = (prefix: string) =>
 /** Per-minion guidance appended to the shared system prompt. */
 const MINION_GUIDANCE: Record<string, string> = {
   inbox:
-    "És o Inbox Minion. Observas capturas, leituras e imports recentes. " +
+    "És o Inbox Decimin. Observas capturas, leituras e imports recentes. " +
     "Classifica e diz o que merece atenção. Raramente exige aprovação.",
   context:
-    "És o Context Minion. Observas o que mudou nos workspaces (decisões, " +
+    "És o Context Decimin. Observas o que mudou nos workspaces (decisões, " +
     "actividade). Resume o estado. Não exige aprovação.",
   decision:
-    "És o Decision Minion. Detectas o que precisa de uma decisão da Inês. " +
+    "És o Decision Decimin. Detectas o que precisa de uma decisão da Inês. " +
     "Reúne evidência e prepara uma recomendação clara. Usa kind " +
     "'decision_required' e approval_required=true quando há mesmo uma decisão.",
   "project-sentinel":
     "És o Project Sentinel. Vigias decisões pendentes, jobs com erro e " +
     "bloqueios. Sinaliza risco com kind 'risk' ou 'warning'.",
   product:
-    "És o Product Minion. Observas o estado do produto (jobs, artefactos, " +
+    "És o Product Decimin. Observas o estado do produto (jobs, artefactos, " +
     "decisões) e o que pode violar a arquitectura. kind 'warning' ou 'info'.",
   pattern:
-    "És o Pattern Minion. Observas o contexto de TODOS os workspaces e " +
+    "És o Pattern Decimin. Observas o contexto de TODOS os workspaces e " +
     "procuras padrões, tensões e oportunidades. kind 'opportunity' ou 'info'.",
 };
 
