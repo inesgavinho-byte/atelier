@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ago } from "@/components/mission/bits";
-import { setCapabilityMode } from "@/app/(main)/minions/actions";
+import { setCapabilityMode } from "@/app/(main)/decimins/actions";
 import {
   CAPABILITY_LABELS,
   type CapabilityMode,

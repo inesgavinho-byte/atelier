@@ -9,7 +9,7 @@ import {
   setMinionAutonomy,
   setMinionState,
   setSignalStatus,
-} from "@/app/(main)/minions/actions";
+} from "@/app/(main)/decimins/actions";
 import type { Minion, MinionSignal } from "@/lib/minions";
 
 const AUTONOMY_LABELS = [
@@ -65,7 +65,7 @@ export default function MinionsBoard({
 
   const open = minions.find((m) => m.id === openId) ?? null;
   const minionName = (id: string) =>
-    minions.find((m) => m.id === id)?.name ?? "Minion";
+    minions.find((m) => m.id === id)?.name ?? "Decimin";
 
   const act = (fn: () => Promise<unknown>) =>
     start(async () => {
