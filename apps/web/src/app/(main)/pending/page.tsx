@@ -1,9 +1,11 @@
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getRecentPendingItems } from "@/lib/conversation-watch";
+import { getCognitiveLoad } from "@/lib/cognitive-load";
 import { getWorkspaces } from "@/lib/workspaces";
 import PendingInbox, {
   type PendingInboxItem,
 } from "@/components/pending/PendingInbox";
+import CognitiveLoadCard from "@/components/pending/CognitiveLoadCard";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +37,10 @@ export default async function PendingPage() {
     );
   }
 
-  const [items, workspaces] = await Promise.all([
+  const [items, workspaces, load] = await Promise.all([
     getRecentPendingItems(100),
     getWorkspaces(),
+    getCognitiveLoad(),
   ]);
   const wsName = new Map(workspaces.map((w) => [w.id, w.name] as const));
 
@@ -64,6 +67,10 @@ export default async function PendingPage() {
           observadas, agrupado por Space. Nada de listas mantidas à mão.
         </p>
       </header>
+
+      <div className="mb-8">
+        <CognitiveLoadCard load={load} />
+      </div>
 
       <PendingInbox items={enriched} />
     </div>
