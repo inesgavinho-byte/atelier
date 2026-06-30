@@ -14,6 +14,7 @@ import {
 import { ago } from "@/components/mission/bits";
 import {
   addDocument,
+  checkMarkitdown,
   deleteDocument,
   searchWorkspaceDocuments,
 } from "@/app/(main)/workspaces/[workspaceId]/document-actions";
@@ -89,6 +90,31 @@ export default function DocumentsPanel({
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, startSearch] = useTransition();
+
+  // MarkItDown liveness — drives a small badge so the user knows whether
+  // PDF/Office conversion is available without having to upload a file.
+  const [md, setMd] = useState<{ configured: boolean; ok: boolean } | null>(
+    null
+  );
+  useEffect(() => {
+    let alive = true;
+    checkMarkitdown()
+      .then((s) => {
+        if (alive) setMd(s);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const mdBadge = md
+    ? md.ok
+      ? { cls: "md-badge md-on", label: "MarkItDown ligado" }
+      : md.configured
+        ? { cls: "md-badge md-warn", label: "MarkItDown sem resposta" }
+        : { cls: "md-badge md-off", label: "MarkItDown desligado" }
+    : null;
 
   // Expose "open the file picker" to a parent (the drawer's foot button), so
   // "Carregar documentos" opens the chooser directly instead of only revealing
@@ -207,6 +233,21 @@ export default function DocumentsPanel({
               MarkItDown (ou em fila se o serviço estiver desligado).
             </p>
           </div>
+          {mdBadge ? (
+            <p className="ws-docs-md-status">
+              <span className={mdBadge.cls}>
+                <span className="md-dot" aria-hidden />
+                {mdBadge.label}
+              </span>
+              {md && !md.ok ? (
+                <span className="ws-docs-md-note">
+                  {md.configured
+                    ? "PDF/Office ficam em fila até o serviço responder."
+                    : "PDF/Office ficam em fila; texto é processado na mesma."}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
           {msg ? <p className="meta mt-2">{msg}</p> : null}
 
           <div className="ws-docs-search">

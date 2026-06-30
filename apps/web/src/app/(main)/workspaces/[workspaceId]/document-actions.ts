@@ -128,6 +128,31 @@ export async function deleteDocument(input: {
   return { ok: true, message: "Documento eliminado." };
 }
 
+/**
+ * Liveness of the MarkItDown service, for a UI indicator. Reports whether the
+ * service is configured (MARKITDOWN_URL set) and, if so, whether /health
+ * answers. Binary conversion (PDF/Office) only works when this is `ok`; text
+ * files are always processed in-process regardless.
+ */
+export async function checkMarkitdown(): Promise<{
+  configured: boolean;
+  ok: boolean;
+}> {
+  const base = process.env.MARKITDOWN_URL?.replace(/\/$/, "");
+  if (!base) return { configured: false, ok: false };
+  const token = process.env.MARKITDOWN_TOKEN;
+  try {
+    const res = await fetch(`${base}/health`, {
+      headers: token ? { authorization: `Bearer ${token}` } : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(6000),
+    });
+    return { configured: true, ok: res.ok };
+  } catch {
+    return { configured: true, ok: false };
+  }
+}
+
 /** Keyword search over a workspace's documents. */
 export async function searchWorkspaceDocuments(
   workspaceId: string,
