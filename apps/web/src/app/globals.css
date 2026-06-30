@@ -2421,105 +2421,182 @@
 
 /* ── Jobs (POC runtime de execução, ADR-0002) ───────────────────────────── */
 
-.app-shell .jobs-form {
+/* New job — form card (token-driven, dark/light). */
+.jobs-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: 18px;
   margin-bottom: 22px;
+  background: var(--atelier-surface-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
 }
-
-.app-shell .jobs-input {
+.jobs-form-title {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.jobs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.jobs-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.jobs-input {
   width: 100%;
   padding: 9px 11px;
   font-size: 14px;
-  color: var(--atelier-ink);
-  background: #fff;
-  border: 1px solid var(--atelier-line-strong);
-  border-radius: 8px;
+  color: var(--text);
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
   outline: none;
   font-family: inherit;
 }
-
-.app-shell .jobs-input:focus {
-  border-color: var(--atelier-accent);
+.jobs-textarea {
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.5;
 }
-
-.app-shell .jobs-form-foot {
+.jobs-input:focus {
+  border-color: var(--text-muted);
+}
+.jobs-form-foot {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
-
-.app-shell .jobs-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--atelier-line);
-  border-radius: 10px;
-}
-
-.app-shell .jobs-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.app-shell .jobs-table th {
-  text-align: left;
+.jobs-msg {
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--atelier-muted);
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--atelier-line);
-  background: var(--atelier-bg-soft);
+  color: var(--text-muted);
+}
+.jobs-msg-ok {
+  color: var(--teal);
 }
 
-.app-shell .jobs-table td {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--atelier-line-soft, var(--atelier-line));
-  vertical-align: top;
+.jobs-empty {
+  margin: 0;
+  padding: 28px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  border: 0.5px dashed var(--border);
+  border-radius: var(--radius-card);
 }
 
-.app-shell .jobs-output {
-  max-width: 360px;
-  color: var(--atelier-muted);
+/* Job microcards */
+.jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.job-card {
+  padding: 12px 14px;
+  background: var(--atelier-surface-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.job-card-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.job-task {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
+  color: var(--text);
 }
-
-.app-shell .job-error-text {
-  color: #9a3b2f;
+.job-step {
+  font-size: 11px;
+  color: var(--text-muted);
 }
-
-.app-shell .job-status {
-  display: inline-block;
+.job-date {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.job-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 2px 9px;
   border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid var(--atelier-line-strong);
-  color: var(--atelier-muted);
+  font-size: 11px;
+  border: 0.5px solid var(--border);
+  color: var(--text-secondary);
 }
-
-.app-shell .job-status.queued {
-  background: rgba(116,111,99,0.10);
-  color: var(--atelier-muted);
+.job-queued {
+  background: var(--surface-card);
+  color: var(--text-muted);
 }
-
-.app-shell .job-status.running {
-  background: rgba(193,160,40,0.16);
-  border-color: rgba(193,160,40,0.5);
-  color: #7a5e00;
+.job-running {
+  background: rgba(193, 160, 40, 0.16);
+  border-color: rgba(193, 160, 40, 0.45);
+  color: #8a6d12;
 }
-
-.app-shell .job-status.done {
-  background: rgba(74,120,80,0.14);
-  border-color: rgba(74,120,80,0.5);
-  color: #2f5d36;
+[data-theme="dark"] .job-running {
+  color: #e6c560;
 }
-
-.app-shell .job-status.error {
-  background: rgba(154,59,47,0.12);
-  border-color: rgba(154,59,47,0.5);
+.job-done {
+  background: rgba(74, 140, 90, 0.16);
+  border-color: rgba(74, 140, 90, 0.45);
+  color: #2f6d3c;
+}
+[data-theme="dark"] .job-done {
+  color: #7fcf95;
+}
+.job-error {
+  background: rgba(190, 70, 55, 0.14);
+  border-color: rgba(190, 70, 55, 0.45);
   color: #9a3b2f;
+}
+[data-theme="dark"] .job-error {
+  color: #e89384;
+}
+.job-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: job-pulse 1.3s ease-in-out infinite;
+}
+@keyframes job-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.job-result {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.job-result-error {
+  color: #9a3b2f;
+}
+[data-theme="dark"] .job-result-error {
+  color: #e89384;
+}
+.job-more {
+  margin-left: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
 }
 
 /* ════════════════════════════════════════════════════════════════════════

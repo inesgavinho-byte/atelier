@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ago } from "@/components/mission/bits";
 
 export interface Job {
   id: string;
@@ -14,35 +15,64 @@ export interface Job {
   created_at: string;
 }
 
-const STATUS_CLASS: Record<string, string> = {
-  queued: "job-status queued",
-  running: "job-status running",
-  done: "job-status done",
-  error: "job-status error",
+const STATUS_LABEL: Record<string, string> = {
+  queued: "em fila",
+  running: "a executar",
+  done: "concluído",
+  error: "erro",
 };
 
-function fmt(ts: string): string {
-  try {
-    return new Intl.DateTimeFormat("pt-PT", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(ts));
-  } catch {
-    return ts;
-  }
+/** One job as a microcard: task + state badge + relative date + (expandable) result. */
+function JobCard({ job }: { job: Job }) {
+  const [open, setOpen] = useState(false);
+  const result = job.error ?? job.output ?? "";
+  const isError = Boolean(job.error);
+  const long = result.length > 160;
+  const shown = open || !long ? result : `${result.slice(0, 160)}…`;
+  const status = STATUS_LABEL[job.status] ? job.status : "queued";
+
+  return (
+    <div className="job-card">
+      <div className="job-card-head">
+        <span className="job-task">{job.task_id}</span>
+        {job.step ? <span className="job-step">passo {job.step}</span> : null}
+        <span className={`job-badge job-${status}`}>
+          {status === "running" ? <span className="job-pulse" /> : null}
+          {STATUS_LABEL[status]}
+        </span>
+        <span className="job-date">{ago(job.created_at)}</span>
+      </div>
+
+      {result ? (
+        <div className={`job-result${isError ? " job-result-error" : ""}`}>
+          {shown}
+          {long ? (
+            <button
+              type="button"
+              className="job-more"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? "menos" : "ver mais"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /**
- * Jobs list + "new test job" form (ADR-0002 POC). The server page passes the
- * latest jobs; this island re-fetches them every 5s via router.refresh() (the
- * jobs table is service-role only, so the browser can't subscribe directly —
- * polling through the server is the right seam for now).
+ * Jobs list + "new job" form (ADR-0002 POC). The server page passes the latest
+ * jobs; this island re-fetches them every 5s via router.refresh() (the jobs
+ * table is service-role only, so the browser can't subscribe directly — polling
+ * through the server is the right seam for now).
  */
 export default function JobsPanel({ jobs }: { jobs: Job[] }) {
   const router = useRouter();
   const [taskId, setTaskId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
   const [pending, start] = useTransition();
 
   // Auto-refresh the list every 5 seconds.
@@ -62,11 +92,13 @@ export default function JobsPanel({ jobs }: { jobs: Job[] }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setMsg(`Job criado (${data.job_id}).`);
+        setOk(true);
+        setMsg(`Job enfileirado (${data.job_id}).`);
         setTaskId("");
         setPrompt("");
         router.refresh();
       } else {
+        setOk(false);
         setMsg(data.error ?? `Erro ${res.status}.`);
       }
     });
@@ -74,67 +106,46 @@ export default function JobsPanel({ jobs }: { jobs: Job[] }) {
 
   return (
     <div className="jobs-page">
-      <form className="card jobs-form" onSubmit={submit}>
-        <p className="card-label">Novo job (teste)</p>
-        <input
-          className="jobs-input"
-          placeholder="task_id (ex.: AT-0008)"
-          value={taskId}
-          onChange={(e) => setTaskId(e.target.value)}
-          required
-        />
-        <textarea
-          className="jobs-input"
-          placeholder="Prompt para o worker…"
-          rows={3}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          required
-        />
+      <form className="jobs-form" onSubmit={submit}>
+        <p className="jobs-form-title">Novo job</p>
+        <label className="jobs-field">
+          <span className="jobs-label">task_id</span>
+          <input
+            className="jobs-input"
+            placeholder="ex.: AT-0008"
+            value={taskId}
+            onChange={(e) => setTaskId(e.target.value)}
+            required
+          />
+        </label>
+        <label className="jobs-field">
+          <span className="jobs-label">Prompt para o worker</span>
+          <textarea
+            className="jobs-input jobs-textarea"
+            placeholder="O que o worker deve processar…"
+            rows={3}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            required
+          />
+        </label>
         <div className="jobs-form-foot">
-          <button type="submit" className="action" disabled={pending}>
+          <button type="submit" className="btn-primary" disabled={pending}>
             {pending ? "A enfileirar…" : "Enfileirar job"}
           </button>
-          {msg ? <span className="meta">{msg}</span> : null}
+          {msg ? (
+            <span className={`jobs-msg${ok ? " jobs-msg-ok" : ""}`}>{msg}</span>
+          ) : null}
         </div>
       </form>
 
       {jobs.length === 0 ? (
-        <p className="atelier-empty">Ainda não há jobs. Cria um acima.</p>
+        <p className="jobs-empty">Ainda não há jobs em execução.</p>
       ) : (
-        <div className="jobs-table-wrap">
-          <table className="jobs-table">
-            <thead>
-              <tr>
-                <th>Tarefa</th>
-                <th>Passo</th>
-                <th>Estado</th>
-                <th>Resultado</th>
-                <th>Criado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((j) => (
-                <tr key={j.id}>
-                  <td className="font-mono text-[13px]">{j.task_id}</td>
-                  <td>{j.step}</td>
-                  <td>
-                    <span className={STATUS_CLASS[j.status] ?? "job-status"}>
-                      {j.status}
-                    </span>
-                  </td>
-                  <td className="jobs-output">
-                    {j.error ? (
-                      <span className="job-error-text">{j.error}</span>
-                    ) : (
-                      j.output ?? "—"
-                    )}
-                  </td>
-                  <td className="meta">{fmt(j.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="jobs-list">
+          {jobs.map((j) => (
+            <JobCard key={j.id} job={j} />
+          ))}
         </div>
       )}
     </div>
