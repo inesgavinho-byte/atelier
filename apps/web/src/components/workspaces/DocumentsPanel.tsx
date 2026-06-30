@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconFile,
@@ -64,11 +64,14 @@ export default function DocumentsPanel({
   workspaceId,
   documents,
   embedded = false,
+  registerPicker,
 }: {
   workspaceId: string;
   documents: WorkspaceDocument[];
   /** Rendered inside the workspace drawer: no compact bar, controls always on. */
   embedded?: boolean;
+  /** Lets a parent (the drawer foot button) open the file picker directly. */
+  registerPicker?: (open: () => void) => void;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +86,13 @@ export default function DocumentsPanel({
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, startSearch] = useTransition();
+
+  // Expose "open the file picker" to a parent (the drawer's foot button), so
+  // "Carregar documentos" opens the chooser directly instead of only revealing
+  // the dropzone.
+  useEffect(() => {
+    registerPicker?.(() => inputRef.current?.click());
+  }, [registerPicker]);
 
   const ingest = async (files: FileList | File[]) => {
     for (const file of Array.from(files)) {

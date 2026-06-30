@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   IconBrain,
@@ -130,6 +130,12 @@ export default function ContextPanel({
   const [collapsed, setCollapsed] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
   const [openArtifact, setOpenArtifact] = useState<string | null>(null);
+  // The embedded Documentos panel registers its file-picker opener here so the
+  // foot "Carregar documentos" button can open the chooser directly.
+  const docPickerRef = useRef<(() => void) | null>(null);
+  const registerDocPicker = useCallback((open: () => void) => {
+    docPickerRef.current = open;
+  }, []);
   const openKey = `atelier-ctx-${workspaceId}`;
   const collapsedKey = `atelier-ctx-collapsed-${workspaceId}`;
 
@@ -419,6 +425,7 @@ export default function ContextPanel({
           workspaceId={workspaceId}
           documents={documents ?? []}
           embedded
+          registerPicker={registerDocPicker}
         />
       ),
     },
@@ -538,7 +545,11 @@ export default function ContextPanel({
               <button
                 type="button"
                 className="ctx-drawer-btn"
-                onClick={() => expandTo("documentos")}
+                onClick={() => {
+                  expandTo("documentos");
+                  // Open the picker once the section has mounted/expanded.
+                  window.setTimeout(() => docPickerRef.current?.(), 80);
+                }}
               >
                 <IconUpload size={16} stroke={1.7} />
                 Carregar documentos
