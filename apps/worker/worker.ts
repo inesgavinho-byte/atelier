@@ -44,6 +44,32 @@ interface Job {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const now = () => new Date().toISOString();
 
+/**
+ * fetch with exponential backoff (4b). Retries on network error and on
+ * transient HTTP (429 / 5xx) up to `tries` times (400ms · 800ms · …), so a
+ * single hiccup no longer loses the whole tick. Returns the last response
+ * (even non-ok) for the caller to handle; throws only on persistent network
+ * failure — which every worker loop already catches.
+ */
+async function fetchRetry(
+  url: string,
+  init: RequestInit,
+  tries = 3
+): Promise<Response> {
+  let res: Response | null = null;
+  for (let i = 0; i < tries; i++) {
+    try {
+      res = await fetch(url, init);
+      if (res.ok || (res.status !== 429 && res.status < 500)) return res;
+    } catch {
+      res = null; // network error — retry
+    }
+    if (i < tries - 1) await sleep(400 * 2 ** i);
+  }
+  if (res) return res;
+  throw new Error(`fetch falhou após ${tries} tentativas: ${url}`);
+}
+
 /** Atomically claim a queued job (guards against two workers taking the same). */
 async function claim(job: Job): Promise<boolean> {
   const { data, error } = await sb
@@ -118,7 +144,7 @@ async function summarise(
     console.error("[context] ANTHROPIC_API_KEY em falta — agente inativo.");
     return null;
   }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": key,
@@ -365,7 +391,7 @@ async function runMinionLLM(
     console.error("[minion] ANTHROPIC_API_KEY em falta — minions inactivos.");
     return null;
   }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": key,
@@ -755,7 +781,7 @@ interface WatchGroup {
 async function analyzeGroupMessage(sender: string, text: string): Promise<WatchSignal[]> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return [];
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": key,
@@ -1208,7 +1234,7 @@ async function embedTexts(texts: string[]): Promise<number[][] | null> {
   const key = process.env.OPENAI_API_KEY;
   if (!key || !texts.length) return null;
   try {
-    const res = await fetch("https://api.openai.com/v1/embeddings", {
+    const res = await fetchRetry("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
