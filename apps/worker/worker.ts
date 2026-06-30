@@ -690,18 +690,23 @@ async function telegramNotifyLoop(): Promise<void> {
     await sleep(TELEGRAM_NOTIFY_MS);
     const checkpoint = now();
     try {
+      // Shadow Mode: only push when active. We still advance the watermark so
+      // promoting to active later doesn't dump the backlog accumulated silently.
+      const active = (await capabilityMode("watch_notifications")) === "active";
+
       const { data: decs } = await sb
         .from("decisions")
         .select("id, title")
         .eq("status", "pendente")
         .gt("created_at", since)
         .limit(10);
-      for (const d of decs ?? [])
-        await tgSend(
-          TELEGRAM_CHAT_ID,
-          `🟠 Nova decisão pendente:\n${d.title}`,
-          { reply_markup: decisionKeyboard(d.id) }
-        );
+      if (active)
+        for (const d of decs ?? [])
+          await tgSend(
+            TELEGRAM_CHAT_ID,
+            `🟠 Nova decisão pendente:\n${d.title}`,
+            { reply_markup: decisionKeyboard(d.id) }
+          );
 
       const { data: sigs } = await sb
         .from("minion_signals")
@@ -709,8 +714,9 @@ async function telegramNotifyLoop(): Promise<void> {
         .eq("approval_required", true)
         .gt("created_at", since)
         .limit(10);
-      for (const s of sigs ?? [])
-        await tgSend(TELEGRAM_CHAT_ID, `🤖 Minion (${s.kind}):\n${s.signal}`);
+      if (active)
+        for (const s of sigs ?? [])
+          await tgSend(TELEGRAM_CHAT_ID, `🤖 Minion (${s.kind}):\n${s.signal}`);
 
       since = checkpoint;
     } catch (e) {
@@ -1038,14 +1044,47 @@ function msUntilNextBriefing(): number {
   return delta * 1000;
 }
 
+/* ── Shadow Mode (Personal Decimin v2) ────────────────────────────────────────
+ * Each capability has a mode: 'active' (acts/notifies), 'shadow' (computes but
+ * stays silent, recording what it WOULD have sent so the user can compare), or
+ * 'off'. New capabilities start silent and earn 'active'. Robust default:
+ * 'active' on any miss/error, so a missing table never silences a working flow.
+ */
+type CapMode = "shadow" | "active" | "off";
+
+async function capabilityMode(capability: string): Promise<CapMode> {
+  const { data, error } = await sb
+    .from("decimin_capabilities")
+    .select("mode")
+    .eq("capability", capability)
+    .maybeSingle();
+  if (error || !data) return "active";
+  return (data.mode as CapMode) ?? "active";
+}
+
+/** Record what a capability would have sent, for the user to compare (shadow). */
+async function recordShadowOutput(capability: string, output: string): Promise<void> {
+  await sb
+    .from("decimin_capabilities")
+    .update({
+      last_shadow_output: output.slice(0, 4000),
+      last_shadow_at: now(),
+      updated_at: now(),
+    })
+    .eq("capability", capability);
+}
+
 /**
  * Advanced Daily Briefing (Personal Decimin v2). A morning summary of what
  * changed since yesterday — new vs resolved vs still-open pendings, how many
  * are stale — plus a single recommended follow-up (the most-confident, oldest
- * open item), then the grouped list. Stays quiet when there's nothing.
+ * open item), then the grouped list. Stays quiet when there's nothing. Honours
+ * Shadow Mode: in 'shadow' it records the briefing instead of sending it.
  */
 async function sendDailyBriefing(): Promise<void> {
   if (!TELEGRAM_USER_ID) return;
+  const mode = await capabilityMode("daily_briefing");
+  if (mode === "off") return;
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();
   const cutoff3d = new Date(Date.now() - 3 * 86_400_000).toISOString();
 
@@ -1105,7 +1144,14 @@ async function sendDailyBriefing(): Promise<void> {
   const list = await formatPendingBriefing(false);
   if (list && list !== "Sem pedidos pendentes. ✨") lines.push("", list);
 
-  await tgSend(TELEGRAM_USER_ID, lines.join("\n"));
+  const text = lines.join("\n");
+  if (mode === "active") {
+    await tgSend(TELEGRAM_USER_ID, text);
+  } else {
+    // Shadow: record what we would have sent; don't interrupt.
+    await recordShadowOutput("daily_briefing", text);
+    console.log("[shadow] daily_briefing — preparado, não enviado.");
+  }
 }
 
 async function telegramBriefingLoop(): Promise<void> {

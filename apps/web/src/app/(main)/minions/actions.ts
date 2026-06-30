@@ -58,6 +58,24 @@ export async function setMinionAutonomy(
   return { ok: true, message: `Autonomia: nível ${clamped}.` };
 }
 
+/** Set a Personal Decimin capability's mode (Shadow Mode, v2). */
+export async function setCapabilityMode(
+  capability: string,
+  mode: "active" | "shadow" | "off"
+): Promise<{ ok: boolean; message: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { ok: false, message: "Service role não configurado." };
+  const { error } = await admin
+    .from("decimin_capabilities")
+    .update({ mode, updated_at: now() })
+    .eq("capability", capability);
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/minions");
+  const label =
+    mode === "active" ? "activa" : mode === "shadow" ? "em shadow" : "desligada";
+  return { ok: true, message: `Capacidade ${label}.` };
+}
+
 /* ── Conversation Watch (ADR-0006) ──────────────────────────────────────────── */
 
 /** Link (or unlink) a Telegram group to a workspace — routes its items there. */
