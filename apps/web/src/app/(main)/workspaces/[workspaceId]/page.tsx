@@ -51,7 +51,7 @@ export default async function WorkspaceDetailPage({
     getWorkspaceContext(ws.id),
     getCanonicalChat(ws.id),
     getProjects(ws.id),
-    getDocuments(ws.id).catch(() => []),
+    getDocuments(ws.id, { projectId: null }).catch(() => []),
     getSessions(ws.id).catch(() => []),
     getChatIdentity(ws.id),
   ]);

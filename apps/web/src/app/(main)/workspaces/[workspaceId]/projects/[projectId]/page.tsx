@@ -12,6 +12,7 @@ import {
   getProject,
   getWorkspaceContext,
 } from "@/lib/workspaces";
+import { getDocuments } from "@/lib/documents";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
@@ -35,13 +36,14 @@ export default async function ProjectDetailPage({
   const project = await getProject(params.projectId);
   if (!project || project.workspaceId !== ws.id) notFound();
 
-  const [allDecisions, artifacts, agents, context, canonical] =
+  const [allDecisions, artifacts, agents, context, canonical, documents] =
     await Promise.all([
       getDecisions(),
       getArtifactsForInitiative(ws.id),
       getAgentsForInitiative(ws.id),
       getWorkspaceContext(ws.id, project.id),
       getCanonicalChat(ws.id, project.id),
+      getDocuments(ws.id, { projectId: project.id }).catch(() => []),
     ]);
 
   // Workspace decisions, pending first (shared across the workspace — not yet
@@ -113,6 +115,7 @@ export default async function ProjectDetailPage({
           decisions={wsDecisions}
           artifacts={artifacts}
           agents={agents}
+          documents={documents}
         />
       </div>
     </div>

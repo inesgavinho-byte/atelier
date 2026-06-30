@@ -79,6 +79,7 @@ export async function addDocument(input: {
       const rows = parts.map((content, idx) => ({
         document_id: documentId,
         workspace_id: input.workspaceId,
+        project_id: input.projectId || null,
         idx,
         content,
         embedding: vectors ? vectors[idx] : null,
@@ -98,6 +99,8 @@ export async function addDocument(input: {
   }).catch(() => {});
 
   revalidatePath(`/workspaces/${input.workspaceId}`);
+  if (input.projectId)
+    revalidatePath(`/workspaces/${input.workspaceId}/projects/${input.projectId}`);
   return {
     ok: true,
     id: documentId,
@@ -113,12 +116,15 @@ export async function addDocument(input: {
 export async function deleteDocument(input: {
   id: string;
   workspaceId: string;
+  projectId?: string;
 }): Promise<{ ok: boolean; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
   const { error } = await sb.from("documents").delete().eq("id", input.id);
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/workspaces/${input.workspaceId}`);
+  if (input.projectId)
+    revalidatePath(`/workspaces/${input.workspaceId}/projects/${input.projectId}`);
   return { ok: true, message: "Documento eliminado." };
 }
 

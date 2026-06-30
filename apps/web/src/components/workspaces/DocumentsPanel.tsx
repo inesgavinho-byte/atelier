@@ -62,11 +62,14 @@ function toBase64(buf: ArrayBuffer): string {
  */
 export default function DocumentsPanel({
   workspaceId,
+  projectId,
   documents,
   embedded = false,
   registerPicker,
 }: {
   workspaceId: string;
+  /** When set, uploads/deletes are scoped to this project (not the workspace). */
+  projectId?: string;
   documents: WorkspaceDocument[];
   /** Rendered inside the workspace drawer: no compact bar, controls always on. */
   embedded?: boolean;
@@ -100,6 +103,7 @@ export default function DocumentsPanel({
       const isText = TEXT_EXT.includes(kind);
       const base = {
         workspaceId,
+        projectId,
         title: file.name.replace(/\.[^.]+$/, ""),
         sourceName: file.name,
         kind,
@@ -147,7 +151,7 @@ export default function DocumentsPanel({
 
   const remove = (id: string) =>
     start(async () => {
-      await deleteDocument({ id, workspaceId });
+      await deleteDocument({ id, workspaceId, projectId });
       router.refresh();
     });
 

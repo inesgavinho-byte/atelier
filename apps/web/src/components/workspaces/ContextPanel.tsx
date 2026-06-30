@@ -423,6 +423,7 @@ export default function ContextPanel({
       body: (
         <DocumentsPanel
           workspaceId={workspaceId}
+          projectId={projectId}
           documents={documents ?? []}
           embedded
           registerPicker={registerDocPicker}
