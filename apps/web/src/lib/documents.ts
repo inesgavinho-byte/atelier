@@ -126,16 +126,30 @@ export function chunkMarkdown(markdown: string, target = 800): string[] {
   return chunks;
 }
 
+/**
+ * List a workspace's documents, optionally scoped to a project.
+ *
+ * - `scope.projectId` a string → only that project's documents.
+ * - `scope.projectId === null` → only workspace-level documents (no project),
+ *   so the general workspace library doesn't include project-scoped files.
+ * - omitted → every document in the workspace (backwards compatible).
+ */
 export async function getDocuments(
-  workspaceId: string
+  workspaceId: string,
+  scope?: { projectId?: string | null }
 ): Promise<WorkspaceDocument[]> {
   const sb = getSupabase();
   if (!sb) return [];
-  const { data } = await sb
+  let q = sb
     .from("documents")
     .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false });
+    .eq("workspace_id", workspaceId);
+  if (scope && "projectId" in scope) {
+    q = scope.projectId
+      ? q.eq("project_id", scope.projectId)
+      : q.is("project_id", null);
+  }
+  const { data } = await q.order("created_at", { ascending: false });
   return (data ?? []).map(toDoc);
 }
 
