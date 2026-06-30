@@ -72,6 +72,8 @@ interface Job {
   task_id: string;
   step: number;
   prompt: string;
+  requires_approval: boolean;
+  approved_at: string | null;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -326,7 +328,69 @@ async function collectArtifacts(cwd: string): Promise<Artifact[]> {
   return out;
 }
 
+// Short, readable id for a job-step decision (ADR-0002 PR2 approval gate).
+const jobDecisionId = () => `job-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+
+/**
+ * Human approval gate (ADR-0002 PR2). A job with requires_approval stays queued
+ * until a linked decision (kind='job-step') is approved in /jobs, /decisions or
+ * Telegram. Returns:
+ *   'run'  — no gate, or already approved (approved_at is stamped here)
+ *   'wait' — still pending approval (the worker leaves the job queued)
+ * Jobs without requires_approval (the default — "single-step jobs") run directly.
+ */
+async function ensureApproval(job: Job): Promise<"run" | "wait"> {
+  if (!job.requires_approval || job.approved_at) return "run";
+
+  // Is there already a decision for this job?
+  const { data: existing } = await sb
+    .from("decisions")
+    .select("id, status")
+    .eq("job_id", job.id)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === "aprovada") {
+      await sb
+        .from("jobs")
+        .update({
+          approved_at: now(),
+          approved_by: `decisão ${existing.id}`,
+          updated_at: now(),
+        })
+        .eq("id", job.id);
+      await pushProgress(job.id, "Aprovado — a executar.");
+      return "run";
+    }
+    // 'pendente' / 'revisão' / etc. → keep waiting (no log spam).
+    return "wait";
+  }
+
+  // First sight of a gated job: open a pending decision and record it once.
+  const id = jobDecisionId();
+  const { error } = await sb.from("decisions").insert({
+    id,
+    job_id: job.id,
+    title: `Aprovar step ${job.step}: ${job.prompt.slice(0, 90)}`,
+    kind: "job-step",
+    priority: "média",
+    context: job.prompt.slice(0, 2000),
+    recommendation: "Executar este step do job no runtime.",
+    status: "pendente",
+  });
+  if (error) {
+    console.error(`[jobs] criar decisão de aprovação falhou (${job.id}): ${error.message}`);
+    return "wait";
+  }
+  await pushProgress(job.id, "A aguardar aprovação humana.");
+  console.log(`[jobs] job ${job.id} aguarda aprovação (decisão ${id}).`);
+  return "wait";
+}
+
 async function runJob(job: Job): Promise<void> {
+  // Approval gate first: a gated job stays queued until its decision is approved.
+  if ((await ensureApproval(job)) === "wait") return;
+
   // Without a working CLI we leave the job queued (don't claim it) with a clear
   // message, so it runs automatically once the CLI is installed/authenticated.
   if (!claudeAvailable) {
@@ -434,7 +498,7 @@ async function cleanupWorkdirsLoop(): Promise<void> {
 async function tick(): Promise<void> {
   const { data, error } = await sb
     .from("jobs")
-    .select("id, task_id, step, prompt")
+    .select("id, task_id, step, prompt, requires_approval, approved_at")
     .eq("status", "queued")
     .order("created_at", { ascending: true })
     .limit(BATCH);

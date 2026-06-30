@@ -31,10 +31,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  const b = body as { task_id?: unknown; prompt?: unknown; step?: unknown };
+  const b = body as {
+    task_id?: unknown;
+    prompt?: unknown;
+    step?: unknown;
+    requires_approval?: unknown;
+  };
   const task_id = typeof b.task_id === "string" ? b.task_id.trim() : "";
   const prompt = typeof b.prompt === "string" ? b.prompt.trim() : "";
   const step = Number.isInteger(b.step) ? (b.step as number) : 1;
+  const requires_approval = b.requires_approval === true;
   if (!task_id || !prompt) {
     return NextResponse.json(
       { error: "task_id e prompt são obrigatórios." },
@@ -44,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await admin
     .from("jobs")
-    .insert({ task_id, prompt, step, status: "queued" })
+    .insert({ task_id, prompt, step, status: "queued", requires_approval })
     .select("id, status")
     .single();
   if (error) {

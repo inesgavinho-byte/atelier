@@ -2599,6 +2599,107 @@
   cursor: pointer;
 }
 
+/* Approval gate (ADR-0002 PR2) */
+.jobs-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.jobs-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+}
+.job-approval {
+  background: rgba(193, 160, 40, 0.16);
+  border-color: rgba(193, 160, 40, 0.45);
+  color: #8a6d12;
+}
+[data-theme="dark"] .job-approval {
+  color: #e6c560;
+}
+.job-approval-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  background: rgba(193, 160, 40, 0.08);
+  border: 0.5px solid rgba(193, 160, 40, 0.35);
+  border-radius: var(--radius-btn);
+}
+.job-decision-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.job-decision-link:hover {
+  text-decoration: underline;
+}
+
+/* Progress log + artifacts (expandable) */
+.job-progress,
+.job-artifacts {
+  margin-top: 8px;
+}
+.job-progress summary,
+.job-artifacts summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.job-progress-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.job-progress-list li {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+.job-artifacts-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.job-artifact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.job-artifact-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.job-artifact-size {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.job-artifact-preview {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
  * visionOS / macOS redesign — shell, buttons, home.
  * All colour via the semantic theme tokens, so light/dark both work.
