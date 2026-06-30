@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
-import { getArtifactDetail, type ArtifactDetail } from "@/lib/artifacts";
+import {
+  getArtifactDetail,
+  summariseArtifactChange,
+  type ArtifactDetail,
+} from "@/lib/artifacts";
 
 const now = () => new Date().toISOString();
 const shortId = (prefix: string) =>
@@ -11,19 +15,22 @@ const firstLine = (text: string) =>
   (text.trim().split("\n")[0] || "Artefacto").slice(0, 120);
 
 /**
- * Living Artifacts (Bloco E). Create a new artifact (revision 1) or update an
- * existing one — an update first archives the current content into
- * artifact_revisions, then bumps the revision and stores the new content.
+ * Living Artifacts (Sprint 3). Every revision — including the first and the
+ * current — is recorded in artifact_revisions with a summary (what changed,
+ * via Haiku) and an author. artifacts.content/revision denormalises the latest.
  */
+
 export async function createArtifact(input: {
   workspaceId: string;
   title?: string;
   content: string;
   kind?: string;
+  createdBy?: string;
 }): Promise<{ ok: boolean; id?: string; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
   const id = shortId("art");
+  const author = input.createdBy?.trim() || "Council";
   const { error } = await sb.from("artifacts").insert({
     id,
     workspace_id: input.workspaceId,
@@ -35,6 +42,14 @@ export async function createArtifact(input: {
     updated_at: now(),
   });
   if (error) return { ok: false, message: error.message };
+  // Revision 1 is the creation snapshot.
+  await sb.from("artifact_revisions").insert({
+    artifact_id: id,
+    content: input.content,
+    revision: 1,
+    summary: "Revisão inicial",
+    created_by: author,
+  });
   revalidatePath(`/workspaces/${input.workspaceId}`);
   return { ok: true, id, message: "Artefacto guardado." };
 }
@@ -43,6 +58,9 @@ export async function updateArtifact(input: {
   id: string;
   content: string;
   workspaceId?: string;
+  createdBy?: string;
+  /** Skip the Haiku summary and use this text verbatim (e.g. restore). */
+  summary?: string;
 }): Promise<{ ok: boolean; revision?: number; message: string }> {
   const sb = getSupabase();
   if (!sb) return { ok: false, message: "Supabase não configurado." };
@@ -54,14 +72,24 @@ export async function updateArtifact(input: {
     .maybeSingle();
   if (!current) return { ok: false, message: "Artefacto não encontrado." };
 
-  const prevRevision = current.revision ?? 1;
-  // Archive the version we're replacing, then advance.
-  await sb.from("artifact_revisions").insert({
+  const prevContent = current.content ?? "";
+  if (prevContent === input.content)
+    return { ok: false, message: "Sem alterações para guardar." };
+
+  const nextRevision = (current.revision ?? 1) + 1;
+  const summary =
+    input.summary ?? (await summariseArtifactChange(prevContent, input.content));
+
+  // Record the new revision (the new content), then advance the artifact.
+  const { error: revErr } = await sb.from("artifact_revisions").insert({
     artifact_id: input.id,
-    content: current.content ?? "",
-    revision: prevRevision,
+    content: input.content,
+    revision: nextRevision,
+    summary,
+    created_by: input.createdBy?.trim() || "Inês",
   });
-  const nextRevision = prevRevision + 1;
+  if (revErr) return { ok: false, message: revErr.message };
+
   const { error } = await sb
     .from("artifacts")
     .update({ content: input.content, revision: nextRevision, updated_at: now() })
@@ -69,7 +97,39 @@ export async function updateArtifact(input: {
   if (error) return { ok: false, message: error.message };
 
   if (input.workspaceId) revalidatePath(`/workspaces/${input.workspaceId}`);
-  return { ok: true, revision: nextRevision, message: `Artefacto actualizado (v${nextRevision}).` };
+  return {
+    ok: true,
+    revision: nextRevision,
+    message: `Artefacto actualizado (v${nextRevision}).`,
+  };
+}
+
+/**
+ * Restore a past revision: re-applies its content as a new revision (history is
+ * never rewritten), summarised as "Restaurado da v{n}".
+ */
+export async function restoreArtifactRevision(input: {
+  id: string;
+  revision: number;
+  workspaceId?: string;
+  createdBy?: string;
+}): Promise<{ ok: boolean; revision?: number; message: string }> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, message: "Supabase não configurado." };
+  const { data: rev } = await sb
+    .from("artifact_revisions")
+    .select("content")
+    .eq("artifact_id", input.id)
+    .eq("revision", input.revision)
+    .maybeSingle();
+  if (!rev) return { ok: false, message: "Revisão não encontrada." };
+  return updateArtifact({
+    id: input.id,
+    content: rev.content ?? "",
+    workspaceId: input.workspaceId,
+    createdBy: input.createdBy,
+    summary: `Restaurado da v${input.revision}`,
+  });
 }
 
 /** Load an artifact's content + revision history for the drawer. */

@@ -320,6 +320,10 @@ export default function ContextPanel({
                   <span className="ctx-dot ctx-dot-violet" />
                   <span className="ctx-card-title">{a.title}</span>
                 </span>
+                <span className="ctx-card-sub">
+                  {a.kind} · v{a.revision}
+                  {a.updatedAt ? ` · ${ago(a.updatedAt)}` : ""}
+                </span>
               </button>
             ))}
           </div>

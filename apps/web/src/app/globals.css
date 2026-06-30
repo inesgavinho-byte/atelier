@@ -6509,12 +6509,17 @@ a.ctx-card:hover {
   flex-direction: column;
   gap: 4px;
 }
+.artifact-revision-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .artifact-revision {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 10px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -6522,9 +6527,45 @@ a.ctx-card:hover {
   cursor: pointer;
   font-size: 12px;
   color: var(--text-primary);
+  text-align: left;
+}
+.artifact-revision-v {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+.artifact-revision-current {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.artifact-revision-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
 }
 .artifact-revision-at {
+  flex: 0 0 auto;
   color: var(--text-muted);
+}
+.artifact-revision-tools {
+  display: inline-flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.artifact-revision-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.artifact-revision-link:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .artifact-revision-preview {
   margin: 6px 0 0;
@@ -6537,6 +6578,62 @@ a.ctx-card:hover {
   word-break: break-word;
   max-height: 220px;
   overflow-y: auto;
+}
+.artifact-revision-diff {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.artifact-revision-diff .diff-add {
+  color: #2f6d3c;
+  background: rgba(74, 140, 90, 0.12);
+}
+[data-theme="dark"] .artifact-revision-diff .diff-add {
+  color: #7fcf95;
+}
+.artifact-revision-diff .diff-del {
+  color: #9a3b2f;
+  background: rgba(190, 70, 55, 0.12);
+}
+[data-theme="dark"] .artifact-revision-diff .diff-del {
+  color: #e89384;
+}
+.artifact-revision-diff .diff-same {
+  color: var(--text-muted);
+}
+
+/* Chat: create-artifact form (title + type) */
+.ws-artifact-create {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ws-artifact-input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  min-width: 180px;
+}
+.ws-artifact-create select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 12px;
 }
 
 /* ── Sessions with intent (ADR-0005 F2) ────────────────────────────────────── */
