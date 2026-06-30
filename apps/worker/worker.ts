@@ -1243,9 +1243,10 @@ async function embeddingBackfillTick(): Promise<void> {
   if (!vectors) return;
   let done = 0;
   for (let i = 0; i < data.length; i++) {
+    // Write as a pgvector literal ("[..]") so the vector column casts cleanly.
     const { error: upErr } = await sb
       .from("document_chunks")
-      .update({ embedding: vectors[i] })
+      .update({ embedding: `[${vectors[i].join(",")}]` })
       .eq("id", (data[i] as any).id);
     if (!upErr) done++;
   }
