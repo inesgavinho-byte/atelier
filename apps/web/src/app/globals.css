@@ -6852,3 +6852,78 @@ a.ctx-card:hover {
   background: var(--surface);
   border-color: var(--border);
 }
+
+/* ── Shadow Mode capabilities (Personal Decimin v2) ────────────────────────── */
+.cap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cap-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.cap-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cap-title {
+  font-weight: 500;
+}
+.cap-shadow-link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.cap-modes {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.cap-mode {
+  padding: 5px 12px;
+  background: var(--bg);
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.cap-mode:first-child {
+  border-left: none;
+}
+.cap-mode.active {
+  background: var(--accent);
+  color: #fff;
+}
+.cap-shadow-output {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow-y: auto;
+}
