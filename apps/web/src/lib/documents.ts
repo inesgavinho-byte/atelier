@@ -1,6 +1,6 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
-import { embedText, cosineSimilarity } from "@/lib/ai/embeddings";
+import { embedText } from "@/lib/ai/embeddings";
 
 /**
  * ATELIER — document pipeline (Bloco 5, Node-first).
@@ -218,54 +218,44 @@ async function keywordRetrieveChunks(
     }));
 }
 
-// Below this cosine score a chunk is treated as not relevant enough to inject.
+// Below this cosine similarity a chunk is treated as not relevant enough.
 const SEMANTIC_FLOOR = 0.2;
 
 /**
- * Retrieve the document chunks most relevant to a question (RAG v2 — semantic).
- * Embeds the query and ranks the workspace's embedded chunks by cosine
- * similarity; falls back to keyword retrieval when embeddings aren't available
- * (no key, or chunks ingested before embeddings existed). Grounds the Council's
- * answers in the workspace's own documents. Returns [] when nothing matches.
+ * Retrieve the document chunks most relevant to a question (RAG v2 — semantic,
+ * pgvector). Embeds the query and ranks the workspace's chunks by cosine
+ * distance **in the database** via the match_document_chunks RPC (HNSW index),
+ * instead of pulling rows and scoring in JS. Falls back to keyword retrieval
+ * when embeddings aren't available (no OPENAI_API_KEY, or the RPC errors).
+ * Grounds the Council's answers in the workspace's own documents.
  */
 export async function retrieveRelevantChunks(
   workspaceId: string,
   query: string,
-  k = 5
+  k = 5,
+  projectId?: string | null
 ): Promise<ChunkHit[]> {
   const sb = getSupabase();
   if (!sb) return [];
 
   const queryVec = await embedText(query);
   if (queryVec) {
-    const { data } = await sb
-      .from("document_chunks")
-      .select("document_id, idx, content, embedding, documents(title)")
-      .eq("workspace_id", workspaceId)
-      .not("embedding", "is", null)
-      .limit(500);
-    const scored = (data ?? [])
-      .map((r: any) => {
-        const emb = Array.isArray(r.embedding) ? (r.embedding as number[]) : null;
-        return {
-          documentId: r.document_id,
-          documentTitle: r.documents?.title ?? "(documento)",
-          idx: r.idx,
-          content: r.content as string,
-          score: emb ? cosineSimilarity(queryVec, emb) : 0,
-        };
-      })
-      .filter((x) => x.score >= SEMANTIC_FLOOR)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, k);
-    if (scored.length)
-      return scored.map(({ documentId, documentTitle, idx, content }) => ({
-        documentId,
-        documentTitle,
-        idx,
-        content,
+    const { data, error } = await sb.rpc("match_document_chunks", {
+      query_embedding: queryVec,
+      match_workspace: workspaceId,
+      match_project: projectId ?? null,
+      match_floor: SEMANTIC_FLOOR,
+      match_count: k,
+    });
+    if (!error && Array.isArray(data) && data.length) {
+      return (data as any[]).map((r) => ({
+        documentId: r.document_id,
+        documentTitle: r.document_title ?? "(documento)",
+        idx: r.idx,
+        content: r.content as string,
       }));
-    // Nothing semantically close — fall through to keyword.
+    }
+    // No semantic hits / RPC unavailable — fall through to keyword.
   }
 
   return keywordRetrieveChunks(workspaceId, query, k);

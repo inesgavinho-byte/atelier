@@ -48,6 +48,15 @@ export async function embedText(text: string): Promise<number[] | null> {
   return batch ? batch[0] : null;
 }
 
+/**
+ * Format an embedding as a pgvector literal ("[0.1,0.2,…]") for writing into a
+ * `vector` column via PostgREST. A plain JS array can be ambiguous for the
+ * driver; the string literal always casts cleanly.
+ */
+export function toVectorLiteral(vec: number[]): string {
+  return `[${vec.join(",")}]`;
+}
+
 /** Cosine similarity between two equal-length vectors. */
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;

@@ -10,7 +10,7 @@ import {
   searchDocumentChunks,
   type ChunkHit,
 } from "@/lib/documents";
-import { embedTexts } from "@/lib/ai/embeddings";
+import { embedTexts, toVectorLiteral } from "@/lib/ai/embeddings";
 import { recordTimelineEvent } from "@/lib/timeline";
 
 /**
@@ -82,7 +82,7 @@ export async function addDocument(input: {
         project_id: input.projectId || null,
         idx,
         content,
-        embedding: vectors ? vectors[idx] : null,
+        embedding: vectors ? toVectorLiteral(vectors[idx]) : null,
       }));
       const { error: chunkErr } = await sb.from("document_chunks").insert(rows);
       if (!chunkErr) chunks = rows.length;
