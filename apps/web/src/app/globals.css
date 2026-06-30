@@ -7089,3 +7089,30 @@ a.ctx-card:hover {
   color: var(--text-primary);
   margin: 0;
 }
+
+/* ── Netlify site form (Timeline, Bloco F) ─────────────────────────────────── */
+.tl-netlify {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.tl-netlify-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.tl-netlify-row {
+  display: flex;
+  gap: 8px;
+  max-width: 480px;
+}
+.tl-netlify-input {
+  flex: 1 1 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+}

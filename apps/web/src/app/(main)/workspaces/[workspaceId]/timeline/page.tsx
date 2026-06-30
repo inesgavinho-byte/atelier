@@ -1,16 +1,26 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getInitiativeByIdOrSlug } from "@/lib/mission";
-import { getWorkspaceTimeline, syncRepoTimeline } from "@/lib/timeline";
-import { getWorkspaceRepoOverview } from "@/app/(main)/workspaces/[workspaceId]/actions";
+import { getSupabase } from "@/lib/supabase";
+import {
+  getWorkspaceTimeline,
+  syncRepoTimeline,
+  syncDeployTimeline,
+} from "@/lib/timeline";
+import {
+  getWorkspaceRepoOverview,
+  getWorkspaceNetlifyDeploys,
+} from "@/app/(main)/workspaces/[workspaceId]/actions";
 import TimelineView from "@/components/workspaces/TimelineView";
+import NetlifySiteForm from "@/components/workspaces/NetlifySiteForm";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Workspace Timeline (ADR-0005 Fatia 2) — every event in the workspace, newest
- * first, filterable by kind. Aggregates the domain tables plus the dedicated
- * timeline_events log.
+ * Workspace Timeline (ADR-0005 Fatia 2 / Bloco F) — every event in the
+ * workspace, newest first, filterable by kind. Aggregates the domain tables
+ * plus the dedicated timeline_events log, and pulls in GitHub (commits + PRs)
+ * and Netlify (deploys) activity on each view.
  */
 export default async function WorkspaceTimelinePage({
   params,
@@ -20,10 +30,25 @@ export default async function WorkspaceTimelinePage({
   const ws = await getInitiativeByIdOrSlug(params.workspaceId);
   if (!ws) notFound();
 
-  // Pull recent GitHub activity (commits + PRs) into the timeline first, so it
-  // shows alongside everything else. Idempotent + best-effort.
-  const overview = await getWorkspaceRepoOverview(ws.id).catch(() => null);
+  // Pull recent GitHub + Netlify activity into the timeline first, so it shows
+  // alongside everything else. Both idempotent + best-effort.
+  const [overview, deploys] = await Promise.all([
+    getWorkspaceRepoOverview(ws.id).catch(() => null),
+    getWorkspaceNetlifyDeploys(ws.id).catch(() => []),
+  ]);
   if (overview) await syncRepoTimeline(ws.id, overview).catch(() => {});
+  if (deploys.length) await syncDeployTimeline(ws.id, deploys).catch(() => {});
+
+  // The configured Netlify site (to prefill the setter).
+  const sb = getSupabase();
+  const { data: wsRow } = sb
+    ? await sb
+        .from("workspaces")
+        .select("netlify_site_id")
+        .eq("id", ws.id)
+        .maybeSingle()
+    : { data: null };
+  const netlifySite = (wsRow?.netlify_site_id as string | null) ?? null;
 
   const events = await getWorkspaceTimeline(ws.id);
 
@@ -46,6 +71,8 @@ export default async function WorkspaceTimelinePage({
       </header>
 
       <TimelineView events={events} />
+
+      <NetlifySiteForm workspaceId={ws.id} current={netlifySite} />
     </div>
   );
 }
