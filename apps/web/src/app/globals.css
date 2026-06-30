@@ -7116,3 +7116,17 @@ a.ctx-card:hover {
   color: var(--text-primary);
   font-size: 13px;
 }
+
+/* ── Session banner (ADR-0005 F2 — chat routing) ───────────────────────────── */
+.ws-session-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 13px;
+}

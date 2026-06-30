@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ago } from "@/components/mission/bits";
 import {
   startSession,
@@ -127,6 +128,9 @@ export default function SessionsPanel({
                     }`}
               </span>
               <span className="sess-actions">
+                <Link href={`?session=${s.id}`} className="action-quiet">
+                  Abrir
+                </Link>
                 {s.state === "active" ? (
                   <button
                     type="button"

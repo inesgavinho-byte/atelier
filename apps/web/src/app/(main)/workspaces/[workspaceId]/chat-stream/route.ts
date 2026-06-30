@@ -26,14 +26,21 @@ export async function POST(
   const body = (await req.json().catch(() => ({}))) as {
     content?: string;
     projectId?: string;
+    sessionId?: string;
   };
   const content = (body.content ?? "").trim();
   const projectId = body.projectId || undefined;
+  const sessionId = body.sessionId || undefined;
   if (!content) {
     return new Response("Mensagem vazia.", { status: 400 });
   }
 
-  const prepared = await prepareWorkspaceTurn(params.workspaceId, content, projectId);
+  const prepared = await prepareWorkspaceTurn(
+    params.workspaceId,
+    content,
+    projectId,
+    sessionId
+  );
   if (!prepared.ok || !prepared.chatId || !prepared.messages) {
     return new Response(prepared.error ?? "Falha ao preparar a conversa.", {
       status: 400,

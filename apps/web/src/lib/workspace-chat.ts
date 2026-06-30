@@ -113,7 +113,8 @@ export interface PreparedTurn {
 export async function prepareWorkspaceTurn(
   workspaceId: string,
   content: string,
-  projectId?: string
+  projectId?: string,
+  sessionId?: string
 ): Promise<PreparedTurn> {
   const trimmed = content.trim();
   if (!trimmed) return { ok: false, error: "Mensagem vazia." };
@@ -126,7 +127,21 @@ export async function prepareWorkspaceTurn(
   const ws = await getWorkspace(workspaceId);
   const project = projectId ? await getProject(projectId) : undefined;
   const chatTitle = project?.name ?? ws?.name;
-  const chatId = await ensureCanonicalChat(sb, workspaceId, chatTitle, projectId);
+  // Route to an explicit session (ADR-0005 F2) when given and it belongs to
+  // this workspace; otherwise fall back to the continuous canonical chat.
+  let chatId: string | null = null;
+  if (sessionId) {
+    const { data } = await sb
+      .from("workspace_chats")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+    chatId = (data?.id as string) ?? null;
+  }
+  if (!chatId) {
+    chatId = await ensureCanonicalChat(sb, workspaceId, chatTitle, projectId);
+  }
   if (!chatId) return { ok: false, error: "Não foi possível abrir a conversa." };
 
   const [ctx, projectCtx, allDecisions, artifacts, hits] = await Promise.all([

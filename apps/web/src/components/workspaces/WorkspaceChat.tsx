@@ -84,6 +84,7 @@ export default function WorkspaceChat({
   contextUpdatedAt,
   artifacts = [],
   user,
+  sessionId,
 }: {
   workspaceId: string;
   workspaceName: string;
@@ -92,6 +93,8 @@ export default function WorkspaceChat({
   initialMessages: ChatMessage[];
   contextVersion?: number;
   contextUpdatedAt?: string | null;
+  /** When set, the turn is routed to this session instead of the canonical chat. */
+  sessionId?: string;
   /** Existing artifacts, for the "Actualizar artefacto" picker (Bloco E). */
   artifacts?: { id: string; title: string }[];
   /** The current operator's chat identity (avatar + colour). */
@@ -139,7 +142,7 @@ export default function WorkspaceChat({
       const res = await fetch(`/workspaces/${workspaceId}/chat-stream`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content, projectId }),
+        body: JSON.stringify({ content, projectId, sessionId }),
       });
       if (!res.ok || !res.body) {
         const txt = await res.text().catch(() => "");
@@ -228,7 +231,7 @@ export default function WorkspaceChat({
     requestAnimationFrame(resizeTextarea);
 
     try {
-      const r = await sendCouncilDebate(workspaceId, content, projectId);
+      const r = await sendCouncilDebate(workspaceId, content, projectId, sessionId);
       if (r.ok) {
         setMessages((prev) => [
           ...prev,
