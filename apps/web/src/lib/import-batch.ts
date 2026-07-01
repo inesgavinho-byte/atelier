@@ -58,26 +58,72 @@ function isZip(filename: string, bytes: Uint8Array): boolean {
   return bytes[0] === 0x50 && bytes[1] === 0x4b; // "PK"
 }
 
-/** Extract the export JSON from an uploaded ZIP or raw JSON file. */
-export function jsonFromUpload(filename: string, bytes: Uint8Array): unknown {
-  let text: string;
-  if (isZip(filename, bytes)) {
-    const files = unzipSync(bytes);
-    const names = Object.keys(files);
-    const pick =
-      names.find((n) => /conversations\.json$/i.test(n)) ??
-      names.find((n) => /\.json$/i.test(n));
-    if (!pick) throw new Error("O ZIP não contém conversations.json.");
-    text = new TextDecoder().decode(files[pick]);
-  } else {
-    text = new TextDecoder().decode(bytes);
-  }
-  return JSON.parse(text);
+/** Basename of a (possibly folder-prefixed) ZIP entry, lowercased. */
+function baseName(name: string): string {
+  return (name.split("/").pop() ?? name).toLowerCase();
 }
 
-/** Parse an upload's bytes into normalised conversations (or null). */
+/**
+ * Rank a JSON entry so the real conversation file is tried first. The ChatGPT
+ * export also ships `shared_conversations.json` (often empty) whose name *ends
+ * with* "conversations.json" — ranking by exact basename avoids picking it.
+ */
+function jsonRank(name: string): number {
+  const b = baseName(name);
+  if (b === "conversations.json") return 0; // Claude.ai / ChatGPT
+  if (b === "history.json" || b === "threads.json") return 1; // Perplexity variants
+  if (b.endsWith("conversations.json")) return 3; // e.g. shared_conversations.json
+  return 2; // any other .json
+}
+
+/**
+ * Candidate export JSONs from an upload, best-first. A ZIP can contain several
+ * JSON files (ChatGPT ships user.json, message_feedback.json,
+ * shared_conversations.json, …) — we return every parseable one, ordered so the
+ * conversation file is tried first, and let parseUpload pick the first that a
+ * parser recognises. A raw .json upload yields a single candidate.
+ */
+export function jsonCandidatesFromUpload(
+  filename: string,
+  bytes: Uint8Array
+): unknown[] {
+  if (!isZip(filename, bytes)) {
+    return [JSON.parse(new TextDecoder().decode(bytes))];
+  }
+  const files = unzipSync(bytes);
+  const names = Object.keys(files)
+    .filter((n) => /\.json$/i.test(n) && !baseName(n).startsWith("__macosx"))
+    .sort((a, b) => jsonRank(a) - jsonRank(b));
+  if (!names.length) throw new Error("O ZIP não contém ficheiros .json.");
+  const out: unknown[] = [];
+  for (const n of names) {
+    try {
+      out.push(JSON.parse(new TextDecoder().decode(files[n])));
+    } catch {
+      /* skip a malformed entry, try the next */
+    }
+  }
+  if (!out.length) throw new Error("Nenhum .json do ZIP pôde ser lido.");
+  return out;
+}
+
+/** Extract the primary export JSON from an uploaded ZIP or raw JSON file. */
+export function jsonFromUpload(filename: string, bytes: Uint8Array): unknown {
+  return jsonCandidatesFromUpload(filename, bytes)[0];
+}
+
+/**
+ * Parse an upload's bytes into normalised conversations (or null). Tries every
+ * JSON candidate (a ZIP may hold several) and returns the first one a parser
+ * recognises — so a stray empty `shared_conversations.json` no longer shadows
+ * the real `conversations.json`.
+ */
 export function parseUpload(filename: string, bytes: Uint8Array): ParsedUpload | null {
-  return parseExport(jsonFromUpload(filename, bytes));
+  for (const json of jsonCandidatesFromUpload(filename, bytes)) {
+    const parsed = parseExport(json);
+    if (parsed) return parsed;
+  }
+  return null;
 }
 
 /* ── Batch persistence + preview ──────────────────────────────────────────── */
