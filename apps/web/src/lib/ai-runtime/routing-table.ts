@@ -24,6 +24,11 @@ export interface ModelRoute {
 }
 
 export const ROUTING_TABLE: Record<TaskType, ModelRoute> = {
+  github_read: {
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    reason: "Leitura e análise de repositórios",
+  },
   search: {
     provider: "perplexity",
     model: "sonar-pro",

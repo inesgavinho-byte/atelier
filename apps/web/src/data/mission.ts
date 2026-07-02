@@ -76,6 +76,8 @@ export interface Initiative {
   supabaseUrl?: string;
   /** Per-workspace Supabase project ref/id (non-secret). */
   supabaseProjectId?: string;
+  /** The main workspace (Organisational Intelligence) — federated visibility. */
+  isMain?: boolean;
 }
 
 export interface Artifact {
