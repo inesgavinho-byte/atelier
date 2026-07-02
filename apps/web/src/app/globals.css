@@ -4825,6 +4825,76 @@ a.ctx-card:hover {
 .fed-repo-commit:hover { color: var(--accent); }
 .fed-repo-date { color: var(--text-muted); }
 .fed-repo-muted { color: var(--text-muted); }
+.fed-repo-empty { opacity: 0.9; }
+
+.fed-edit-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.fed-edit-btn:hover { color: var(--accent); }
+.fed-link-btn {
+  margin-left: auto;
+  border: 0.5px solid var(--border);
+  background: none;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.fed-link-btn:hover { background: var(--surface-card); }
+.fed-edit,
+.fed-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fed-add select,
+.fed-input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.fed-add select { font-family: inherit; }
+.fed-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fed-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: 0.5px dashed var(--border);
+  background: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.fed-add-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.fed-msg {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 .ctx-list {
   list-style: none;

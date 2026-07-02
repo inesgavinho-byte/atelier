@@ -13,6 +13,7 @@ import {
   getProjects,
   getWorkspaceContext,
   getRepoWorkspaces,
+  getUnlinkedWorkspaces,
 } from "@/lib/workspaces";
 import { getFederatedRepoStatus } from "@/lib/github";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
@@ -60,10 +61,14 @@ export default async function WorkspaceDetailPage({
     getChatIdentity(ws.id),
   ]);
 
-  // Main workspace (OI): federated status of every repo-linked workspace.
-  const federatedRepos = ws.isMain
-    ? await getFederatedRepoStatus(await getRepoWorkspaces()).catch(() => [])
-    : null;
+  // Main workspace (OI): federated status of every repo-linked workspace + the
+  // workspaces still without a repo (to link from the panel).
+  const [federatedRepos, unlinkedWorkspaces] = ws.isMain
+    ? await Promise.all([
+        getFederatedRepoStatus(await getRepoWorkspaces()).catch(() => []),
+        getUnlinkedWorkspaces().catch(() => []),
+      ])
+    : [null, null];
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
 
@@ -175,6 +180,7 @@ export default async function WorkspaceDetailPage({
           sessions={sessions}
           isMain={ws.isMain}
           federatedRepos={federatedRepos}
+          unlinkedWorkspaces={unlinkedWorkspaces}
         />
       </div>
     </div>

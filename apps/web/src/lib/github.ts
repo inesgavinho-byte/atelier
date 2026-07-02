@@ -217,6 +217,7 @@ export async function getRepoReadContext(
 /* ── Federated repo status (OI main workspace) ───────────────────────────── */
 
 export interface FederatedRepo {
+  workspaceId: string;
   workspaceName: string;
   repo: string;
   url: string;
@@ -232,13 +233,14 @@ export interface FederatedRepo {
  * null CI / zero PRs rather than being dropped.
  */
 export async function getFederatedRepoStatus(
-  entries: { name: string; githubRepo: string }[]
+  entries: { id?: string; name: string; githubRepo: string }[]
 ): Promise<FederatedRepo[]> {
   const out = await Promise.all(
     entries.map(async (e) => {
       const ov = await getRepoOverview(e.githubRepo);
       const c = ov?.commits[0];
       return {
+        workspaceId: e.id ?? "",
         workspaceName: e.name,
         repo: e.githubRepo,
         url: `https://github.com/${e.githubRepo}`,

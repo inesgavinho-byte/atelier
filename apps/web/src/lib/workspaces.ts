@@ -93,21 +93,42 @@ async function getWorkspacesUncached(): Promise<Workspace[]> {
   return (data ?? []).map(toWorkspace);
 }
 
-/** Workspaces that have a GitHub repo configured (name + repo), for the OI
+/** Workspaces that have a GitHub repo configured (id + name + repo), for the OI
  *  federated repos panel and the main-workspace Council context. */
 export async function getRepoWorkspaces(): Promise<
-  { name: string; githubRepo: string }[]
+  { id: string; name: string; githubRepo: string }[]
 > {
   const sb = getSupabase();
   if (!sb) return [];
   const { data } = await sb
     .from("workspaces")
-    .select("name, github_repo")
+    .select("id, name, github_repo")
     .not("github_repo", "is", null)
     .order("name");
   return (data ?? [])
     .filter((r: any) => r.github_repo)
-    .map((r: any) => ({ name: r.name as string, githubRepo: r.github_repo as string }));
+    .map((r: any) => ({
+      id: r.id as string,
+      name: r.name as string,
+      githubRepo: r.github_repo as string,
+    }));
+}
+
+/** Workspaces with no GitHub repo yet (id + name) — for the OI "add repo" flow. */
+export async function getUnlinkedWorkspaces(): Promise<
+  { id: string; name: string }[]
+> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("workspaces")
+    .select("id, name")
+    .is("github_repo", null)
+    .order("name");
+  return (data ?? []).map((r: any) => ({
+    id: r.id as string,
+    name: r.name as string,
+  }));
 }
 
 /** Compressed summary of every workspace (project-less context), for the main
