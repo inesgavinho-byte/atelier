@@ -159,32 +159,53 @@ async function loadBatch(
   };
 }
 
-/** Which externalIds of a source were already imported. */
+/**
+ * Which externalIds of a source were already imported. Chunked: a single
+ * `.in()` with hundreds of UUIDs builds a huge PostgREST query string that can
+ * blow request limits (→ 502/414). We query in batches and treat dedup as
+ * best-effort — a failed chunk just leaves those rows flagged as new, never
+ * throws (dedup must not be able to fail the whole upload).
+ */
 async function existingExternalIds(
   source: ImportSource,
   ids: string[]
 ): Promise<Set<string>> {
   const admin = getSupabaseAdmin();
-  if (!admin || !ids.length) return new Set();
-  const { data } = await admin
-    .from("context_imports")
-    .select("external_id")
-    .eq("source", source)
-    .in("external_id", ids);
-  return new Set((data ?? []).map((r) => r.external_id as string));
+  const seen = new Set<string>();
+  if (!admin || !ids.length) return seen;
+  const CHUNK = 150;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    try {
+      const { data } = await admin
+        .from("context_imports")
+        .select("external_id")
+        .eq("source", source)
+        .in("external_id", slice);
+      for (const r of data ?? []) seen.add(r.external_id as string);
+    } catch {
+      /* best-effort: skip this chunk's dedup rather than fail the upload */
+    }
+  }
+  return seen;
 }
 
-/** Build the preview for a stored batch (with dedup flags). */
-export async function getBatchPreview(batchId: string): Promise<BatchPreview | null> {
-  const batch = await loadBatch(batchId);
-  if (!batch) return null;
-  const ids = batch.conversations.map((c) => c.externalId);
-  const seen = await existingExternalIds(batch.source, ids);
+/** Build a preview from already-in-memory conversations (no DB re-read). */
+export async function previewFromConversations(
+  batchId: string,
+  source: ImportSource,
+  conversations: ConversationImport[],
+  truncated = false
+): Promise<BatchPreview> {
+  const seen = await existingExternalIds(
+    source,
+    conversations.map((c) => c.externalId)
+  );
   return {
     batchId,
-    source: batch.source,
-    truncated: false,
-    conversations: batch.conversations.map((c) => ({
+    source,
+    truncated,
+    conversations: conversations.map((c) => ({
       externalId: c.externalId,
       title: c.title,
       messageCount: c.messages.length,
@@ -192,6 +213,13 @@ export async function getBatchPreview(batchId: string): Promise<BatchPreview | n
       duplicate: seen.has(c.externalId),
     })),
   };
+}
+
+/** Build the preview for a stored batch (with dedup flags). */
+export async function getBatchPreview(batchId: string): Promise<BatchPreview | null> {
+  const batch = await loadBatch(batchId);
+  if (!batch) return null;
+  return previewFromConversations(batchId, batch.source, batch.conversations);
 }
 
 /* ── Auto-map (Council) ───────────────────────────────────────────────────── */
