@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { parseUpload, jsonCandidatesFromUpload } from "@/lib/import-batch";
+import {
+  parseUpload,
+  jsonCandidatesFromUpload,
+  previewFromConversations,
+} from "@/lib/import-batch";
+import type { ConversationImport } from "@/lib/importers";
 
 /**
  * Upload → parse. A ZIP can hold several JSON files; the real conversations
@@ -60,6 +65,33 @@ describe("parseUpload — ZIP file selection", () => {
   it("throws a clear error for a ZIP with no JSON files", () => {
     const zip = zipSync({ "readme.txt": strToU8("hello") });
     expect(() => parseUpload("export.zip", zip)).toThrow(/não contém/i);
+  });
+
+  it("previewFromConversations builds the preview from memory (no re-read, no throw)", async () => {
+    const convs: ConversationImport[] = [
+      {
+        source: "claude",
+        externalId: "c-1",
+        title: "Uma conversa",
+        messages: [
+          { role: "user", content: "oi", at: "2026-01-01T00:00:00Z" },
+          { role: "assistant", content: "olá", at: "2026-01-01T00:00:01Z" },
+        ],
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:01Z",
+      },
+    ];
+    // Without a service role in the test env, dedup degrades to "all new".
+    const preview = await previewFromConversations("batch-1", "claude", convs, false);
+    expect(preview.batchId).toBe("batch-1");
+    expect(preview.source).toBe("claude");
+    expect(preview.conversations).toHaveLength(1);
+    expect(preview.conversations[0]).toMatchObject({
+      externalId: "c-1",
+      title: "Uma conversa",
+      messageCount: 2,
+      duplicate: false,
+    });
   });
 
   it("jsonCandidatesFromUpload orders conversations.json first", () => {

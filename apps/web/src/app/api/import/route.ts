@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requestAuthed } from "@/lib/request-auth";
 import { getSupabaseAdmin, serviceRoleStatus } from "@/lib/supabase-admin";
-import { parseUpload, storeBatch, getBatchPreview } from "@/lib/import-batch";
+import {
+  parseUpload,
+  storeBatch,
+  previewFromConversations,
+} from "@/lib/import-batch";
+
+// Netlify's synchronous functions cap the request body (~6 MB) and the run at
+// ~10s. Reject clearly above a safe size so the user gets guidance instead of
+// an opaque 502.
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,6 +64,18 @@ export async function POST(req: NextRequest) {
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
 
+    if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+      return NextResponse.json(
+        {
+          error:
+            `Ficheiro demasiado grande (${(bytes.byteLength / 1_048_576).toFixed(1)} MB, ` +
+            `máximo ~6 MB). Exporta um intervalo menor ou envia o conversations.json ` +
+            `directamente (sem o ZIP inteiro).`,
+        },
+        { status: 413 }
+      );
+    }
+
     let parsed;
     try {
       parsed = parseUpload(file.name, bytes);
@@ -72,15 +93,16 @@ export async function POST(req: NextRequest) {
     }
 
     const batchId = await storeBatch(parsed);
-    const preview = await getBatchPreview(batchId);
-    if (!preview) {
-      return NextResponse.json(
-        { error: "Não foi possível ler o lote depois de guardar." },
-        { status: 500 }
-      );
-    }
-    // Carry the upload-level truncation flag onto the preview.
-    return NextResponse.json({ ...preview, truncated: parsed.truncated });
+    // Build the preview from the conversations we already have in memory —
+    // avoid re-reading the (potentially multi-MB) JSONB we just stored, which
+    // doubled the work inside the 10s window.
+    const preview = await previewFromConversations(
+      batchId,
+      parsed.source,
+      parsed.conversations,
+      parsed.truncated
+    );
+    return NextResponse.json(preview);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Falha ao processar o ficheiro.";
     console.error("[api/import] failed:", message);

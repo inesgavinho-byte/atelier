@@ -64,6 +64,10 @@ export default function Sidebar({
   };
 
   const renderItem = (item: NavItem) => {
+    // Stable, unique key: prefer the workspace id / href over the label, so two
+    // workspaces that ever share a display name can't collide (a React key
+    // collision silently drops all-but-one sibling).
+    const navKey = item.expandKey ?? item.href ?? item.label;
     const color = item.workspace ? workspaceColor(item.workspace) : null;
     const inner = (
       <>
@@ -91,7 +95,7 @@ export default function Sidebar({
     if (item.action) {
       return (
         <button
-          key={item.label}
+          key={navKey}
           type="button"
           className="shell-nav-item"
           onClick={item.action === "search" ? onSearch : onCapture}
@@ -114,7 +118,7 @@ export default function Sidebar({
       const activeAncestor = isActive(item);
       const expanded = key in open ? open[key] : activeAncestor;
       return (
-        <div key={item.label} className="shell-nav-group">
+        <div key={navKey} className="shell-nav-group">
           <div
             className={`shell-nav-item${item.workspace ? " is-workspace" : ""}${
               isActive(item) ? " active" : ""
@@ -138,7 +142,7 @@ export default function Sidebar({
             <div className="shell-nav-children">
               {item.children.map((child) => (
                 <Link
-                  key={child.label}
+                  key={child.href ?? child.label}
                   href={child.href ?? "/"}
                   className={`shell-nav-child${isActive(child) ? " active" : ""}`}
                 >
@@ -162,7 +166,7 @@ export default function Sidebar({
 
     return (
       <Link
-        key={item.label}
+        key={navKey}
         href={item.href ?? "/"}
         className={`shell-nav-item${item.workspace ? " is-workspace" : ""}${
           isActive(item) ? " active" : ""
