@@ -82,6 +82,7 @@ export default function ContextPanel({
   overview,
   isMain,
   federatedRepos,
+  unlinkedWorkspaces,
 }: {
   workspaceId: string;
   workspaceSlug?: string;
@@ -105,6 +106,8 @@ export default function ContextPanel({
   isMain?: boolean;
   /** Federated repo status for the OI panel (when isMain). */
   federatedRepos?: FederatedRepo[] | null;
+  /** Workspaces with no repo yet (OI panel: link them from here). */
+  unlinkedWorkspaces?: { id: string; name: string }[] | null;
 }) {
   const isProject = Boolean(projectId);
   const summary = context?.summary?.trim() ?? "";
@@ -259,7 +262,10 @@ export default function ContextPanel({
       show: true,
       // OI (main workspace): federated status of every repo-linked workspace.
       body: isMain ? (
-        <FederatedReposPanel repos={federatedRepos ?? []} />
+        <FederatedReposPanel
+          repos={federatedRepos ?? []}
+          unlinked={unlinkedWorkspaces ?? []}
+        />
       ) : (
         <RepoPanel
           scope={
