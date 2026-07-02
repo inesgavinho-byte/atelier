@@ -290,12 +290,8 @@ async function collectArtifacts(cwd: string): Promise<Artifact[]> {
 
   async function walk(dir: string, rel: string): Promise<void> {
     if (out.length >= MAX_FILES) return;
-    let entries: Awaited<ReturnType<typeof readdir>>;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => null);
+    if (!entries) return;
     for (const e of entries) {
       if (out.length >= MAX_FILES) return;
       // Skip the CLI's own state and any VCS dirs.
@@ -464,12 +460,10 @@ async function runJob(job: Job): Promise<void> {
  * those are younger than the TTL (and re-created on demand anyway).
  */
 async function cleanupWorkdirsTick(): Promise<void> {
-  let entries: Awaited<ReturnType<typeof readdir>>;
-  try {
-    entries = await readdir(JOBS_ROOT, { withFileTypes: true });
-  } catch {
-    return; // root doesn't exist yet — nothing to clean
-  }
+  const entries = await readdir(JOBS_ROOT, { withFileTypes: true }).catch(
+    () => null
+  );
+  if (!entries) return; // root doesn't exist yet — nothing to clean
   const cutoff = Date.now() - WORKDIR_TTL_MS;
   for (const e of entries) {
     if (!e.isDirectory()) continue;
@@ -681,6 +675,43 @@ interface MinionResult {
 
 const minionShortId = (prefix: string) =>
   `${prefix}-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+
+/** Normalised significant tokens of a title (accent/punct-insensitive, len ≥ 4). */
+function titleTokens(s: string): Set<string> {
+  return new Set(
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 4)
+  );
+}
+
+/**
+ * Whether a pending decision already covers ~the same topic. Minions re-run on
+ * a schedule and would otherwise recreate the same decision every hour (the
+ * "Duplicação de imports…" spam). We compare significant-token overlap against
+ * the open pending decisions and treat ≥ 60% as a duplicate.
+ */
+async function hasSimilarPendingDecision(title: string): Promise<boolean> {
+  const target = titleTokens(title);
+  if (!target.size) return false;
+  const { data } = await sb
+    .from("decisions")
+    .select("title")
+    .eq("status", "pendente")
+    .limit(200);
+  const targetArr = Array.from(target);
+  for (const row of data ?? []) {
+    const other = titleTokens(String(row.title ?? ""));
+    if (!other.size) continue;
+    const shared = targetArr.filter((t) => other.has(t)).length;
+    if (shared / Math.min(target.size, other.size) >= 0.6) return true;
+  }
+  return false;
+}
 
 /** Per-minion guidance appended to the shared system prompt. */
 const MINION_GUIDANCE: Record<string, string> = {
@@ -1103,17 +1134,26 @@ async function runMinion(minion: Minion): Promise<void> {
       });
 
       // Recommend (autonomy ≥ 3): turn an approval-required signal into a
-      // pending decision card. Always internal, always 'pendente'.
+      // pending decision card. Always internal, always 'pendente'. Deduped:
+      // skip when a near-identical pending decision already exists, so a
+      // scheduled minion doesn't recreate the same card every run.
       if (result.approval_required && minion.autonomy_level >= 3) {
-        await sb.from("decisions").insert({
-          id: minionShortId("min"),
-          title: result.signal.slice(0, 120),
-          kind: "direção",
-          priority: "média",
-          context: result.interpretation,
-          recommendation: result.recommended_action,
-          status: "pendente",
-        });
+        const title = result.signal.slice(0, 120);
+        if (await hasSimilarPendingDecision(title)) {
+          console.log(
+            `[minion] ${minion.slug} — decisão semelhante já pendente, ignorada.`
+          );
+        } else {
+          await sb.from("decisions").insert({
+            id: minionShortId("min"),
+            title,
+            kind: "direção",
+            priority: "média",
+            context: result.interpretation,
+            recommendation: result.recommended_action,
+            status: "pendente",
+          });
+        }
       }
       // Informational signals also land on the activity timeline.
       if (result.kind === "info") {
