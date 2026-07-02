@@ -21,6 +21,10 @@ export interface Workspace {
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** The main workspace (Organisational Intelligence) — federated visibility. */
+  isMain?: boolean;
+  /** Associated GitHub repository "owner/repo" (optional). */
+  githubRepo?: string;
 }
 
 export interface WorkspaceProject {

@@ -9,6 +9,7 @@
  */
 
 export type TaskType =
+  | "github_read"
   | "search"
   | "code"
   | "writing"
@@ -20,6 +21,12 @@ export type TaskType =
 
 /** Ordered cue lists — first task type with a match wins. */
 const RULES: { type: Exclude<TaskType, "general">; cues: string[] }[] = [
+  {
+    // Reading a repository: a GitHub URL or an explicit README/repo request.
+    // Checked first so a github.com URL isn't captured by "search" ("http").
+    type: "github_read",
+    cues: ["github.com/", "readme", "lê o repo", "ler o repo", "vê o repo"],
+  },
   {
     type: "search",
     cues: [

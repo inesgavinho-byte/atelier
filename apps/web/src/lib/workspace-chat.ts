@@ -11,8 +11,16 @@ import {
   getProject,
   getWorkspace,
   getWorkspaceContext,
+  getRepoWorkspaces,
+  getGlobalWorkspaceSummaries,
   type WorkspaceContext,
 } from "@/lib/workspaces";
+import {
+  getFederatedRepoStatus,
+  getRepoReadContext,
+  type FederatedRepo,
+} from "@/lib/github";
+import { detectRepoTarget } from "@/lib/repo-target";
 
 /**
  * ATELIER — shared workspace-chat plumbing (ADR-0004).
@@ -94,6 +102,49 @@ export function councilSystemMessage(
   ].map((l) => (typeof l === "string" ? l : JSON.stringify(l)));
   if (allLessons.length) {
     parts.push("## Lições aprendidas\n" + allLessons.map((l) => `- ${l}`).join("\n"));
+  }
+  return parts.join("\n\n");
+}
+
+/** One-line CI label for the global context block. */
+function ciLabel(r: FederatedRepo): string {
+  if (!r.ci) return "CI —";
+  return `CI ${r.ci.state === "success" ? "🟢" : r.ci.state === "failure" ? "🔴" : "🟡"} ${r.ci.label}`;
+}
+
+/**
+ * The main-workspace (OI) global context: a header granting cross-project
+ * visibility, every workspace's compressed summary, and the live status of all
+ * repos (CI, open PRs, last commit). Empty string when there's nothing to show.
+ */
+function globalContextBlock(
+  summaries: { name: string; summary: string }[],
+  repos: FederatedRepo[]
+): string {
+  const parts = [
+    "És o Council do workspace principal Organisational Intelligence. Tens " +
+      "visibilidade sobre todos os projectos e repos.",
+  ];
+  if (summaries.length) {
+    parts.push(
+      "## Estado de todos os workspaces\n" +
+        summaries
+          .map((s) => `### ${s.name}\n${s.summary.slice(0, 600)}`)
+          .join("\n\n")
+    );
+  }
+  if (repos.length) {
+    parts.push(
+      "## Repositórios (estado)\n" +
+        repos
+          .map((r) => {
+            const commit = r.lastCommit
+              ? ` · último: ${r.lastCommit.message.slice(0, 60)}`
+              : "";
+            return `- ${r.workspaceName} (${r.repo}) — ${ciLabel(r)} · ${r.prCount} PR aberto(s)${commit}`;
+          })
+          .join("\n")
+    );
   }
   return parts.join("\n\n");
 }
@@ -212,6 +263,34 @@ export async function prepareWorkspaceTurn(
       hits
         .map((h) => `### ${h.documentTitle}\n${h.content.slice(0, 1200)}`)
         .join("\n\n");
+  }
+
+  // Main workspace (OI): federated visibility. Prepend the global context
+  // (all workspace summaries + all repo statuses) and, when the user points at
+  // a repo, read its README + top-level structure. Only when is_main — every
+  // other workspace behaves exactly as before.
+  if (ws?.isMain) {
+    const repoWorkspaces = await getRepoWorkspaces().catch(() => []);
+    const [summaries, repoStatus] = await Promise.all([
+      getGlobalWorkspaceSummaries().catch(() => []),
+      getFederatedRepoStatus(repoWorkspaces).catch(() => [] as FederatedRepo[]),
+    ]);
+    const global = globalContextBlock(summaries, repoStatus);
+    if (global) system = `${global}\n\n${system}`;
+
+    const target = detectRepoTarget(trimmed, repoWorkspaces);
+    if (target) {
+      const read = await getRepoReadContext(target).catch(() => null);
+      if (read) {
+        const treeLine = read.tree
+          .map((e) => (e.type === "dir" ? `${e.name}/` : e.name))
+          .join(", ");
+        system +=
+          `\n\n## Repositório ${read.repo} (leitura directa)\n` +
+          (treeLine ? `Estrutura de topo: ${treeLine}\n\n` : "") +
+          (read.readme ? `README:\n${read.readme}` : "(sem README)");
+      }
+    }
   }
 
   return {

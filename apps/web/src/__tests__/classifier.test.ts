@@ -26,6 +26,8 @@ describe("classifyMessage — 8 task types (PT + EN)", () => {
     ["planning EN", "plan the next sprint", "planning"],
     ["general PT", "olá, como estás?", "general"],
     ["general EN", "hello, how are you?", "general"],
+    ["github_read URL", "lê https://github.com/inesgavinho-byte/atelier", "github_read"],
+    ["github_read readme", "mostra o readme do DECIMA", "github_read"],
   ];
 
   for (const [label, input, expected] of cases) {

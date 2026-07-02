@@ -23,6 +23,8 @@ import {
 } from "@tabler/icons-react";
 import { StateTag, ago } from "@/components/mission/bits";
 import RepoPanel from "@/components/workspaces/RepoPanel";
+import FederatedReposPanel from "@/components/workspaces/FederatedReposPanel";
+import type { FederatedRepo } from "@/lib/github";
 import DatabasePanel from "@/components/workspaces/DatabasePanel";
 import DocumentsPanel from "@/components/workspaces/DocumentsPanel";
 import ArtifactDrawer from "@/components/workspaces/ArtifactDrawer";
@@ -78,6 +80,8 @@ export default function ContextPanel({
   documents,
   sessions,
   overview,
+  isMain,
+  federatedRepos,
 }: {
   workspaceId: string;
   workspaceSlug?: string;
@@ -97,6 +101,10 @@ export default function ContextPanel({
   documents?: WorkspaceDocument[];
   /** Pre-fetched GitHub overview (workspace scope); omitted for projects. */
   overview?: RepoOverview | null;
+  /** The main workspace (OI): the Repositórios section shows every repo. */
+  isMain?: boolean;
+  /** Federated repo status for the OI panel (when isMain). */
+  federatedRepos?: FederatedRepo[] | null;
 }) {
   const isProject = Boolean(projectId);
   const summary = context?.summary?.trim() ?? "";
@@ -236,12 +244,23 @@ export default function ContextPanel({
     },
     {
       id: "repo",
-      label: "Repositório",
+      label: isMain ? "Repositórios" : "Repositório",
       Icon: IconBrandGithub,
-      hint: openPRs.length ? `${openPRs.length} PR` : undefined,
-      badge: openPRs.length || undefined,
+      hint: isMain
+        ? federatedRepos?.length
+          ? `${federatedRepos.length}`
+          : undefined
+        : openPRs.length
+          ? `${openPRs.length} PR`
+          : undefined,
+      badge: isMain
+        ? federatedRepos?.length || undefined
+        : openPRs.length || undefined,
       show: true,
-      body: (
+      // OI (main workspace): federated status of every repo-linked workspace.
+      body: isMain ? (
+        <FederatedReposPanel repos={federatedRepos ?? []} />
+      ) : (
         <RepoPanel
           scope={
             projectId

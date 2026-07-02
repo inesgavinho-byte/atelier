@@ -12,7 +12,9 @@ import {
   getMessages,
   getProjects,
   getWorkspaceContext,
+  getRepoWorkspaces,
 } from "@/lib/workspaces";
+import { getFederatedRepoStatus } from "@/lib/github";
 import WorkspaceChat from "@/components/workspaces/WorkspaceChat";
 import ContextPanel from "@/components/workspaces/ContextPanel";
 import ImportContext from "@/components/workspaces/ImportContext";
@@ -57,6 +59,11 @@ export default async function WorkspaceDetailPage({
     getSessions(ws.id).catch(() => []),
     getChatIdentity(ws.id),
   ]);
+
+  // Main workspace (OI): federated status of every repo-linked workspace.
+  const federatedRepos = ws.isMain
+    ? await getFederatedRepoStatus(await getRepoWorkspaces()).catch(() => [])
+    : null;
 
   const pendingCount = pending.filter((d) => d.workspaceId === ws.id).length;
 
@@ -166,6 +173,8 @@ export default async function WorkspaceDetailPage({
           projects={projects}
           documents={documents}
           sessions={sessions}
+          isMain={ws.isMain}
+          federatedRepos={federatedRepos}
         />
       </div>
     </div>

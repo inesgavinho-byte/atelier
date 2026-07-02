@@ -160,6 +160,97 @@ export async function getRepoCIStatus(
   };
 }
 
+/** The README (decoded markdown, truncated) of a repo, or null. */
+export async function getRepoReadme(
+  repo: string,
+  token: string,
+  maxChars = 6000
+): Promise<string | null> {
+  const data = await ghGet<{ content?: string; encoding?: string }>(
+    `/repos/${repo}/readme`,
+    token
+  );
+  if (!data?.content) return null;
+  try {
+    const decoded =
+      data.encoding === "base64"
+        ? Buffer.from(data.content, "base64").toString("utf8")
+        : data.content;
+    return decoded.slice(0, maxChars);
+  } catch {
+    return null;
+  }
+}
+
+/** Top-level entries (name + type) of a repo's default branch. */
+export async function getRepoTree(
+  repo: string,
+  token: string,
+  limit = 60
+): Promise<{ name: string; type: string }[]> {
+  const data = await ghGet<any[]>(`/repos/${repo}/contents`, token);
+  if (!Array.isArray(data)) return [];
+  return data
+    .slice(0, limit)
+    .map((e) => ({ name: String(e.name ?? ""), type: String(e.type ?? "file") }))
+    .filter((e) => e.name);
+}
+
+/**
+ * README + top-level structure for a repo (github_read enrichment). Resolves the
+ * token itself; returns null when no token or the repo is invalid.
+ */
+export async function getRepoReadContext(
+  repo: string
+): Promise<{ repo: string; readme: string | null; tree: { name: string; type: string }[] } | null> {
+  const clean = repo.trim();
+  if (!isValidRepo(clean)) return null;
+  const token = await resolveToken();
+  if (!token) return null;
+  const [readme, tree] = await Promise.all([
+    getRepoReadme(clean, token),
+    getRepoTree(clean, token),
+  ]);
+  return { repo: clean, readme, tree };
+}
+
+/* ── Federated repo status (OI main workspace) ───────────────────────────── */
+
+export interface FederatedRepo {
+  workspaceName: string;
+  repo: string;
+  url: string;
+  ci: RepoCI | null;
+  prCount: number;
+  lastCommit: { message: string; date: string; url: string } | null;
+}
+
+/**
+ * Compact status of every repo-linked workspace, for the OI federated panel and
+ * the main-workspace Council context. Reuses getRepoOverview (5-min cache), so
+ * repeated renders don't re-hit the API. Repos that fail resolve to a row with
+ * null CI / zero PRs rather than being dropped.
+ */
+export async function getFederatedRepoStatus(
+  entries: { name: string; githubRepo: string }[]
+): Promise<FederatedRepo[]> {
+  const out = await Promise.all(
+    entries.map(async (e) => {
+      const ov = await getRepoOverview(e.githubRepo);
+      const c = ov?.commits[0];
+      return {
+        workspaceName: e.name,
+        repo: e.githubRepo,
+        url: `https://github.com/${e.githubRepo}`,
+        ci: ov?.ci ?? null,
+        prCount: ov?.prs.length ?? 0,
+        lastCommit: c ? { message: c.message, date: c.date, url: c.url } : null,
+      } satisfies FederatedRepo;
+    })
+  );
+  return out;
+}
+
 /* ── In-memory cache (5 min) ─────────────────────────────────────────────── */
 
 const TTL_MS = 5 * 60 * 1000;

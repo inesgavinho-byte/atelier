@@ -45,6 +45,7 @@ const toInitiative = (r: any): Initiative => ({
   githubRepo: r.github_repo ?? undefined,
   supabaseUrl: r.supabase_url ?? undefined,
   supabaseProjectId: r.supabase_project_id ?? undefined,
+  isMain: Boolean(r.is_main),
 });
 
 const toAgent = (r: any): Agent => ({

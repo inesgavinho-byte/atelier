@@ -35,6 +35,8 @@ const toWorkspace = (r: any): Workspace => ({
   status: r.status,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
+  isMain: Boolean(r.is_main),
+  githubRepo: r.github_repo ?? undefined,
 });
 
 const toProject = (r: any): WorkspaceProject => ({
@@ -89,6 +91,48 @@ async function getWorkspacesUncached(): Promise<Workspace[]> {
     .select("*")
     .order("created_at", { ascending: false });
   return (data ?? []).map(toWorkspace);
+}
+
+/** Workspaces that have a GitHub repo configured (name + repo), for the OI
+ *  federated repos panel and the main-workspace Council context. */
+export async function getRepoWorkspaces(): Promise<
+  { name: string; githubRepo: string }[]
+> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("workspaces")
+    .select("name, github_repo")
+    .not("github_repo", "is", null)
+    .order("name");
+  return (data ?? [])
+    .filter((r: any) => r.github_repo)
+    .map((r: any) => ({ name: r.name as string, githubRepo: r.github_repo as string }));
+}
+
+/** Compressed summary of every workspace (project-less context), for the main
+ *  workspace's global Council context. Empty summaries are dropped. */
+export async function getGlobalWorkspaceSummaries(): Promise<
+  { name: string; summary: string }[]
+> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const [{ data: wss }, { data: ctxs }] = await Promise.all([
+    sb.from("workspaces").select("id, name"),
+    sb
+      .from("workspace_context")
+      .select("workspace_id, summary")
+      .is("project_id", null),
+  ]);
+  const nameOf = new Map<string, string>();
+  for (const w of wss ?? []) nameOf.set(w.id as string, w.name as string);
+  const out: { name: string; summary: string }[] = [];
+  for (const c of ctxs ?? []) {
+    const summary = String(c.summary ?? "").trim();
+    const name = nameOf.get(c.workspace_id as string);
+    if (name && summary) out.push({ name, summary });
+  }
+  return out;
 }
 
 export async function getWorkspace(id: string): Promise<Workspace | undefined> {
