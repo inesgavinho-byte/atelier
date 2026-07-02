@@ -2819,6 +2819,10 @@
 
 .shell-nav-scroll {
   flex: 1;
+  /* min-height:0 lets this flex child shrink below its content height so the
+     overflow actually scrolls — without it the nav grows past the 100vh
+     sidebar and the bottom workspaces (+ footer) are cut off with no scroll. */
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2999,6 +3003,8 @@
   margin-top: auto;
   padding: 14px 8px 0;
   border-top: 0.5px solid var(--divider);
+  /* Never shrink the footer away when the nav scrolls. */
+  flex-shrink: 0;
 }
 
 .shell-user-avatar {
